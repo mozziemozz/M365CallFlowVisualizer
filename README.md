@@ -37,7 +37,7 @@ You can also copy the contents of the output file and paste it [here](https://me
 
 You can find more information about Mermaid syntax [here](https://mermaid-js.github.io/mermaid/#/)
 
-If you want to implement Mermaid Diagrams into your markdown based documentation site, I suggest to take a look at [DocFx](https://dotnet.github.io/docfx/)
+If you want to implement Mermaid Diagrams into your markdown based documentation site, I suggest to take a look at [DocFx](https://dotnet.github.io/docfx/).
 
 # Known limitations
 - No support for IVRs yet
