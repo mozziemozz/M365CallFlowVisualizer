@@ -5,9 +5,19 @@ Reads a config from Microsoft 365 Phone System and renders them visually into a 
 
 # Examples
 
-## No Holidays and no Business Hours
+## Example 1: Auto attendant forwards calls to a Teams user.
 
-[![](https://mermaid.ink/img/eyJjb2RlIjoiZmxvd2NoYXJ0IFRCXG5zdGFydCgoSW5jb21pbmcgQ2FsbCBhdCA8YnI-ICs0MTQ0eHh4eHh4eCkpIC0tPiBlbGVtZW50QUEoW0F1dG8gQXR0ZW5kYW50IDxicj4gUFMgVGVzdCBBQV0pIC0tPiBkZWZhdWx0Q2FsbEZsb3dHcmVldGluZz5HcmVldGluZyA8YnI-IE5vbmVdIC0tPiBkZWZhdWx0Q2FsbEZsb3coVHJhbnNmZXJDYWxsVG9UYXJnZXQpIC0tPiBkZWZhdWx0Q2FsbEZsb3dBY3Rpb24oVXNlciA8YnI-IE1pa2UgV2FnbmVyKSIsIm1lcm1haWQiOnsidGhlbWUiOiJkYXJrIn0sInVwZGF0ZUVkaXRvciI6ZmFsc2UsImF1dG9TeW5jIjp0cnVlLCJ1cGRhdGVEaWFncmFtIjpmYWxzZX0)](https://mermaid-js.github.io/mermaid-live-editor/edit/#eyJjb2RlIjoiZmxvd2NoYXJ0IFRCXG5zdGFydCgoSW5jb21pbmcgQ2FsbCBhdCA8YnI-ICs0MTQ0eHh4eHh4eCkpIC0tPiBlbGVtZW50QUEoW0F1dG8gQXR0ZW5kYW50IDxicj4gUFMgVGVzdCBBQV0pIC0tPiBkZWZhdWx0Q2FsbEZsb3dHcmVldGluZz5HcmVldGluZyA8YnI-IE5vbmVdIC0tPiBkZWZhdWx0Q2FsbEZsb3coVHJhbnNmZXJDYWxsVG9UYXJnZXQpIC0tPiBkZWZhdWx0Q2FsbEZsb3dBY3Rpb24oVXNlciA8YnI-IE1pa2UgV2FnbmVyKSIsIm1lcm1haWQiOiJ7XG4gIFwidGhlbWVcIjogXCJkYXJrXCJcbn0iLCJ1cGRhdGVFZGl0b3IiOmZhbHNlLCJhdXRvU3luYyI6dHJ1ZSwidXBkYXRlRGlhZ3JhbSI6ZmFsc2V9)
+![](/Examples/PS_Test_AA_CallFlow_aa_fwd_user.svg)
+
+## Example 2: Auto attendant checks for business hours and forwards calls to a call queue
+
+![](/Examples/PS_Test_AA_CallFlow_only_BusinessHours.svg)
+
+## Example 3: Auto attendant checks for holidays and business hours and forwards calls to a call queue
+
+![](/Examples/PS_Test_AA_CallFlow_Holidays_and_BusinessHours.svg)
+
+These are just examples which were dynamically rendered based on my Microsoft 365 Phone System configuration. If an auto attendant does not have business hours or holidays, the flowchart will be much smaller.
 
 # How to use it
 
