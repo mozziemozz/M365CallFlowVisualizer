@@ -5,7 +5,7 @@ Reads a config from Microsoft 365 Phone System and renders them visually into a 
 
 # Examples
 
-## Example 1: Auto attendant forwards calls to a Teams user.
+## Example 1: Auto attendant forwards calls to a Teams user
 
 ![](/Examples/PS_Test_AA_CallFlow_aa_fwd_user.svg)
 
