@@ -50,3 +50,6 @@ If you want to implement Mermaid Diagrams into your markdown based documentation
 - Custom HEX color support for the mermaid diagram
 
 These are planned changes. There is no ETA nor is it guaranteed that these features will ever be added.
+
+# Legal
+This script is provided free of charge. Please do not sell it in any form.
