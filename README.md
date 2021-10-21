@@ -31,6 +31,18 @@ To preview Markdown files containing mermaid sections I suggest the following [V
 
 To preview Mermaid files I suggest the following [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-mermaid). You can also export to SVG directly from this extension.
 
+### Before you run the script
+
+Make sure that you are connected to MsolService and MicrosoftTeams by running the following commands:
+
+```PowerShell
+Connect-MsolService
+```
+
+```PowerShell
+Connect-MicrosoftTeams
+```
+
 ## Tips & Links
 
 You can also copy the contents of the output file and paste it [here](https://mermaid-js.github.io/mermaid-live-editor), if you want to edit the generated Mermaid flowchart. You can also export to SVG or PNG directly from the live editor.
