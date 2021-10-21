@@ -34,8 +34,89 @@
 [CmdletBinding()]
 param(
     [Parameter()]$resourceAccount = $null,
+    [Parameter()]$allAutoAttendants = $null,
+    [Parameter()]$allCallQueues = $null,
+    [Parameter()]$allApplicationInstances = $null,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$docType = "Markdown"
 )
+
+function GetAaForAppInstanceId($id) {
+    if (!$allAutoAttendants) { $allAutoAttendants = Get-CsAutoAttendant }
+    $allAutoAttendants | Where-Object {$_.ApplicationInstances -eq $id}
+}
+function GetCqForAppInstanceId($id) {
+    if (!$allCallQueues) { $allCallQueues = Get-CsCallQueue }
+    $allCallQueues | Where-Object {$_.ApplicationInstances -eq $id}
+}
+
+function CreateHolidaySubgraph($aa) {
+    if ($aa.CallHandlingAssociations.Type.Value -notcontains "Holiday") { return $null; }
+
+    $mdSubGraphHolidays =@"
+subgraph Holidays
+    direction LR
+"@
+
+    ########The counter is here so that each element is unique in Mermaid
+    $HolidayCounter = 1
+    
+    $aaHolidays = $aa.CallHandlingAssociations | Where-Object {$_.Type -match "Holiday" -and $_.Enabled -eq $true}
+    foreach ($HolidayCallHandling in $aaHolidays) {
+        $holidayCallFlow = $aa.CallFlows | Where-Object {$_.Id -eq $HolidayCallHandling.CallFlowId}
+        $holidaySchedule = $aa.Schedules | Where-Object {$_.Id -eq $HolidayCallHandling.ScheduleId}
+
+        $holidayGreeting = "Greeting <br> $(if ($holidayCallFlow.Greetings) {$holidayCallFlow.Greetings.ActiveType.Value} else { 'None' })"
+        if ($holidayCallFlow.Menu.MenuOptions.Action.Value -eq "DisconnectCall") {
+            $nodeElementHolidayAction = "elementAAHolidayAction$($HolidayCounter)((DisconnectCall))"
+        } else {
+            switch ($holidayCallFlow.Menu.MenuOptions.CallTarget.Type.Value) {
+                User {
+                    $holidayActionTargetTypeFriendly = "User" 
+                    # $holidayActionTargetName = (Get-MsolUser -ObjectId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
+                    $holidayActionTargetName = $holidayCallFlow.Menu.MenuOptions.CallTarget.Id
+                }
+                SharedVoicemail {
+                    $holidayActionTargetTypeFriendly = "Voicemail"
+                    # $holidayActionTargetName = (Get-MsolGroup -ObjectId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
+                    $holidayActionTargetName = $holidayCallFlow.Menu.MenuOptions.CallTarget.Id
+                }
+                ExternalPstn {
+                    $holidayActionTargetTypeFriendly = "External Number" 
+                    $holidayActionTargetName = $holidayCallFlow.Menu.MenuOptions.CallTarget.Id -Replace "^tel:",""
+                }
+                ApplicationEndpoint {                    
+                    $MatchingAA = GetAaForAppInstanceId $holidayCallFlow.Menu.MenuOptions.CallTarget.Id
+                    if ($MatchingAA) {
+                        $holidayActionTargetTypeFriendly = "[Auto Attendant"
+                        $holidayActionTargetName = "$($MatchingAA.Name)]"
+                    } else {
+                        $MatchingCQ = GetCqForAppInstanceId $holidayCallFlow.Menu.MenuOptions.CallTarget.Id
+                        $holidayActionTargetTypeFriendly = "[Call Queue"
+                        $holidayActionTargetName = "$($MatchingCQ.Name)]"
+                    }
+                }
+            }
+            $nodeElementHolidayAction = "elementAAHolidayAction$($HolidayCounter)($holidayAction) --> elementAAHolidayActionTargetType$($HolidayCounter)($holidayActionTargetTypeFriendly <br> $holidayActionTargetName)"
+        }
+
+        $mdSubGraphHolidays += @"
+        
+    subgraph $($holidayCallFlow.Name)
+        direction LR
+        elementAAHoliday$($HolidayCounter)(Schedule <br> $($holidaySchedule.FixedSchedule.DateTimeRanges.Start) <br> $($holidaySchedule.FixedSchedule.DateTimeRanges.End)) --> elementAAHolidayGreeting$($HolidayCounter)>$holidayGreeting] --> $nodeElementHolidayAction
+    end
+"@
+
+        $HolidayCounter++
+    }
+
+    $mdSubGraphHolidays += @"
+
+end
+"@
+
+    return $mdSubGraphHolidays
+}
 
 if (!$resourceAccount) {
     $resourceAccount = Get-CsOnlineApplicationInstance | `
@@ -44,7 +125,7 @@ if (!$resourceAccount) {
         Out-GridView -PassThru -Title "Choose an Auto Attendant from the list to visualize your call flow:"
 }
 
-$aa = Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $resourceAccount.ObjectId}
+$aa = GetAaForAppInstanceId $resourceAccount.ObjectId
 if (!$aa) {
     Write-Error "$($resourceAccount.UserPrincipalName) is not assigned to an Auto Attendant"
     return
@@ -55,115 +136,8 @@ $aaProperties = [PSCustomObject]@{
     PhoneNumber = $resourceAccount.PhoneNumber -Replace "^tel:",""
 }
 
-####Check if AA has holidays
-if ($aa.CallHandlingAssociations.Type.Value -contains "Holiday") {
-
-    $aaHasHolidays = $true
-
-    $aaHolidays = $aa.CallHandlingAssociations | Where-Object {$_.Type -match "Holiday" -and $_.Enabled -eq $true}
-
-    $mdSubGraphHolidays =@"
-subgraph Holidays
-    direction LR
-"@
-
-########The counter is here so that each element is unique in Mermaid
-    $HolidayCounter = 1
-    
-    foreach ($HolidayCallHandling in $aaHolidays) {
-
-        $holidayCallFlow = $aa.CallFlows | Where-Object {$_.Id -eq $HolidayCallHandling.CallFlowId}
-        $holidaySchedule = $aa.Schedules | Where-Object {$_.Id -eq $HolidayCallHandling.ScheduleId}
-
-        if (!$holidayCallFlow.Greetings) {
-
-            $holidayGreeting = "Greeting <br> None"
-
-        }
-
-        else {
-
-            $holidayGreeting = "Greeting <br> $($holidayCallFlow.Greetings.ActiveType.Value)"
-
-        }
-
-        $holidayAction = $holidayCallFlow.Menu.MenuOptions.Action.Value
-
-        if ($holidayAction -eq "DisconnectCall") {
-
-            $nodeElementHolidayAction = "elementAAHolidayAction$($HolidayCounter)(($holidayAction))"
-
-        }
-
-        else {
-
-            $holidayActionTargetType = $holidayCallFlow.Menu.MenuOptions.CallTarget.Type.Value
-
-            switch ($holidayActionTargetType) {
-                User { $holidayActionTargetTypeFriendly = "User" 
-                $holidayActionTargetName = (Get-MsolUser -ObjectId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
-            }
-                SharedVoicemail { $holidayActionTargetTypeFriendly = "Voicemail"
-                $holidayActionTargetName = (Get-MsolGroup -ObjectId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
-            }
-                ExternalPstn { $holidayActionTargetTypeFriendly = "External Number" 
-                $holidayActionTargetName =  ($holidayCallFlow.Menu.MenuOptions.CallTarget.Id).Replace("tel:","")
-            }
-                ApplicationEndpoint {                    
-                $MatchingAA = Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $holidayCallFlow.Menu.MenuOptions.CallTarget.Id}
-
-                    if ($MatchingAA) {
-
-                        $holidayActionTargetTypeFriendly = "[Auto Attendant"
-                        $holidayActionTargetName = "$($MatchingAA.Name)]"
-
-                    }
-
-                    else {
-
-                        $MatchingCQ = Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $holidayCallFlow.Menu.MenuOptions.CallTarget.Id}
-
-                        $holidayActionTargetTypeFriendly = "[Call Queue"
-                        $holidayActionTargetName = "$($MatchingCQ.Name)]"
-
-                    }
-
-                }
-            
-            }
-
-            $nodeElementHolidayAction = "elementAAHolidayAction$($HolidayCounter)($holidayAction) --> elementAAHolidayActionTargetType$($HolidayCounter)($holidayActionTargetTypeFriendly <br> $holidayActionTargetName)"
-
-        }
-
-        $nodeElementHolidayDetails =@"
-        
-        subgraph $($holidayCallFlow.Name)
-        direction LR
-        elementAAHoliday$($HolidayCounter)(Schedule <br> $($holidaySchedule.FixedSchedule.DateTimeRanges.Start) <br> $($holidaySchedule.FixedSchedule.DateTimeRanges.End)) --> elementAAHolidayGreeting$($HolidayCounter)>$holidayGreeting] --> $nodeElementHolidayAction
-            end
-"@
-
-        $HolidayCounter ++
-
-        $mdSubGraphHolidays += $nodeElementHolidayDetails
-
-    }
-
-    $mdSubGraphHolidaysEnd =@"
-
-end
-"@
-
-$mdSubGraphHolidays += $mdSubGraphHolidaysEnd
-
-}
-
-else {
-
-    $aaHasHolidays = $false
-
-}
+$mdSubGraphHolidays = CreateHolidaySubgraph $aa
+$aaHasHolidays = !!$mdSubGraphHolidays
 
 $aaDefaultScheduleProperties = New-Object -TypeName psobject
 
