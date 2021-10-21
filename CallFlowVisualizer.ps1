@@ -607,8 +607,8 @@ if ($defaultCallFlowAction -eq "TransferCallToTarget") {
     $defaultCallFlowMarkDown =@"
 --> defaultCallFlow($defaultCallFlowAction) --> defaultCallFlowAction($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName) --> cqGreeting>Greeting <br> $CqGreeting]
 --> overFlow{More than $CqOverFlowThreshold <br> Active Calls}
-overFlow --> |Yes| $CqOverFlowActionFriendly
-overFlow --> |No| routingMethod
+overFlow ---> |Yes| $CqOverFlowActionFriendly
+overFlow ---> |No| routingMethod
 
 $defaultCallFlowcCqIsTopLevel
 
