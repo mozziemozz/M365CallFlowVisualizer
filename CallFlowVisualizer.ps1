@@ -6,11 +6,12 @@
     Presents a selection of available auto attendants and then reads the config of that auto attendant and writes it into a mermaid-js flowchart file.
 
     Author:             Martin Heusser
-    Version:            1.1.0
+    Version:            1.1.1
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
         21.10.2021:     Add support for top level call queues (besides auto attendants)
+        21.10.2021:     Move call queue specific operations into a function
 
     .PARAMETER Name
     -docType
@@ -68,6 +69,271 @@ flowchart TB
     $fileExtension = ".mmd"
 
 }
+
+function Get-CallQueueProperties {
+    param (
+        [Parameter(Mandatory=$true)][String]$MatchingCQIdentity
+    )
+
+        $MatchingCQ = Get-CsCallQueue -Identity $MatchingCQIdentity
+
+        # Store all neccessary call queue properties in variables
+        $CqOverFlowThreshold = $MatchingCQ.OverflowThreshold
+        $CqOverFlowAction = $MatchingCQ.OverflowAction.Value
+        $CqTimeOut = $MatchingCQ.TimeoutThreshold
+        $CqTimeoutAction = $MatchingCQ.TimeoutAction.Value
+        $CqRoutingMethod = $MatchingCQ.RoutingMethod.Value
+        $CqAgents = $MatchingCQ.Agents.ObjectId
+        $CqAgentOptOut = $MatchingCQ.AllowOptOut
+        $CqConferenceMode = $MatchingCQ.ConferenceMode
+        $CqAgentAlertTime = $MatchingCQ.AgentAlertTime
+        $CqPresenceBasedRouting = $MatchingCQ.PresenceBasedRouting
+        $CqDistributionList = $MatchingCQ.DistributionLists
+        $CqDefaultMusicOnHold = $MatchingCQ.UseDefaultMusicOnHold
+        $CqWelcomeMusicFileName = $MatchingCQ.WelcomeMusicFileName
+
+        # Check if call queue uses default music on hold
+        if ($CqDefaultMusicOnHold -eq $true) {
+            $CqMusicOnHold = "Default"
+        }
+    
+        else {
+            $CqMusicOnHold = "Custom"
+        }
+    
+        # Check if call queue uses a greeting
+        if (!$CqWelcomeMusicFileName) {
+            $CqGreeting = "None"
+        }
+    
+        else {
+            $CqGreeting = "Audio File"
+    
+        }
+
+        # Check if call queue useses users, group or teams channel as distribution list
+        if (!$CqDistributionList) {
+
+            $CqAgentListType = "Users"
+    
+        }
+    
+        else {
+    
+            if (!$MatchingCQ.ChannelId) {
+    
+                $CqAgentListType = "Group"
+    
+            }
+    
+            else {
+    
+                $CqAgentListType = "Teams Channel"
+    
+            }
+    
+        }
+
+        # Switch through call queue overflow action target
+        switch ($CqOverFlowAction) {
+            DisconnectWithBusy {
+                $CqOverFlowActionFriendly = "cqOverFlowAction((Disconnect Call))"
+            }
+            Forward {
+
+                if ($MatchingCQ.OverflowActionTarget.Type -eq "User") {
+
+                    $MatchingOverFlowUser = (Get-MsolUser -ObjectId $MatchingCQ.OverflowActionTarget.Id).DisplayName
+
+                    $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget(User <br> $MatchingOverFlowUser)"
+
+                }
+
+                elseif ($MatchingCQ.OverflowActionTarget.Type -eq "Phone") {
+
+                    $cqOverFlowPhoneNumber = ($MatchingCQ.OverflowActionTarget.Id).Replace("tel:","")
+
+                    $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget(External Number <br> $cqOverFlowPhoneNumber)"
+                    
+                }
+
+                else {
+
+                    $MatchingOverFlowAA = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.OverflowActionTarget.Id}).Name
+
+                    if ($MatchingOverFlowAA) {
+
+                        $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget([Auto Attendant <br> $MatchingOverFlowAA])"
+
+                    }
+
+                    else {
+
+                        $MatchingOverFlowCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.OverflowActionTarget.Id}).Name
+
+                        $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget([Call Queue <br> $MatchingOverFlowCQ])"
+
+                    }
+
+                }
+
+            }
+            SharedVoicemail {
+                $MatchingOverFlowVoicemail = (Get-MsolGroup -ObjectId $MatchingCQ.OverflowActionTarget.Id).DisplayName
+
+                if ($MatchingCQ.OverflowSharedVoicemailTextToSpeechPrompt) {
+
+                    $CqOverFlowVoicemailGreeting = "TextToSpeech"
+
+                }
+
+                else {
+
+                    $CqOverFlowVoicemailGreeting = "AudioFile"
+
+                }
+
+                $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowVoicemailGreeting>Greeting <br> $CqOverFlowVoicemailGreeting] --> cqOverFlowActionTarget(Shared Voicemail <br> $MatchingOverFlowVoicemail)"
+
+            }
+
+        }
+
+        # Switch through call queue timeout overflow action
+        switch ($CqTimeoutAction) {
+            DisconnectWithBusy {
+                $CqTimeoutActionFriendly = "cqTimeoutAction((Disconnect Call))"
+            }
+            Forward {
+        
+                if ($MatchingCQ.TimeoutActionTarget.Type -eq "User") {
+
+                    $MatchingTimeoutUser = (Get-MsolUser -ObjectId $MatchingCQ.TimeoutActionTarget.Id).DisplayName
+        
+                    $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget(User <br> $MatchingTimeoutUser)"
+        
+                }
+        
+                elseif ($MatchingCQ.TimeoutActionTarget.Type -eq "Phone") {
+        
+                    $cqTimeoutPhoneNumber = ($MatchingCQ.TimeoutActionTarget.Id).Replace("tel:","")
+        
+                    $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget(External Number <br> $cqTimeoutPhoneNumber)"
+                    
+                }
+        
+                else {
+        
+                    $MatchingTimeoutAA = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id}).Name
+        
+                    if ($MatchingTimeoutAA) {
+        
+                        $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget([Auto Attendant <br> $MatchingTimeoutAA])"
+        
+                    }
+        
+                    else {
+        
+                        $MatchingTimeoutCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id}).Name
+        
+                        $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget([Call Queue <br> $MatchingTimeoutCQ])"
+        
+                    }
+        
+                }
+        
+            }
+            SharedVoicemail {
+                $MatchingTimeoutVoicemail = (Get-MsolGroup -ObjectId $MatchingCQ.TimeoutActionTarget.Id).DisplayName
+        
+                if ($MatchingCQ.TimeoutSharedVoicemailTextToSpeechPrompt) {
+        
+                    $CqTimeoutVoicemailGreeting = "TextToSpeech"
+        
+                }
+        
+                else {
+        
+                    $CqTimeoutVoicemailGreeting = "AudioFile"
+        
+                }
+        
+                $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutVoicemailGreeting>Greeting <br> $CqTimeoutVoicemailGreeting] --> cqTimeoutActionTarget(Shared Voicemail <br> $MatchingTimeoutVoicemail)"
+        
+            }
+        
+        }
+
+        # Create empty mermaid element for agent list
+        $mdCqAgentsDisplayNames = @"
+"@
+
+        # Define agent counter for unique mermaid element names
+        $AgentCounter = 1
+
+        # add each agent to the empty agents mermaid element
+        foreach ($CqAgent in $CqAgents) {
+            $AgentDisplayName = (Get-MsolUser -ObjectId $CqAgent).DisplayName
+
+            $AgentDisplayNames = "agentListType --> agent$($AgentCounter)($AgentDisplayName) --> timeOut`n"
+
+            $mdCqAgentsDisplayNames += $AgentDisplayNames
+
+            $AgentCounter ++
+        }
+
+        switch ($voiceAppType) {
+            "Auto Attendant" {
+
+                $voiceAppTypeSpecificCallFlow = "--> defaultCallFlow($defaultCallFlowAction) --> defaultCallFlowAction($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName) --> cqGreeting>Greeting <br> $CqGreeting]"
+
+            }
+            "Call Queue" {
+
+                $voiceAppTypeSpecificCallFlow = "cqGreeting>Greeting <br> $CqGreeting]"
+
+                $defaultCallFlowcCqIsTopLevel = $null
+
+            }
+        }
+
+        # Create default callflow mermaid code
+ 
+    $defaultCallFlowMarkDown =@"
+$voiceAppTypeSpecificCallFlow
+--> overFlow{More than $CqOverFlowThreshold <br> Active Calls}
+overFlow ---> |Yes| $CqOverFlowActionFriendly
+overFlow ---> |No| routingMethod
+
+$defaultCallFlowcCqIsTopLevel
+
+subgraph Call Distribution
+subgraph CQ Settings
+routingMethod[(Routing Method: $CqRoutingMethod)] --> agentAlertTime
+agentAlertTime[(Agent Alert Time: $CqAgentAlertTime)] -.- cqMusicOnHold
+cqMusicOnHold[(Music On Hold: $CqMusicOnHold)] -.- conferenceMode
+conferenceMode[(Conference Mode Enabled: $CqConferenceMode)] -.- agentOptOut
+agentOptOut[(Agent Opt Out Allowed: $CqAgentOptOut)] -.- presenceBasedRouting
+presenceBasedRouting[(Presence Based Routing: $CqPresenceBasedRouting)] -.- timeOut
+timeOut[(Timeout: $CqTimeOut Seconds)]
+end
+subgraph Agents
+agentAlertTime --> agentListType[(Agent List Type: $CqAgentListType)]
+$mdCqAgentsDisplayNames
+end
+end
+
+timeOut --> cqResult{Call Connected?}
+cqResult --> |Yes| cqEnd((Call Connected))
+cqResult --> |No| $CqTimeoutActionFriendly
+
+"@
+
+        $mdDefaultCallflow =@"
+$defaultCallFlowMarkDown
+"@
+
+    } # End of the function
 
 # Get resource account
 $resourceAccount = Get-CsOnlineApplicationInstance | Where-Object {$_.PhoneNumber -notlike ""} | Select-Object DisplayName, PhoneNumber, ObjectId, ApplicationId | Out-GridView -PassThru -Title "Choose an Auto Attendant from the list to visualize your call flow:"
@@ -402,243 +668,11 @@ end
             # Check if transfer target type is call queue
             if ($defaultCallFlowTargetTypeFriendly -eq "[Call Queue") {
 
-                # Store all neccessary call queue properties in variables
-                $CqOverFlowThreshold = $MatchingCQ.OverflowThreshold
-                $CqOverFlowAction = $MatchingCQ.OverflowAction.Value
-                $CqTimeOut = $MatchingCQ.TimeoutThreshold
-                $CqTimeoutAction = $MatchingCQ.TimeoutAction.Value
-                $CqRoutingMethod = $MatchingCQ.RoutingMethod.Value
-                $CqAgents = $MatchingCQ.Agents.ObjectId
-                $CqAgentOptOut = $MatchingCQ.AllowOptOut
-                $CqConferenceMode = $MatchingCQ.ConferenceMode
-                $CqAgentAlertTime = $MatchingCQ.AgentAlertTime
-                $CqPresenceBasedRouting = $MatchingCQ.PresenceBasedRouting
-                $CqDistributionList = $MatchingCQ.DistributionLists
-                $CqDefaultMusicOnHold = $MatchingCQ.UseDefaultMusicOnHold
-                $CqWelcomeMusicFileName = $MatchingCQ.WelcomeMusicFileName
+                $MatchingCQIdentity = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id}).Identity
 
-                # Check if call queue uses default music on hold
-                if ($CqDefaultMusicOnHold -eq $true) {
-                    $CqMusicOnHold = "Default"
-                }
-            
-                else {
-                    $CqMusicOnHold = "Custom"
-                }
-            
-                # Check if call queue uses a greeting
-                if (!$CqWelcomeMusicFileName) {
-                    $CqGreeting = "None"
-                }
-            
-                else {
-                    $CqGreeting = "Audio File"
-            
-                }
-
-                # Check if call queue useses users, group or teams channel as distribution list
-                if (!$CqDistributionList) {
-
-                    $CqAgentListType = "Users"
-            
-                }
-            
-                else {
-            
-                    if (!$MatchingCQ.ChannelId) {
-            
-                        $CqAgentListType = "Group"
-            
-                    }
-            
-                    else {
-            
-                        $CqAgentListType = "Teams Channel"
-            
-                    }
-            
-                }
-
-                # Switch through call queue overflow action target
-                switch ($CqOverFlowAction) {
-                    DisconnectWithBusy {
-                        $CqOverFlowActionFriendly = "cqOverFlowAction((Disconnect Call))"
-                    }
-                    Forward {
-
-                        if ($MatchingCQ.OverflowActionTarget.Type -eq "User") {
-
-                            $MatchingOverFlowUser = (Get-MsolUser -ObjectId $MatchingCQ.OverflowActionTarget.Id).DisplayName
-
-                            $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget(User <br> $MatchingOverFlowUser)"
-
-                        }
-
-                        elseif ($MatchingCQ.OverflowActionTarget.Type -eq "Phone") {
-
-                            $cqOverFlowPhoneNumber = ($MatchingCQ.OverflowActionTarget.Id).Replace("tel:","")
-
-                            $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget(External Number <br> $cqOverFlowPhoneNumber)"
-                            
-                        }
-
-                        else {
-
-                            $MatchingOverFlowAA = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.OverflowActionTarget.Id}).Name
-
-                            if ($MatchingOverFlowAA) {
-
-                                $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget([Auto Attendant <br> $MatchingOverFlowAA])"
-
-                            }
-
-                            else {
-
-                                $MatchingOverFlowCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.OverflowActionTarget.Id}).Name
-
-                                $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget([Call Queue <br> $MatchingOverFlowCQ])"
-
-                            }
-
-                        }
-
-                    }
-                    SharedVoicemail {
-                        $MatchingOverFlowVoicemail = (Get-MsolGroup -ObjectId $MatchingCQ.OverflowActionTarget.Id).DisplayName
-
-                        if ($MatchingCQ.OverflowSharedVoicemailTextToSpeechPrompt) {
-
-                            $CqOverFlowVoicemailGreeting = "TextToSpeech"
-
-                        }
-
-                        else {
-
-                            $CqOverFlowVoicemailGreeting = "AudioFile"
-
-                        }
-
-                        $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowVoicemailGreeting>Greeting <br> $CqOverFlowVoicemailGreeting] --> cqOverFlowActionTarget(Shared Voicemail <br> $MatchingOverFlowVoicemail)"
-
-                    }
-
-                }
-
-                # Switch through call queue timeout overflow action
-                switch ($CqTimeoutAction) {
-                    DisconnectWithBusy {
-                        $CqTimeoutActionFriendly = "cqTimeoutAction((Disconnect Call))"
-                    }
-                    Forward {
+                . Get-CallQueueProperties -MatchingCQIdentity $MatchingCQIdentity
                 
-                        if ($MatchingCQ.TimeoutActionTarget.Type -eq "User") {
-
-                            $MatchingTimeoutUser = (Get-MsolUser -ObjectId $MatchingCQ.TimeoutActionTarget.Id).DisplayName
-                
-                            $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget(User <br> $MatchingTimeoutUser)"
-                
-                        }
-                
-                        elseif ($MatchingCQ.TimeoutActionTarget.Type -eq "Phone") {
-                
-                            $cqTimeoutPhoneNumber = ($MatchingCQ.TimeoutActionTarget.Id).Replace("tel:","")
-                
-                            $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget(External Number <br> $cqTimeoutPhoneNumber)"
-                            
-                        }
-                
-                        else {
-                
-                            $MatchingTimeoutAA = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id}).Name
-                
-                            if ($MatchingTimeoutAA) {
-                
-                                $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget([Auto Attendant <br> $MatchingTimeoutAA])"
-                
-                            }
-                
-                            else {
-                
-                                $MatchingTimeoutCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id}).Name
-                
-                                $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget([Call Queue <br> $MatchingTimeoutCQ])"
-                
-                            }
-                
-                        }
-                
-                    }
-                    SharedVoicemail {
-                        $MatchingTimeoutVoicemail = (Get-MsolGroup -ObjectId $MatchingCQ.TimeoutActionTarget.Id).DisplayName
-                
-                        if ($MatchingCQ.TimeoutSharedVoicemailTextToSpeechPrompt) {
-                
-                            $CqTimeoutVoicemailGreeting = "TextToSpeech"
-                
-                        }
-                
-                        else {
-                
-                            $CqTimeoutVoicemailGreeting = "AudioFile"
-                
-                        }
-                
-                        $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutVoicemailGreeting>Greeting <br> $CqTimeoutVoicemailGreeting] --> cqTimeoutActionTarget(Shared Voicemail <br> $MatchingTimeoutVoicemail)"
-                
-                    }
-                
-                }
-
-        # Create empty mermaid element for agent list
-        $mdCqAgentsDisplayNames = @"
-"@
-
-        # Define agent counter for unique mermaid element names
-        $AgentCounter = 1
-
-        # add each agent to the empty agents mermaid element
-        foreach ($CqAgent in $CqAgents) {
-            $AgentDisplayName = (Get-MsolUser -ObjectId $CqAgent).DisplayName
-
-            $AgentDisplayNames = "agentListType --> agent$($AgentCounter)($AgentDisplayName) --> timeOut`n"
-
-            $mdCqAgentsDisplayNames += $AgentDisplayNames
-
-            $AgentCounter ++
-        }
-
-        # Create default callflow mermaid code
-        $defaultCallFlowMarkDown =@"
---> defaultCallFlow($defaultCallFlowAction) --> defaultCallFlowAction($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName) --> cqGreeting>Greeting <br> $CqGreeting]
---> overFlow{More than $CqOverFlowThreshold <br> Active Calls}
-overFlow --> |Yes| $CqOverFlowActionFriendly
-overFlow --> |No| routingMethod
-
-$defaultCallFlowcCqIsTopLevel
-
-subgraph Call Distribution
-    subgraph CQ Settings
-    routingMethod[(Routing Method: $CqRoutingMethod)] --> agentAlertTime
-    agentAlertTime[(Agent Alert Time: $CqAgentAlertTime)] -.- cqMusicOnHold
-    cqMusicOnHold[(Music On Hold: $CqMusicOnHold)] -.- conferenceMode
-    conferenceMode[(Conference Mode Enabled: $CqConferenceMode)] -.- agentOptOut
-    agentOptOut[(Agent Opt Out Allowed: $CqAgentOptOut)] -.- presenceBasedRouting
-    presenceBasedRouting[(Presence Based Routing: $CqPresenceBasedRouting)] -.- timeOut
-    timeOut[(Timeout: $CqTimeOut Seconds)]
-    end
-    subgraph Agents
-    agentAlertTime --> agentListType[(Agent List Type: $CqAgentListType)]
-    $mdCqAgentsDisplayNames
-    end
-end
-
-timeOut --> cqResult{Call Connected?}
-    cqResult --> |Yes| cqEnd((Call Connected))
-    cqResult --> |No| $CqTimeoutActionFriendly
-
-"@
-    
-    }
+            } # End if transfer target type is call queue
 
             # Check if default callflow action target is trasnfer call to target but something other than call queue
             else {
@@ -743,248 +777,13 @@ defaultCallFlowGreeting>$defaultCallFlowGreeting] $defaultCallFlowMarkDown
 
         $voiceAppProperties | Add-Member -MemberType NoteProperty -Name "DisplayName" -Value $aa.Name
 
-        $MatchingCQ = Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $resourceAccount.ObjectId}
+        $MatchingCQIdentity = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $resourceAccount.ObjectId}).Identity
 
-        # Store all neccessary call queue properties in variables
-        $CqOverFlowThreshold = $MatchingCQ.OverflowThreshold
-        $CqOverFlowAction = $MatchingCQ.OverflowAction.Value
-        $CqTimeOut = $MatchingCQ.TimeoutThreshold
-        $CqTimeoutAction = $MatchingCQ.TimeoutAction.Value
-        $CqRoutingMethod = $MatchingCQ.RoutingMethod.Value
-        $CqAgents = $MatchingCQ.Agents.ObjectId
-        $CqAgentOptOut = $MatchingCQ.AllowOptOut
-        $CqConferenceMode = $MatchingCQ.ConferenceMode
-        $CqAgentAlertTime = $MatchingCQ.AgentAlertTime
-        $CqPresenceBasedRouting = $MatchingCQ.PresenceBasedRouting
-        $CqDistributionList = $MatchingCQ.DistributionLists
-        $CqDefaultMusicOnHold = $MatchingCQ.UseDefaultMusicOnHold
-        $CqWelcomeMusicFileName = $MatchingCQ.WelcomeMusicFileName
+    . Get-CallQueueProperties -MatchingCQIdentity $MatchingCQIdentity
 
-        # Check if call queue uses default music on hold
-        if ($CqDefaultMusicOnHold -eq $true) {
-            $CqMusicOnHold = "Default"
-        }
-    
-        else {
-            $CqMusicOnHold = "Custom"
-        }
-    
-        # Check if call queue uses a greeting
-        if (!$CqWelcomeMusicFileName) {
-            $CqGreeting = "None"
-        }
-    
-        else {
-            $CqGreeting = "Audio File"
-    
-        }
 
-        # Check if call queue useses users, group or teams channel as distribution list
-        if (!$CqDistributionList) {
-
-            $CqAgentListType = "Users"
-    
-        }
-    
-        else {
-    
-            if (!$MatchingCQ.ChannelId) {
-    
-                $CqAgentListType = "Group"
-    
-            }
-    
-            else {
-    
-                $CqAgentListType = "Teams Channel"
-    
-            }
-    
-        }
-
-        # Switch through call queue overflow action target
-        switch ($CqOverFlowAction) {
-            DisconnectWithBusy {
-                $CqOverFlowActionFriendly = "cqOverFlowAction((Disconnect Call))"
-            }
-            Forward {
-
-                if ($MatchingCQ.OverflowActionTarget.Type -eq "User") {
-
-                    $MatchingOverFlowUser = (Get-MsolUser -ObjectId $MatchingCQ.OverflowActionTarget.Id).DisplayName
-
-                    $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget(User <br> $MatchingOverFlowUser)"
-
-                }
-
-                elseif ($MatchingCQ.OverflowActionTarget.Type -eq "Phone") {
-
-                    $cqOverFlowPhoneNumber = ($MatchingCQ.OverflowActionTarget.Id).Replace("tel:","")
-
-                    $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget(External Number <br> $cqOverFlowPhoneNumber)"
-                    
-                }
-
-                else {
-
-                    $MatchingOverFlowAA = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.OverflowActionTarget.Id}).Name
-
-                    if ($MatchingOverFlowAA) {
-
-                        $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget([Auto Attendant <br> $MatchingOverFlowAA])"
-
-                    }
-
-                    else {
-
-                        $MatchingOverFlowCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.OverflowActionTarget.Id}).Name
-
-                        $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget([Call Queue <br> $MatchingOverFlowCQ])"
-
-                    }
-
-                }
-
-            }
-            SharedVoicemail {
-                $MatchingOverFlowVoicemail = (Get-MsolGroup -ObjectId $MatchingCQ.OverflowActionTarget.Id).DisplayName
-
-                if ($MatchingCQ.OverflowSharedVoicemailTextToSpeechPrompt) {
-
-                    $CqOverFlowVoicemailGreeting = "TextToSpeech"
-
-                }
-
-                else {
-
-                    $CqOverFlowVoicemailGreeting = "AudioFile"
-
-                }
-
-                $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowVoicemailGreeting>Greeting <br> $CqOverFlowVoicemailGreeting] --> cqOverFlowActionTarget(Shared Voicemail <br> $MatchingOverFlowVoicemail)"
-
-            }
-
-        }
-
-        # Switch through call queue timeout overflow action
-        switch ($CqTimeoutAction) {
-            DisconnectWithBusy {
-                $CqTimeoutActionFriendly = "cqTimeoutAction((Disconnect Call))"
-            }
-            Forward {
-        
-                if ($MatchingCQ.TimeoutActionTarget.Type -eq "User") {
-
-                    $MatchingTimeoutUser = (Get-MsolUser -ObjectId $MatchingCQ.TimeoutActionTarget.Id).DisplayName
-        
-                    $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget(User <br> $MatchingTimeoutUser)"
-        
-                }
-        
-                elseif ($MatchingCQ.TimeoutActionTarget.Type -eq "Phone") {
-        
-                    $cqTimeoutPhoneNumber = ($MatchingCQ.TimeoutActionTarget.Id).Replace("tel:","")
-        
-                    $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget(External Number <br> $cqTimeoutPhoneNumber)"
-                    
-                }
-        
-                else {
-        
-                    $MatchingTimeoutAA = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id}).Name
-        
-                    if ($MatchingTimeoutAA) {
-        
-                        $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget([Auto Attendant <br> $MatchingTimeoutAA])"
-        
-                    }
-        
-                    else {
-        
-                        $MatchingTimeoutCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id}).Name
-        
-                        $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget([Call Queue <br> $MatchingTimeoutCQ])"
-        
-                    }
-        
-                }
-        
-            }
-            SharedVoicemail {
-                $MatchingTimeoutVoicemail = (Get-MsolGroup -ObjectId $MatchingCQ.TimeoutActionTarget.Id).DisplayName
-        
-                if ($MatchingCQ.TimeoutSharedVoicemailTextToSpeechPrompt) {
-        
-                    $CqTimeoutVoicemailGreeting = "TextToSpeech"
-        
-                }
-        
-                else {
-        
-                    $CqTimeoutVoicemailGreeting = "AudioFile"
-        
-                }
-        
-                $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutVoicemailGreeting>Greeting <br> $CqTimeoutVoicemailGreeting] --> cqTimeoutActionTarget(Shared Voicemail <br> $MatchingTimeoutVoicemail)"
-        
-            }
-        
-        }
-
-        # Create empty mermaid element for agent list
-        $mdCqAgentsDisplayNames = @"
-"@
-
-        # Define agent counter for unique mermaid element names
-        $AgentCounter = 1
-
-        # add each agent to the empty agents mermaid element
-        foreach ($CqAgent in $CqAgents) {
-            $AgentDisplayName = (Get-MsolUser -ObjectId $CqAgent).DisplayName
-
-            $AgentDisplayNames = "agentListType --> agent$($AgentCounter)($AgentDisplayName) --> timeOut`n"
-
-            $mdCqAgentsDisplayNames += $AgentDisplayNames
-
-            $AgentCounter ++
-        }
-
-    # Create default callflow mermaid code for call queues
-    $defaultCallFlowMarkDown =@"
-cqGreeting>Greeting <br> $CqGreeting]
---> overFlow{More than $CqOverFlowThreshold <br> Active Calls}
-overFlow ---> |Yes| $CqOverFlowActionFriendly
-overFlow ---> |No| routingMethod
-
-subgraph Call Distribution
-subgraph CQ Settings
-routingMethod[(Routing Method: $CqRoutingMethod)] --> agentAlertTime
-agentAlertTime[(Agent Alert Time: $CqAgentAlertTime)] -.- cqMusicOnHold
-cqMusicOnHold[(Music On Hold: $CqMusicOnHold)] -.- conferenceMode
-conferenceMode[(Conference Mode Enabled: $CqConferenceMode)] -.- agentOptOut
-agentOptOut[(Agent Opt Out Allowed: $CqAgentOptOut)] -.- presenceBasedRouting
-presenceBasedRouting[(Presence Based Routing: $CqPresenceBasedRouting)] -.- timeOut
-timeOut[(Timeout: $CqTimeOut Seconds)]
-end
-subgraph Agents
-agentAlertTime --> agentListType[(Agent List Type: $CqAgentListType)]
-$mdCqAgentsDisplayNames
-end
-end
-
-timeOut --> cqResult{Call Connected?}
-cqResult --> |Yes| cqEnd((Call Connected))
-cqResult --> |No| $CqTimeoutActionFriendly
-
-"@
-
-        $mdDefaultCallflow =@"
-$defaultCallFlowMarkDown
-"@
-        
-    }
-}
+    } # End of second switch condition (app Id is = call queue)
+} # End of auto attendant or call queue switch statement
 
 
 # Mermaid nodes start and Auto Attendant
