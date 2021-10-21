@@ -6,9 +6,10 @@
     Presents a selection of available auto attendants and then reads the config of that auto attendant and writes it into a mermaid-js flowchart file.
 
     Author:             Martin Heusser
-    Version:            1.0.0
+    Version:            1.0.1
     Revision:
         20.10.2021:     Creation
+        21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
 
     .PARAMETER Name
     -docType
