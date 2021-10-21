@@ -33,10 +33,16 @@
 
 [CmdletBinding()]
 param(
+    [Parameter()]$resourceAccount = $null,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$docType = "Markdown"
 )
 
-$resourceAccount = Get-CsOnlineApplicationInstance | Where-Object {$_.PhoneNumber -notlike "" -and $_.ApplicationId -eq "ce933385-9390-45d1-9512-c8d228074e07"} | Select-Object DisplayName, PhoneNumber, ObjectId | Out-GridView -PassThru -Title "Choose an Auto Attendant from the list to visualize your call flow:"
+if (!$resourceAccount) {
+    $resourceAccount = Get-CsOnlineApplicationInstance | `
+        Where-Object {$_.PhoneNumber -notlike "" -and $_.ApplicationId -eq "ce933385-9390-45d1-9512-c8d228074e07"} | `
+        Select-Object DisplayName, PhoneNumber, ObjectId | `
+        Out-GridView -PassThru -Title "Choose an Auto Attendant from the list to visualize your call flow:"
+}
 
 $aaProperties = New-Object -TypeName psobject
 
