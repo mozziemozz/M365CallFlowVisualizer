@@ -44,13 +44,16 @@ if (!$resourceAccount) {
         Out-GridView -PassThru -Title "Choose an Auto Attendant from the list to visualize your call flow:"
 }
 
-$aaProperties = New-Object -TypeName psobject
-
-$aaProperties | Add-Member -MemberType NoteProperty -Name "PhoneNumber" -Value $($resourceAccount.PhoneNumber).Replace("tel:","")
-
 $aa = Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $resourceAccount.ObjectId}
+if (!$aa) {
+    Write-Error "$($resourceAccount.UserPrincipalName) is not assigned to an Auto Attendant"
+    return
+}
 
-$aaProperties | Add-Member -MemberType NoteProperty -Name "DisplayName" -Value $aa.Name
+$aaProperties = [PSCustomObject]@{
+    DisplayName = $aa.Name
+    PhoneNumber = $resourceAccount.PhoneNumber -Replace "^tel:",""
+}
 
 ####Check if AA has holidays
 if ($aa.CallHandlingAssociations.Type.Value -contains "Holiday") {
