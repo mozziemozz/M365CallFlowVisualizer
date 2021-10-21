@@ -118,6 +118,36 @@ end
     return $mdSubGraphHolidays
 }
 
+function CreateAfterHoursCheckNode($aa) {
+    $aaDefaultScheduleProperties = [PSCustomObject]@{
+        "ComplementEnabled" = $true
+        "MondayHours" = "00:00:00-1.00:00:00"
+        "TuesdayHours" = "00:00:00-1.00:00:00"
+        "WednesdayHours" = "00:00:00-1.00:00:00"
+        "ThursdayHours" = "00:00:00-1.00:00:00"
+        "FridayHours" = "00:00:00-1.00:00:00"
+        "SaturdayHours" = "00:00:00-1.00:00:00"
+        "SundayHours" = "00:00:00-1.00:00:00"
+    } | Out-String
+    $aaAfterHoursScheduleProperties = ($aa.Schedules | Where-Object {$_.name -match "after"}).WeeklyRecurrentSchedule | Out-String
+    if ($aaDefaultScheduleProperties -ne $aaAfterHoursScheduleProperties) {
+        $aaBusinessHours = ($aa.Schedules | Where-Object {$_.name -match "after"}).WeeklyRecurrentSchedule
+        $hours = $(@('Mon', 'Tues', 'Wednes', 'Thurs', 'Fri', 'Satur', 'Sun') | Foreach-Object {
+            $day = "$($_)day"
+            $val = $aaBusinessHours."Display$($day)Hours"
+            if ($val -eq "00:00:00-1.00:00:00") {
+                "$day Hours: Open 24 hours"
+            } elseif ($val) {
+                "$day Hours: $val"
+            } else {
+                "$day Hours: Closed"
+            }
+        }) -join ' <br> '
+    
+        return "elementAfterHoursCheck{During Business Hours? <br> $hours}"
+    }    
+}
+
 if (!$resourceAccount) {
     $resourceAccount = Get-CsOnlineApplicationInstance | `
         Where-Object {$_.PhoneNumber -notlike "" -and $_.ApplicationId -eq "ce933385-9390-45d1-9512-c8d228074e07"} | `
@@ -139,118 +169,8 @@ $aaProperties = [PSCustomObject]@{
 $mdSubGraphHolidays = CreateHolidaySubgraph $aa
 $aaHasHolidays = !!$mdSubGraphHolidays
 
-$aaDefaultScheduleProperties = New-Object -TypeName psobject
-
-$aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "ComplementEnabled" -Value $true
-$aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "MondayHours" -Value "00:00:00-1.00:00:00"
-$aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "TuesdayHours" -Value "00:00:00-1.00:00:00"
-$aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "WednesdayHours" -Value "00:00:00-1.00:00:00"
-$aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "ThursdayHours" -Value "00:00:00-1.00:00:00"
-$aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "FridayHours" -Value "00:00:00-1.00:00:00"
-$aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "SaturdayHours" -Value "00:00:00-1.00:00:00"
-$aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "SundayHours" -Value "00:00:00-1.00:00:00"
-
-$aaDefaultScheduleProperties = $aaDefaultScheduleProperties | Out-String
-
-$aaAfterHoursScheduleProperties = ($aa.Schedules | Where-Object {$_.name -match "after"}).WeeklyRecurrentSchedule | Out-String
-
-if ($aaDefaultScheduleProperties -eq $aaAfterHoursScheduleProperties) {
-
-    $aaHasAfterHours = $false
-
-}
-
-else {
-
-    $aaHasAfterHours = $true
-
-    $aaBusinessHours = ($aa.Schedules | Where-Object {$_.name -match "after"}).WeeklyRecurrentSchedule | ConvertTo-Csv
-
-    $aaBusinessHoursFriendly = $aaBusinessHours | ConvertFrom-Csv
-
-    # Monday
-    if ($aaBusinessHoursFriendly.DisplayMondayHours -eq "00:00:00-1.00:00:00") {
-        $mondayHours = "Monday Hours: Open 24 hours"
-    } 
-    elseif ($aaBusinessHoursFriendly.DisplayMondayHours) {
-        $mondayHours = "Monday Hours: $($aaBusinessHoursFriendly.DisplayMondayHours)"
-    }
-    else {
-        $mondayHours = "Monday Hours: Closed"
-    }
-
-    # Tuesday
-    if ($aaBusinessHoursFriendly.DisplayTuesdayHours -eq "00:00:00-1.00:00:00") {
-        $TuesdayHours = "Tuesday Hours: Open 24 hours"
-    }
-    elseif ($aaBusinessHoursFriendly.DisplayTuesdayHours) {
-        $TuesdayHours = "Tuesday Hours: $($aaBusinessHoursFriendly.DisplayTuesdayHours)"
-    } 
-    else {
-        $TuesdayHours = "Tuesday Hours: Closed"
-    }
-
-    # Wednesday
-    if ($aaBusinessHoursFriendly.DisplayWednesdayHours -eq "00:00:00-1.00:00:00") {
-        $WednesdayHours = "Wednesday Hours: Open 24 hours"
-    } 
-    elseif ($aaBusinessHoursFriendly.DisplayWednesdayHours) {
-        $WednesdayHours = "Wednesday Hours: $($aaBusinessHoursFriendly.DisplayWednesdayHours)"
-    }
-    else {
-        $WednesdayHours = "Wednesday Hours: Closed"
-    }
-
-    # Thursday
-    if ($aaBusinessHoursFriendly.DisplayThursdayHours -eq "00:00:00-1.00:00:00") {
-        $ThursdayHours = "Thursday Hours: Open 24 hours"
-    } 
-    elseif ($aaBusinessHoursFriendly.DisplayThursdayHours) {
-        $ThursdayHours = "Thursday Hours: $($aaBusinessHoursFriendly.DisplayThursdayHours)"
-    }
-    else {
-        $ThursdayHours = "Thursday Hours: Closed"
-    }
-
-    # Friday
-    if ($aaBusinessHoursFriendly.DisplayFridayHours -eq "00:00:00-1.00:00:00") {
-        $FridayHours = "Friday Hours: Open 24 hours"
-    } 
-    elseif ($aaBusinessHoursFriendly.DisplayFridayHours) {
-        $FridayHours = "Friday Hours: $($aaBusinessHoursFriendly.DisplayFridayHours)"
-    }
-    else {
-        $FridayHours = "Friday Hours: Closed"
-    }
-
-    # Saturday
-    if ($aaBusinessHoursFriendly.DisplaySaturdayHours -eq "00:00:00-1.00:00:00") {
-        $SaturdayHours = "Saturday Hours: Open 24 hours"
-    } 
-
-    elseif ($aaBusinessHoursFriendly.DisplaySaturdayHours) {
-        $SaturdayHours = "Saturday Hours: $($aaBusinessHoursFriendly.DisplaySaturdayHours)"
-    }
-
-    else {
-        $SaturdayHours = "Saturday Hours: Closed"
-    }
-
-    # Sunday
-    if ($aaBusinessHoursFriendly.DisplaySundayHours -eq "00:00:00-1.00:00:00") {
-        $SundayHours = "Sunday Hours: Open 24 hours"
-    }
-    elseif ($aaBusinessHoursFriendly.DisplaySundayHours) {
-        $SundayHours = "Sunday Hours: $($aaBusinessHoursFriendly.DisplaySundayHours)"
-    }
- 
-    else {
-        $SundayHours = "Sunday Hours: Closed"
-    }
-
-    $nodeElementAfterHoursCheck = "elementAfterHoursCheck{During Business Hours? <br> $mondayHours <br> $tuesdayHours  <br> $wednesdayHours  <br> $thursdayHours <br> $fridayHours <br> $saturdayHours <br> $sundayHours}"
-
-}
+$nodeElementAfterHoursCheck = CreateAfterHoursCheckNode $aa
+$aaHasAfterHours = !!$nodeElementAfterHoursCheck
 
 if ($docType -eq "Markdown") {
 
