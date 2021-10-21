@@ -17,6 +17,10 @@ Reads a config from Microsoft 365 Phone System and renders them visually into a 
 
 ![](/Examples/PS_Test_AA_CallFlow_Holidays_and_BusinessHours.svg)
 
+## Example 4: Top-level call queue without auto attendant
+
+![](/Examples/CQ_Team_Green_No_AA.svg)
+
 These are just examples which were dynamically rendered based on my Microsoft 365 Phone System configuration. If an auto attendant does not have business hours or holidays, the flowchart will be much smaller.
 
 # How to use it
