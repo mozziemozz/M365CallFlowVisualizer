@@ -201,7 +201,7 @@ function Get-CallQueueProperties {
 
         # Switch through call queue timeout overflow action
         switch ($CqTimeoutAction) {
-            DisconnectWithBusy {
+            Disconnect {
                 $CqTimeoutActionFriendly = "cqTimeoutAction((Disconnect Call))"
             }
             Forward {
