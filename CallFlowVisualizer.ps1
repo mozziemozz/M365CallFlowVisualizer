@@ -73,7 +73,10 @@ flowchart TB
 
 function Get-CallQueueProperties {
     param (
-        [Parameter(Mandatory=$true)][String]$MatchingCQIdentity
+        [Parameter(Mandatory=$true)][String]$MatchingCQIdentity,
+        [Parameter(Mandatory=$false)][Int32]$cqNumber = 1,
+        [Parameter(Mandatory=$false)][Switch]$cqIsNested
+
     )
 
         $MatchingCQ = Get-CsCallQueue -Identity $MatchingCQIdentity
@@ -138,7 +141,7 @@ function Get-CallQueueProperties {
         # Switch through call queue overflow action target
         switch ($CqOverFlowAction) {
             DisconnectWithBusy {
-                $CqOverFlowActionFriendly = "cqOverFlowAction((Disconnect Call))"
+                $CqOverFlowActionFriendly = "cqOverFlowAction$($cqNumber)((Disconnect Call))"
             }
             Forward {
 
@@ -146,7 +149,7 @@ function Get-CallQueueProperties {
 
                     $MatchingOverFlowUser = (Get-MsolUser -ObjectId $MatchingCQ.OverflowActionTarget.Id).DisplayName
 
-                    $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget(User <br> $MatchingOverFlowUser)"
+                    $CqOverFlowActionFriendly = "cqOverFlowAction$($cqNumber)(TransferCallToTarget) --> cqOverFlowActionTarget$($cqNumber)(User <br> $MatchingOverFlowUser)"
 
                 }
 
@@ -154,7 +157,7 @@ function Get-CallQueueProperties {
 
                     $cqOverFlowPhoneNumber = ($MatchingCQ.OverflowActionTarget.Id).Replace("tel:","")
 
-                    $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget(External Number <br> $cqOverFlowPhoneNumber)"
+                    $CqOverFlowActionFriendly = "cqOverFlowAction$($cqNumber)(TransferCallToTarget) --> cqOverFlowActionTarget$($cqNumber)(External Number <br> $cqOverFlowPhoneNumber)"
                     
                 }
 
@@ -164,7 +167,7 @@ function Get-CallQueueProperties {
 
                     if ($MatchingOverFlowAA) {
 
-                        $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget([Auto Attendant <br> $MatchingOverFlowAA])"
+                        $CqOverFlowActionFriendly = "cqOverFlowAction$($cqNumber)(TransferCallToTarget) --> cqOverFlowActionTarget$($cqNumber)([Auto Attendant <br> $MatchingOverFlowAA])"
 
                     }
 
@@ -172,7 +175,7 @@ function Get-CallQueueProperties {
 
                         $MatchingOverFlowCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.OverflowActionTarget.Id}).Name
 
-                        $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowActionTarget([Call Queue <br> $MatchingOverFlowCQ])"
+                        $CqOverFlowActionFriendly = "cqOverFlowAction$($cqNumber)(TransferCallToTarget) --> cqOverFlowActionTarget$($cqNumber)([Call Queue <br> $MatchingOverFlowCQ])"
 
                     }
 
@@ -194,7 +197,7 @@ function Get-CallQueueProperties {
 
                 }
 
-                $CqOverFlowActionFriendly = "cqOverFlowAction(TransferCallToTarget) --> cqOverFlowVoicemailGreeting>Greeting <br> $CqOverFlowVoicemailGreeting] --> cqOverFlowActionTarget(Shared Voicemail <br> $MatchingOverFlowVoicemail)"
+                $CqOverFlowActionFriendly = "cqOverFlowAction$($cqNumber)(TransferCallToTarget) --> cqOverFlowVoicemailGreeting$($cqNumber)>Greeting <br> $CqOverFlowVoicemailGreeting] --> cqOverFlowActionTarget$($cqNumber)(Shared Voicemail <br> $MatchingOverFlowVoicemail)"
 
             }
 
@@ -203,7 +206,7 @@ function Get-CallQueueProperties {
         # Switch through call queue timeout overflow action
         switch ($CqTimeoutAction) {
             Disconnect {
-                $CqTimeoutActionFriendly = "cqTimeoutAction((Disconnect Call))"
+                $CqTimeoutActionFriendly = "cqTimeoutAction$($cqNumber)((Disconnect Call))"
             }
             Forward {
         
@@ -211,7 +214,7 @@ function Get-CallQueueProperties {
 
                     $MatchingTimeoutUser = (Get-MsolUser -ObjectId $MatchingCQ.TimeoutActionTarget.Id).DisplayName
         
-                    $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget(User <br> $MatchingTimeoutUser)"
+                    $CqTimeoutActionFriendly = "cqTimeoutAction$($cqNumber)(TransferCallToTarget) --> cqTimeoutActionTarget$($cqNumber)(User <br> $MatchingTimeoutUser)"
         
                 }
         
@@ -219,7 +222,7 @@ function Get-CallQueueProperties {
         
                     $cqTimeoutPhoneNumber = ($MatchingCQ.TimeoutActionTarget.Id).Replace("tel:","")
         
-                    $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget(External Number <br> $cqTimeoutPhoneNumber)"
+                    $CqTimeoutActionFriendly = "cqTimeoutAction$($cqNumber)(TransferCallToTarget) --> cqTimeoutActionTarget$($cqNumber)(External Number <br> $cqTimeoutPhoneNumber)"
                     
                 }
         
@@ -229,15 +232,16 @@ function Get-CallQueueProperties {
         
                     if ($MatchingTimeoutAA) {
         
-                        $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget([Auto Attendant <br> $MatchingTimeoutAA])"
+                        $CqTimeoutActionFriendly = "cqTimeoutAction$($cqNumber)(TransferCallToTarget) --> cqTimeoutActionTarget$($cqNumber)([Auto Attendant <br> $MatchingTimeoutAA])"
         
                     }
         
                     else {
         
                         $MatchingTimeoutCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id}).Name
-        
-                        $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutActionTarget([Call Queue <br> $MatchingTimeoutCQ])"
+                        
+                        #mzz Overflow 2 make dynamic
+                        $CqTimeoutActionFriendly = "cqTimeoutAction$($cqNumber)(TransferCallToTarget) --> cqTimeoutActionTarget$($cqNumber)([Call Queue <br> $MatchingTimeoutCQ]) --> "
         
                     }
         
@@ -259,7 +263,7 @@ function Get-CallQueueProperties {
         
                 }
         
-                $CqTimeoutActionFriendly = "cqTimeoutAction(TransferCallToTarget) --> cqTimeoutVoicemailGreeting>Greeting <br> $CqTimeoutVoicemailGreeting] --> cqTimeoutActionTarget(Shared Voicemail <br> $MatchingTimeoutVoicemail)"
+                $CqTimeoutActionFriendly = "cqTimeoutAction$($cqNumber)(TransferCallToTarget) --> cqTimeoutVoicemailGreeting$($cqNumber)>Greeting <br> $CqTimeoutVoicemailGreeting] --> cqTimeoutActionTarget$($cqNumber)(Shared Voicemail <br> $MatchingTimeoutVoicemail)"
         
             }
         
@@ -276,7 +280,7 @@ function Get-CallQueueProperties {
         foreach ($CqAgent in $CqAgents) {
             $AgentDisplayName = (Get-MsolUser -ObjectId $CqAgent).DisplayName
 
-            $AgentDisplayNames = "agentListType --> agent$($AgentCounter)($AgentDisplayName) --> timeOut`n"
+            $AgentDisplayNames = "agentListType$($cqNumber) --> agent$($cqNumber)$($AgentCounter)($AgentDisplayName) --> timeOut$($cqNumber)`n"
 
             $mdCqAgentsDisplayNames += $AgentDisplayNames
 
@@ -286,12 +290,12 @@ function Get-CallQueueProperties {
         switch ($voiceAppType) {
             "Auto Attendant" {
 
-                $voiceAppTypeSpecificCallFlow = "--> defaultCallFlow($defaultCallFlowAction) --> defaultCallFlowAction($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName) --> cqGreeting>Greeting <br> $CqGreeting]"
+                $voiceAppTypeSpecificCallFlow = "--> defaultCallFlow$($cqNumber)($defaultCallFlowAction) --> defaultCallFlowAction$($cqNumber)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName) --> cqGreeting$($cqNumber)>Greeting <br> $CqGreeting]"
 
             }
             "Call Queue" {
 
-                $voiceAppTypeSpecificCallFlow = "cqGreeting>Greeting <br> $CqGreeting]"
+                $voiceAppTypeSpecificCallFlow = "cqGreeting$($cqNumber)>Greeting <br> $CqGreeting]"
 
                 $defaultCallFlowcCqIsTopLevel = $null
 
@@ -299,40 +303,44 @@ function Get-CallQueueProperties {
         }
 
         # Create default callflow mermaid code
- 
+
     $defaultCallFlowMarkDown =@"
 $voiceAppTypeSpecificCallFlow
---> overFlow{More than $CqOverFlowThreshold <br> Active Calls}
-overFlow ---> |Yes| $CqOverFlowActionFriendly
-overFlow ---> |No| routingMethod
+--> overFlow$($cqNumber){More than $CqOverFlowThreshold <br> Active Calls}
+overFlow$($cqNumber) ---> |Yes| $CqOverFlowActionFriendly
+overFlow$($cqNumber) ---> |No| routingMethod$($cqNumber)
 
 $defaultCallFlowcCqIsTopLevel
 
 subgraph Call Distribution
 subgraph CQ Settings
-routingMethod[(Routing Method: $CqRoutingMethod)] --> agentAlertTime
-agentAlertTime[(Agent Alert Time: $CqAgentAlertTime)] -.- cqMusicOnHold
-cqMusicOnHold[(Music On Hold: $CqMusicOnHold)] -.- conferenceMode
-conferenceMode[(Conference Mode Enabled: $CqConferenceMode)] -.- agentOptOut
-agentOptOut[(Agent Opt Out Allowed: $CqAgentOptOut)] -.- presenceBasedRouting
-presenceBasedRouting[(Presence Based Routing: $CqPresenceBasedRouting)] -.- timeOut
-timeOut[(Timeout: $CqTimeOut Seconds)]
+routingMethod$($cqNumber)[(Routing Method: $CqRoutingMethod)] --> agentAlertTime$($cqNumber)
+agentAlertTime$($cqNumber)[(Agent Alert Time: $CqAgentAlertTime)] -.- cqMusicOnHold$($cqNumber)
+cqMusicOnHold$($cqNumber)[(Music On Hold: $CqMusicOnHold)] -.- conferenceMode$($cqNumber)
+conferenceMode$($cqNumber)[(Conference Mode Enabled: $CqConferenceMode)] -.- agentOptOut$($cqNumber)
+agentOptOut$($cqNumber)[(Agent Opt Out Allowed: $CqAgentOptOut)] -.- presenceBasedRouting$($cqNumber)
+presenceBasedRouting$($cqNumber)[(Presence Based Routing: $CqPresenceBasedRouting)] -.- timeOut$($cqNumber)
+timeOut$($cqNumber)[(Timeout: $CqTimeOut Seconds)]
 end
-subgraph Agents
-agentAlertTime --> agentListType[(Agent List Type: $CqAgentListType)]
+subgraph Agents $($MatchingCQ.Name)
+agentAlertTime$($cqNumber) --> agentListType$($cqNumber)[(Agent List Type: $CqAgentListType)]
 $mdCqAgentsDisplayNames
 end
 end
 
-timeOut --> cqResult{Call Connected?}
-cqResult --> |Yes| cqEnd((Call Connected))
-cqResult --> |No| $CqTimeoutActionFriendly
+timeOut$($cqNumber) --> cqResult$($cqNumber){Call Connected?}
+cqResult$($cqNumber) --> |Yes| cqEnd$($cqNumber)((Call Connected))
+cqResult$($cqNumber) --> |No| $CqTimeoutActionFriendly
 
 "@
+
+if (!$cqIsNested) {
 
         $mdDefaultCallflow =@"
 $defaultCallFlowMarkDown
 "@
+
+}
 
     } # End of the function
 
@@ -782,6 +790,14 @@ defaultCallFlowGreeting>$defaultCallFlowGreeting] $defaultCallFlowMarkDown
 
     . Get-CallQueueProperties -MatchingCQIdentity $MatchingCQIdentity
 
+    if ($MatchingTimeoutCQ) {
+
+        . Get-CallQueueProperties -MatchingCQIdentity (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id}).Identity -cqNumber ($cqNumber + 1) -cqIsNested
+
+        $mdDefaultCallflow += $defaultCallFlowMarkDown
+
+    }
+
 
     } # End of second switch condition (app Id is = call queue)
 } # End of auto attendant or call queue switch statement
@@ -859,6 +875,9 @@ $nodeStart --> $nodeElementAA --> $mdDefaultCallflow
 }
 
 Set-Content -Path ".\$($aa.Name)_CallFlow$fileExtension" -Value $mdStart, $mdContent, $mdEnd -Encoding UTF8
+
+# Remove all variables for subsequent runs inside the same session
+Get-Variable -Exclude PWD,*Preference | Remove-Variable -EA 0
 
 
 
