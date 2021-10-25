@@ -37,8 +37,19 @@
 
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$docType = "Markdown"
+    [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$docType = "Markdown",
+    [Parameter(Mandatory=$false)][Switch]$ShowNestedQueues,
+    [Parameter(Mandatory=$false)][Switch]$SubSequentRun
+
+
 )
+
+if ($SubSequentRun) {
+
+    # Remove all variables for subsequent runs inside the same session
+    Get-Variable -Exclude PWD,*Preference | Remove-Variable -EA 0
+
+}
 
 # Check if doctype is markdown or mermaid and create mermaid code and file extension accordingly
 if ($docType -eq "Markdown") {
@@ -240,8 +251,13 @@ function Get-CallQueueProperties {
         
                         $MatchingTimeoutCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id}).Name
                         
-                        #mzz Overflow 2 make dynamic
-                        $CqTimeoutActionFriendly = "cqTimeoutAction$($cqNumber)(TransferCallToTarget) --> cqTimeoutActionTarget$($cqNumber)([Call Queue <br> $MatchingTimeoutCQ]) --> "
+                        switch ($ShowNestedQueues) {
+                            $true { $nestedQueueMarkdownLink = "-->" }
+                            $false { $nestedQueueMarkdownLink = $null }
+                            Default { $nestedQueueMarkdownLink = $null }
+                        }
+
+                        $CqTimeoutActionFriendly = "cqTimeoutAction$($cqNumber)(TransferCallToTarget) --> cqTimeoutActionTarget$($cqNumber)([Call Queue <br> $MatchingTimeoutCQ]) $nestedQueueMarkdownLink "
         
                     }
         
@@ -651,7 +667,7 @@ end
                         # check if call queue also has its own phone number
                         if ($cqAssociatedApplicationInstance.PhoneNumber) {
                             $secondTopLevelNumber = $($cqAssociatedApplicationInstance.PhoneNumber).Replace("tel:","")
-                            $defaultCallFlowcCqIsTopLevel = "start2((Incoming Call at <br> $($secondTopLevelNumber))) -...-> defaultCallFlowAction"
+                            $defaultCallFlowcCqIsTopLevel = "start2((Incoming Call at <br> $($secondTopLevelNumber))) -...-> defaultCallFlowAction1"
 
                         }
 
@@ -679,7 +695,19 @@ end
 
                 $MatchingCQIdentity = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id}).Identity
 
-                . Get-CallQueueProperties -MatchingCQIdentity $MatchingCQIdentity
+                . Get-CallQueueProperties -MatchingCQIdentity $MatchingCQIdentity -cqNumber 1
+
+                $defaultCallFlowNested = $defaultCallFlowMarkDown
+
+                if ($ShowNestedQueues) {
+
+                    . Get-CallQueueProperties -MatchingCQIdentity (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id}).Identity -cqNumber 2 -cqIsNested
+            
+                    $defaultCallFlowNested += $defaultCallFlowMarkDown
+
+                    $defaultCallFlowMarkDown = $defaultCallFlowNested
+            
+                }
                 
             } # End if transfer target type is call queue
 
@@ -788,11 +816,11 @@ defaultCallFlowGreeting>$defaultCallFlowGreeting] $defaultCallFlowMarkDown
 
         $MatchingCQIdentity = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $resourceAccount.ObjectId}).Identity
 
-    . Get-CallQueueProperties -MatchingCQIdentity $MatchingCQIdentity
+    . Get-CallQueueProperties -MatchingCQIdentity $MatchingCQIdentity -cqNumber 1
 
-    if ($MatchingTimeoutCQ) {
+    if ($MatchingTimeoutCQ -and $ShowNestedQueues) {
 
-        . Get-CallQueueProperties -MatchingCQIdentity (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id}).Identity -cqNumber ($cqNumber + 1) -cqIsNested
+        . Get-CallQueueProperties -MatchingCQIdentity (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id}).Identity -cqNumber 2 -cqIsNested
 
         $mdDefaultCallflow += $defaultCallFlowMarkDown
 
@@ -876,8 +904,7 @@ $nodeStart --> $nodeElementAA --> $mdDefaultCallflow
 
 Set-Content -Path ".\$($aa.Name)_CallFlow$fileExtension" -Value $mdStart, $mdContent, $mdEnd -Encoding UTF8
 
-# Remove all variables for subsequent runs inside the same session
-Get-Variable -Exclude PWD,*Preference | Remove-Variable -EA 0
+
 
 
 
