@@ -12,6 +12,7 @@
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
         21.10.2021:     Add support for top level call queues (besides auto attendants)
         21.10.2021:     Move call queue specific operations into a function
+        24.10.2021:     Fixed a bug where Disconnect Call was not reflected in mermaid correctly when CQ timeout action was disconnect call
 
     .PARAMETER Name
     -docType
@@ -856,8 +857,6 @@ $nodeStart --> $nodeElementAA --> $mdDefaultCallflow
     }
 
 }
-
-
 
 Set-Content -Path ".\$($aa.Name)_CallFlow$fileExtension" -Value $mdStart, $mdContent, $mdEnd -Encoding UTF8
 
