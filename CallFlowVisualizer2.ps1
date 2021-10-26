@@ -3,7 +3,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$docType = "Markdown",
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedDepth = $true,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedDepth = $false,
     [Parameter(Mandatory=$false)][Switch]$SubSequentRun,
     [Parameter(Mandatory=$false)][string]$PhoneNumber
 
@@ -319,107 +319,114 @@ elementAAHoliday$($HolidayCounter)(Schedule <br> $($holidaySchedule.FixedSchedul
 
         # Mermaid node holiday check
         $nodeElementHolidayCheck = "elementHolidayCheck$($aaCounter){During Holiday?}"
+    } # End if aa has holidays
 
-        # Check if auto attendant has after hours and holidays
+    # Check if auto attendant has after hours and holidays
+    if ($aaHasAfterHours) {
+
+        # Get the business hours schedule and convert to csv for comparison with hard coded strings
+        $aaBusinessHours = ($aa.Schedules | Where-Object {$_.name -match "after"}).WeeklyRecurrentSchedule | ConvertTo-Csv
+
+        # Convert from csv to read the business hours per day
+        $aaBusinessHoursFriendly = $aaBusinessHours | ConvertFrom-Csv
+
+        # Monday
+        # Check if Monday has business hours which are open 24 hours per day
+        if ($aaBusinessHoursFriendly.DisplayMondayHours -eq "00:00:00-1.00:00:00") {
+            $mondayHours = "Monday Hours: Open 24 hours"
+        }
+        # Check if Monday has business hours set different than 24 hours open per day
+        elseif ($aaBusinessHoursFriendly.DisplayMondayHours) {
+            $mondayHours = "Monday Hours: $($aaBusinessHoursFriendly.DisplayMondayHours)"
+        }
+        # Check if Monday has no business hours at all / is closed 24 hours per day
+        else {
+            $mondayHours = "Monday Hours: Closed"
+        }
+
+        # Tuesday
+        if ($aaBusinessHoursFriendly.DisplayTuesdayHours -eq "00:00:00-1.00:00:00") {
+            $TuesdayHours = "Tuesday Hours: Open 24 hours"
+        }
+        elseif ($aaBusinessHoursFriendly.DisplayTuesdayHours) {
+            $TuesdayHours = "Tuesday Hours: $($aaBusinessHoursFriendly.DisplayTuesdayHours)"
+        } 
+        else {
+            $TuesdayHours = "Tuesday Hours: Closed"
+        }
+
+        # Wednesday
+        if ($aaBusinessHoursFriendly.DisplayWednesdayHours -eq "00:00:00-1.00:00:00") {
+            $WednesdayHours = "Wednesday Hours: Open 24 hours"
+        } 
+        elseif ($aaBusinessHoursFriendly.DisplayWednesdayHours) {
+            $WednesdayHours = "Wednesday Hours: $($aaBusinessHoursFriendly.DisplayWednesdayHours)"
+        }
+        else {
+            $WednesdayHours = "Wednesday Hours: Closed"
+        }
+
+        # Thursday
+        if ($aaBusinessHoursFriendly.DisplayThursdayHours -eq "00:00:00-1.00:00:00") {
+            $ThursdayHours = "Thursday Hours: Open 24 hours"
+        } 
+        elseif ($aaBusinessHoursFriendly.DisplayThursdayHours) {
+            $ThursdayHours = "Thursday Hours: $($aaBusinessHoursFriendly.DisplayThursdayHours)"
+        }
+        else {
+            $ThursdayHours = "Thursday Hours: Closed"
+        }
+
+        # Friday
+        if ($aaBusinessHoursFriendly.DisplayFridayHours -eq "00:00:00-1.00:00:00") {
+            $FridayHours = "Friday Hours: Open 24 hours"
+        } 
+        elseif ($aaBusinessHoursFriendly.DisplayFridayHours) {
+            $FridayHours = "Friday Hours: $($aaBusinessHoursFriendly.DisplayFridayHours)"
+        }
+        else {
+            $FridayHours = "Friday Hours: Closed"
+        }
+
+        # Saturday
+        if ($aaBusinessHoursFriendly.DisplaySaturdayHours -eq "00:00:00-1.00:00:00") {
+            $SaturdayHours = "Saturday Hours: Open 24 hours"
+        } 
+
+        elseif ($aaBusinessHoursFriendly.DisplaySaturdayHours) {
+            $SaturdayHours = "Saturday Hours: $($aaBusinessHoursFriendly.DisplaySaturdayHours)"
+        }
+
+        else {
+            $SaturdayHours = "Saturday Hours: Closed"
+        }
+
+        # Sunday
+        if ($aaBusinessHoursFriendly.DisplaySundayHours -eq "00:00:00-1.00:00:00") {
+            $SundayHours = "Sunday Hours: Open 24 hours"
+        }
+        elseif ($aaBusinessHoursFriendly.DisplaySundayHours) {
+            $SundayHours = "Sunday Hours: $($aaBusinessHoursFriendly.DisplaySundayHours)"
+        }
+
+        else {
+            $SundayHours = "Sunday Hours: Closed"
+        }
+
+        # Create the mermaid node for business hours check including the actual business hours
+        $nodeElementAfterHoursCheck = "elementAfterHoursCheck$($aaCounter){During Business Hours? <br> $mondayHours <br> $tuesdayHours  <br> $wednesdayHours  <br> $thursdayHours <br> $fridayHours <br> $saturdayHours <br> $sundayHours}"
+
+    } # End if aa has after hours
+
+    if ($aaHasHolidays -eq $true) {
+
         if ($aaHasAfterHours) {
-
-            # Get the business hours schedule and convert to csv for comparison with hard coded strings
-            $aaBusinessHours = ($aa.Schedules | Where-Object {$_.name -match "after"}).WeeklyRecurrentSchedule | ConvertTo-Csv
-
-            # Convert from csv to read the business hours per day
-            $aaBusinessHoursFriendly = $aaBusinessHours | ConvertFrom-Csv
-
-            # Monday
-            # Check if Monday has business hours which are open 24 hours per day
-            if ($aaBusinessHoursFriendly.DisplayMondayHours -eq "00:00:00-1.00:00:00") {
-                $mondayHours = "Monday Hours: Open 24 hours"
-            }
-            # Check if Monday has business hours set different than 24 hours open per day
-            elseif ($aaBusinessHoursFriendly.DisplayMondayHours) {
-                $mondayHours = "Monday Hours: $($aaBusinessHoursFriendly.DisplayMondayHours)"
-            }
-            # Check if Monday has no business hours at all / is closed 24 hours per day
-            else {
-                $mondayHours = "Monday Hours: Closed"
-            }
-
-            # Tuesday
-            if ($aaBusinessHoursFriendly.DisplayTuesdayHours -eq "00:00:00-1.00:00:00") {
-                $TuesdayHours = "Tuesday Hours: Open 24 hours"
-            }
-            elseif ($aaBusinessHoursFriendly.DisplayTuesdayHours) {
-                $TuesdayHours = "Tuesday Hours: $($aaBusinessHoursFriendly.DisplayTuesdayHours)"
-            } 
-            else {
-                $TuesdayHours = "Tuesday Hours: Closed"
-            }
-
-            # Wednesday
-            if ($aaBusinessHoursFriendly.DisplayWednesdayHours -eq "00:00:00-1.00:00:00") {
-                $WednesdayHours = "Wednesday Hours: Open 24 hours"
-            } 
-            elseif ($aaBusinessHoursFriendly.DisplayWednesdayHours) {
-                $WednesdayHours = "Wednesday Hours: $($aaBusinessHoursFriendly.DisplayWednesdayHours)"
-            }
-            else {
-                $WednesdayHours = "Wednesday Hours: Closed"
-            }
-
-            # Thursday
-            if ($aaBusinessHoursFriendly.DisplayThursdayHours -eq "00:00:00-1.00:00:00") {
-                $ThursdayHours = "Thursday Hours: Open 24 hours"
-            } 
-            elseif ($aaBusinessHoursFriendly.DisplayThursdayHours) {
-                $ThursdayHours = "Thursday Hours: $($aaBusinessHoursFriendly.DisplayThursdayHours)"
-            }
-            else {
-                $ThursdayHours = "Thursday Hours: Closed"
-            }
-
-            # Friday
-            if ($aaBusinessHoursFriendly.DisplayFridayHours -eq "00:00:00-1.00:00:00") {
-                $FridayHours = "Friday Hours: Open 24 hours"
-            } 
-            elseif ($aaBusinessHoursFriendly.DisplayFridayHours) {
-                $FridayHours = "Friday Hours: $($aaBusinessHoursFriendly.DisplayFridayHours)"
-            }
-            else {
-                $FridayHours = "Friday Hours: Closed"
-            }
-
-            # Saturday
-            if ($aaBusinessHoursFriendly.DisplaySaturdayHours -eq "00:00:00-1.00:00:00") {
-                $SaturdayHours = "Saturday Hours: Open 24 hours"
-            } 
-
-            elseif ($aaBusinessHoursFriendly.DisplaySaturdayHours) {
-                $SaturdayHours = "Saturday Hours: $($aaBusinessHoursFriendly.DisplaySaturdayHours)"
-            }
-
-            else {
-                $SaturdayHours = "Saturday Hours: Closed"
-            }
-
-            # Sunday
-            if ($aaBusinessHoursFriendly.DisplaySundayHours -eq "00:00:00-1.00:00:00") {
-                $SundayHours = "Sunday Hours: Open 24 hours"
-            }
-            elseif ($aaBusinessHoursFriendly.DisplaySundayHours) {
-                $SundayHours = "Sunday Hours: $($aaBusinessHoursFriendly.DisplaySundayHours)"
-            }
-
-            else {
-                $SundayHours = "Sunday Hours: Closed"
-            }
-
-            # Create the mermaid node for business hours check including the actual business hours
-            $nodeElementAfterHoursCheck = "elementAfterHoursCheck$($aaCounter){During Business Hours? <br> $mondayHours <br> $tuesdayHours  <br> $wednesdayHours  <br> $thursdayHours <br> $fridayHours <br> $saturdayHours <br> $sundayHours}"
 
             $mdHolidayAndAfterHoursCheck =@"
 --> $nodeElementHolidayCheck
 $nodeElementHolidayCheck -->|Yes| Holidays
 $nodeElementHolidayCheck -->|No| $nodeElementAfterHoursCheck
-$nodeElementAfterHoursCheck -->|Yes| $mdDefaultCallflow
+$nodeElementAfterHoursCheck -->|Yes| $mdAutoAttendantDefaultCallFlow
 $nodeElementAfterHoursCheck -->|No| $mdAfterHoursCallFlow
 
 $mdSubGraphHolidays
@@ -431,15 +438,16 @@ $mdSubGraphHolidays
             $mdHolidayAndAfterHoursCheck =@"
 --> $nodeElementHolidayCheck
 $nodeElementHolidayCheck -->|Yes| Holidays
-$nodeElementHolidayCheck -->|No| $mdDefaultCallflow
+$nodeElementHolidayCheck -->|No| $mdAutoAttendantDefaultCallFlow
 
 $mdSubGraphHolidays
 
 "@
         }
 
-    } # End if aa has holidays
+    }
 
+    
     # Check if auto attendant has no Holidays but after hours
     else {
     
@@ -447,7 +455,7 @@ $mdSubGraphHolidays
 
             $mdHolidayAndAfterHoursCheck =@"
 --> $nodeElementAfterHoursCheckCheck
-$nodeElementAfterHoursCheck -->|Yes| $mdDefaultCallflow
+$nodeElementAfterHoursCheck -->|Yes| $mdAutoAttendantDefaultCallFlow
 $nodeElementAfterHoursCheck -->|No| $mdAfterHoursCallFlow
 
 "@      
@@ -457,7 +465,7 @@ $nodeElementAfterHoursCheck -->|No| $mdAfterHoursCallFlow
         else {
 
             $mdHolidayAndAfterHoursCheck =@"
---> $mdDefaultCallflow
+--> $mdAutoAttendantDefaultCallFlow
 
 "@
         }
@@ -749,6 +757,113 @@ function Get-NestedCallQueueCallFlow {
 
 }
 
+function Get-AutoAttendantDefaultCallFlow {
+    param (
+        [Parameter(Mandatory=$false)][String]$VoiceAppId
+    )
+
+    if (!$aaDefaultCallFlowCounter) {
+        $aaDefaultCallFlowCounter = 0
+    }
+
+    $aaDefaultCallFlowCounter ++
+
+    # Get the current auto attendants default call flow and default call flow action
+    $defaultCallFlow = $aa.DefaultCallFlow
+    $defaultCallFlowAction = $aa.DefaultCallFlow.Menu.MenuOptions.Action.Value
+
+    # Get the current auto attentans default call flow greeting
+    $defaultCallFlowGreeting = "Greeting <br> $($defaultCallFlow.Greetings.ActiveType.Value)"
+
+    # Check if the default callflow action is transfer call to target
+    if ($defaultCallFlowAction -eq "TransferCallToTarget") {
+
+        # Get transfer target type
+        $defaultCallFlowTargetType = $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Type.Value
+
+        # Switch through transfer target type and set variables accordingly
+        switch ($defaultCallFlowTargetType) {
+            User { 
+                $defaultCallFlowTargetTypeFriendly = "User"
+                $defaultCallFlowTargetName = (Get-MsolUser -ObjectId $($aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName}
+            ExternalPstn { 
+                $defaultCallFlowTargetTypeFriendly = "External PSTN"
+                $defaultCallFlowTargetName = ($aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id).Replace("tel:","")}
+            ApplicationEndpoint {
+
+                # Check if application endpoint is auto attendant or call queue
+                $MatchingAA = Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id}
+
+                if ($MatchingAA) {
+
+                    $defaultCallFlowTargetTypeFriendly = "[Auto Attendant"
+                    $defaultCallFlowTargetName = "$($MatchingAA.Name)]"
+
+                }
+
+                else {
+
+                    $MatchingCQ = Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id}
+
+                    $cqAssociatedApplicationInstance = Get-CsOnlineApplicationInstance -Identity $MatchingCQ.DisplayApplicationInstances
+
+<#                     # check if call queue also has its own phone number
+                    if ($cqAssociatedApplicationInstance.PhoneNumber) {
+                        $secondTopLevelNumber = $($cqAssociatedApplicationInstance.PhoneNumber).Replace("tel:","")
+                        $defaultCallFlowcCqIsTopLevel = "start200((Incoming Call at <br> $($secondTopLevelNumber))) -...-> defaultCallFlowAction"
+
+                    }
+
+                    else {
+                        
+                        $defaultCallFlowcCqIsTopLevel = $null
+                    } #>
+
+                    $defaultCallFlowTargetTypeFriendly = "[Call Queue"
+                    $defaultCallFlowTargetName = "$($MatchingCQ.Name)]"
+
+                }
+
+            }
+            SharedVoicemail {
+
+                $defaultCallFlowTargetTypeFriendly = "Voicemail"
+                $defaultCallFlowTargetName = (Get-MsolGroup -ObjectId $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id).DisplayName
+
+            }
+        }
+
+        # Check if transfer target type is call queue
+        if ($defaultCallFlowTargetTypeFriendly -eq "[Call Queue") {
+
+            $MatchingCQIdentity = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id}).Identity
+
+            $aaForwardsToCq = $true
+
+            $mdAutoAttendantDefaultCallFlow = "defaultCallFlow($defaultCallFlowAction) --> defaultCallFlowAction($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)"
+
+            
+        } # End if transfer target type is call queue
+
+        # Check if default callflow action target is trasnfer call to target but something other than call queue
+        else {
+
+            $mdAutoAttendantDefaultCallFlow = "defaultCallFlow($defaultCallFlowAction) --> defaultCallFlowAction($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)"
+
+        }
+
+    }
+
+    # Check if default callflow action is disconnect call
+    elseif ($defaultCallFlowAction -eq "DisconnectCall") {
+
+        $mdAutoAttendantDefaultCallFlow = "defaultCallFlow(($defaultCallFlowAction))"
+
+    }
+    
+    
+}
+
 if ($PhoneNumber) {
     . Get-VoiceApp -PhoneNumber $PhoneNumber
 }
@@ -764,9 +879,18 @@ if ($voiceAppType -eq "Auto Attendant") {
 
     if ($aaHasHolidays -eq $true -or $aaHasAfterHours -eq $true) {
 
+        . Get-AutoAttendantDefaultCallFlow
+
         . Get-AutoAttendantHolidaysAndAfterHours
 
     }
+
+    else {
+
+        . Get-AutoAttendantDefaultCallFlow
+
+    }
+
 
 }
 
