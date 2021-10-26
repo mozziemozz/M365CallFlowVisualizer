@@ -3,11 +3,13 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$docType = "Markdown",
-    [Parameter(Mandatory=$false)][Int32]$ShowNestedDepth = 1,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedDepth = $true,
     [Parameter(Mandatory=$false)][Switch]$SubSequentRun,
     [Parameter(Mandatory=$false)][string]$PhoneNumber
 
 )
+
+Write-Host "Show nested depth $ShowNestedDepth" -ForegroundColor Cyan
 
 # From: https://community.idera.com/database-tools/powershell/powertips/b/tips/posts/clearing-all-user-variables
 function Get-UserVariable ($Name = '*') {
@@ -110,17 +112,14 @@ function Get-VoiceApp {
             $voiceAppCounter = 0
         }
 
-        else {
-            $voiceAppCounter ++
-        }
+        $voiceAppCounter ++
+        
 
         if (!$resourceAccountCounter) {
             $resourceAccountCounter = 0
         }
 
-        else {
-            $resourceAccountCounter ++
-        }
+        $resourceAccountCounter ++
 
 
         $mdIncomingCall = "start$($resourceAccountCounter)((Incoming Call at <br> $($voiceAppProperties.PhoneNumber))) --> "
@@ -207,9 +206,7 @@ function Get-AutoAttendantHolidaysAndAfterHours {
         $aaCounter = 0
     }
 
-    else {
-        $aaCounter ++
-    }
+    $aaCounter ++
 
     if ($aaHasHolidays -eq $true) {
 
@@ -479,9 +476,7 @@ function Get-CallQueueCallFlow {
         $cqCallFlowCounter = 0
     }
 
-    else {
-        $cqCallFlowCounter ++
-    }
+    $cqCallFlowCounter ++
 
     $MatchingCQ = Get-CsCallQueue -Identity $MatchingCQIdentity
 
@@ -577,9 +572,9 @@ function Get-CallQueueCallFlow {
 
                 else {
 
-                    $MatchingOverFlowCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.OverflowActionTarget.Id}).Name
+                    $MatchingOverFlowCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.OverflowActionTarget.Id})
 
-                    $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowCounter)(TransferCallToTarget) --> cqOverFlowActionTarget$($cqCallFlowCounter)([Call Queue <br> $MatchingOverFlowCQ])"
+                    $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowCounter)(TransferCallToTarget) --> cqOverFlowActionTarget$($cqCallFlowCounter)([Call Queue <br> $($MatchingOverFlowCQ.Name)])"
 
                 }
 
@@ -642,15 +637,9 @@ function Get-CallQueueCallFlow {
     
                 else {
     
-                    $MatchingTimeoutCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id}).Name
-                    
-                    switch ($ShowNestedQueues) {
-                        $true { $nestedQueueMarkdownLink = "-->" }
-                        $false { $nestedQueueMarkdownLink = $null }
-                        Default { $nestedQueueMarkdownLink = $null }
-                    }
+                    $MatchingTimeoutCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id})
 
-                    $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowCounter)(TransferCallToTarget) --> cqTimeoutActionTarget$($cqCallFlowCounter)([Call Queue <br> $MatchingTimeoutCQ]) $nestedQueueMarkdownLink "
+                    $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowCounter)(TransferCallToTarget) --> cqTimeoutActionTarget$($cqCallFlowCounter)([Call Queue <br> $($MatchingTimeoutCQ.Name)])"
     
                 }
     
@@ -745,6 +734,21 @@ cqResult$($cqCallFlowCounter) --> |No| $CqTimeoutActionFriendly
     
 }
 
+function Get-NestedCallQueueCallFlow {
+    param (
+        [Parameter(Mandatory=$true)][String]$MatchingCQIdentity
+    )
+
+    $nestedCallQueueCallFlow = $mdCallQueueCallFlow
+
+    . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingCQIdentity
+
+    $nestedCallQueueCallFlow += $mdCallQueueCallFlow
+
+    $mdCallQueueCallFlow = $nestedCallQueueCallFlow
+
+}
+
 if ($PhoneNumber) {
     . Get-VoiceApp -PhoneNumber $PhoneNumber
 }
@@ -769,6 +773,12 @@ if ($voiceAppType -eq "Auto Attendant") {
 elseif ($voiceAppType -eq "Call Queue") {
     . Get-CallQueueCallFlow -MatchingCQIdentity $VoiceApp.Identity
 }
+
+if ($ShowNestedDepth -and $MatchingTimeoutCQ) {
+
+    . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingTimeoutCQ.Identity
+}
+
 
 . Set-Mermaid -docType $docType
 
