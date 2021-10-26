@@ -67,14 +67,14 @@ flowchart TB
     $mermaidCode += $mdIncomingCall
     $mermaidCode += $mdVoiceApp
     $mermaidCode += $mdNodeAdditionalNumbers
-    $mermaidCode += $mdHolidayCheck
+    $mermaidCode += $mdHolidayAndAfterHoursCheck
     $mermaidCode += $mdEnd
     
 }
 
 function Get-VoiceApp {
     param (
-        [Parameter(Mandatory=$false)][String]$VoiceApp
+        [Parameter(Mandatory=$false)][String]$PhoneNumber
         )
 
         if ($PhoneNumber) {
@@ -148,7 +148,7 @@ function Find-Holidays {
     
 }
 
-function Find-BusinessHours {
+function Find-AfterHours {
     param (
         [Parameter(Mandatory=$true)][String]$VoiceAppId
 
@@ -185,7 +185,7 @@ function Find-BusinessHours {
     
 }
 
-function Get-AutoAttendantCallFlow {
+function Get-AutoAttendantHolidaysAndAfterHours {
     param (
     )
 
@@ -296,14 +296,130 @@ elementAAHoliday$($HolidayCounter)(Schedule <br> $($holidaySchedule.FixedSchedul
     # Add the end to the holiday subgraph mermaid code
     $mdSubGraphHolidays += $mdSubGraphHolidaysEnd
 
+    # Mermaid node holiday check
+    $nodeElementHolidayCheck = "elementHolidayCheck{During Holiday?}"
+
     # Check if auto attendant has after hours and holidays
     if ($aaHasAfterHours) {
 
-        # Mermaid node holiday check
-        $nodeElementHolidayCheck = "elementHolidayCheck{During Holiday?}"
+        # Get the business hours schedule and convert to csv for comparison with hard coded strings
+        $aaBusinessHours = ($aa.Schedules | Where-Object {$_.name -match "after"}).WeeklyRecurrentSchedule | ConvertTo-Csv
 
+        # Convert from csv to read the business hours per day
+        $aaBusinessHoursFriendly = $aaBusinessHours | ConvertFrom-Csv
+
+        # Monday
+        # Check if Monday has business hours which are open 24 hours per day
+        if ($aaBusinessHoursFriendly.DisplayMondayHours -eq "00:00:00-1.00:00:00") {
+            $mondayHours = "Monday Hours: Open 24 hours"
+        }
+        # Check if Monday has business hours set different than 24 hours open per day
+        elseif ($aaBusinessHoursFriendly.DisplayMondayHours) {
+            $mondayHours = "Monday Hours: $($aaBusinessHoursFriendly.DisplayMondayHours)"
+        }
+        # Check if Monday has no business hours at all / is closed 24 hours per day
+        else {
+            $mondayHours = "Monday Hours: Closed"
+        }
+
+        # Tuesday
+        if ($aaBusinessHoursFriendly.DisplayTuesdayHours -eq "00:00:00-1.00:00:00") {
+            $TuesdayHours = "Tuesday Hours: Open 24 hours"
+        }
+        elseif ($aaBusinessHoursFriendly.DisplayTuesdayHours) {
+            $TuesdayHours = "Tuesday Hours: $($aaBusinessHoursFriendly.DisplayTuesdayHours)"
+        } 
+        else {
+            $TuesdayHours = "Tuesday Hours: Closed"
+        }
+
+        # Wednesday
+        if ($aaBusinessHoursFriendly.DisplayWednesdayHours -eq "00:00:00-1.00:00:00") {
+            $WednesdayHours = "Wednesday Hours: Open 24 hours"
+        } 
+        elseif ($aaBusinessHoursFriendly.DisplayWednesdayHours) {
+            $WednesdayHours = "Wednesday Hours: $($aaBusinessHoursFriendly.DisplayWednesdayHours)"
+        }
+        else {
+            $WednesdayHours = "Wednesday Hours: Closed"
+        }
+
+        # Thursday
+        if ($aaBusinessHoursFriendly.DisplayThursdayHours -eq "00:00:00-1.00:00:00") {
+            $ThursdayHours = "Thursday Hours: Open 24 hours"
+        } 
+        elseif ($aaBusinessHoursFriendly.DisplayThursdayHours) {
+            $ThursdayHours = "Thursday Hours: $($aaBusinessHoursFriendly.DisplayThursdayHours)"
+        }
+        else {
+            $ThursdayHours = "Thursday Hours: Closed"
+        }
+
+        # Friday
+        if ($aaBusinessHoursFriendly.DisplayFridayHours -eq "00:00:00-1.00:00:00") {
+            $FridayHours = "Friday Hours: Open 24 hours"
+        } 
+        elseif ($aaBusinessHoursFriendly.DisplayFridayHours) {
+            $FridayHours = "Friday Hours: $($aaBusinessHoursFriendly.DisplayFridayHours)"
+        }
+        else {
+            $FridayHours = "Friday Hours: Closed"
+        }
+
+        # Saturday
+        if ($aaBusinessHoursFriendly.DisplaySaturdayHours -eq "00:00:00-1.00:00:00") {
+            $SaturdayHours = "Saturday Hours: Open 24 hours"
+        } 
+
+        elseif ($aaBusinessHoursFriendly.DisplaySaturdayHours) {
+            $SaturdayHours = "Saturday Hours: $($aaBusinessHoursFriendly.DisplaySaturdayHours)"
+        }
+
+        else {
+            $SaturdayHours = "Saturday Hours: Closed"
+        }
+
+        # Sunday
+        if ($aaBusinessHoursFriendly.DisplaySundayHours -eq "00:00:00-1.00:00:00") {
+            $SundayHours = "Sunday Hours: Open 24 hours"
+        }
+        elseif ($aaBusinessHoursFriendly.DisplaySundayHours) {
+            $SundayHours = "Sunday Hours: $($aaBusinessHoursFriendly.DisplaySundayHours)"
+        }
+
+        else {
+            $SundayHours = "Sunday Hours: Closed"
+        }
+
+        # Create the mermaid node for business hours check including the actual business hours
+        $nodeElementAfterHoursCheck = "elementAfterHoursCheck{During Business Hours? <br> $mondayHours <br> $tuesdayHours  <br> $wednesdayHours  <br> $thursdayHours <br> $fridayHours <br> $saturdayHours <br> $sundayHours}"
+
+    }
     
-        $mdHolidayCheck =@"
+}
+
+
+if ($PhoneNumber) {
+    . Get-VoiceApp -PhoneNumber $PhoneNumber
+}
+
+else {
+    . Get-VoiceApp
+}
+
+
+if ($voiceAppType -eq "Auto Attendant") {
+    . Find-Holidays -VoiceAppId $VoiceApp.Identity
+    . Find-AfterHours -VoiceAppId $VoiceApp.Identity
+
+    if ($aaHasHolidays -eq $true) {
+
+        . Get-AutoAttendantHolidaysAndAfterHours
+
+        # Check if auto attendant has after hours and holidays
+        if ($aaHasAfterHours -eq $true){
+
+            $mdHolidayAndAfterHoursCheck =@"
 --> $nodeElementHolidayCheck
 $nodeElementHolidayCheck -->|Yes| Holidays
 $nodeElementHolidayCheck -->|No| $nodeElementAfterHoursCheck
@@ -313,38 +429,51 @@ $nodeElementHolidayCheck -->|No| $nodeElementAfterHoursCheck
 $mdSubGraphHolidays
 
 "@
+        }
 
-    }
+        # Check if auto attendant has holidays but no after hours
+        else {
 
-    # Check if auto attendant has holidays but no after hours
-    else {
-
-        $mdHolidayCheck =@"
+            $mdHolidayAndAfterHoursCheck =@"
 --> $nodeElementHolidayCheck
 $nodeElementHolidayCheck -->|Yes| Holidays
-$nodeElementHolidayCheck -->|No| nextStep(next step)
+$nodeElementHolidayCheck -->|No| $mdDefaultCallflow
 
 $mdSubGraphHolidays
 
 "@
+        }
 
     }
-    
-}
 
-. Get-VoiceApp
-. Find-Holidays -VoiceAppId $VoiceApp.Identity
-. Find-BusinessHours -VoiceAppId $VoiceApp.Identity
+    # Check if auto attendant has no Holidays but after hours
+    else {
+        
+        if ($aaHasAfterHours -eq $true) {
 
-if ($aaHasHolidays -eq $true) {
-    . Get-AutoAttendantCallFlow
-}
+            $mdHolidayAndAfterHoursCheck =@"
+--> $nodeElementAfterHoursCheckCheck
+$nodeElementAfterHoursCheck -->|Yes| $mdDefaultCallflow
+$nodeElementAfterHoursCheck -->|No| $mdAfterHoursCallFlow
 
-else {
-    $mdSubGraphHolidays = $null
+"@      
+        }
+
+        # Check if auto attendant has no after hours and no holidays
+        else {
+
+            $mdHolidayAndAfterHoursCheck =@"
+--> $mdDefaultCallflow
+
+"@
+        }
+
+    }
+
 }
 
 . Set-Mermaid -docType $docType
 
+$mermaidCode.Replace('```mermaid','').Replace('```','') | Set-Clipboard
 
-
+Write-Host "Mermaid code copied to clipboard." -ForegroundColor Cyan
