@@ -3,7 +3,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$docType = "Markdown",
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedDepth = $false,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedDepth = $true,
     [Parameter(Mandatory=$false)][Switch]$SubSequentRun,
     [Parameter(Mandatory=$false)][string]$PhoneNumber
 
@@ -477,7 +477,8 @@ $nodeElementAfterHoursCheck -->|No| $mdAutoAttendantAfterHoursCallFlow
 
 function Get-CallQueueCallFlow {
     param (
-        [Parameter(Mandatory=$true)][String]$MatchingCQIdentity
+        [Parameter(Mandatory=$true)][String]$MatchingCQIdentity,
+        [Parameter(Mandatory=$false)][Bool]$InvokedByNesting = $false
     )
 
     if (!$cqCallFlowCounter) {
@@ -696,7 +697,13 @@ function Get-CallQueueCallFlow {
     switch ($voiceAppType) {
         "Auto Attendant" {
 
-            $voiceAppTypeSpecificCallFlow = "--> defaultCallFlow$($cqCallFlowCounter)($defaultCallFlowAction) --> defaultCallFlowAction$($cqCallFlowCounter)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName) --> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+            if ($InvokedByNesting -eq $true) {
+                $voiceAppTypeSpecificCallFlow = "--> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+            }
+
+            else {
+                $voiceAppTypeSpecificCallFlow = "defaultCallFlowAction$($cqCallFlowCounter)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName) --> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+            }
 
         }
         "Call Queue" {
@@ -749,7 +756,7 @@ function Get-NestedCallQueueCallFlow {
 
     $nestedCallQueueCallFlow = $mdCallQueueCallFlow
 
-    . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingCQIdentity
+    . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingCQIdentity -InvokedByNesting $true
 
     $nestedCallQueueCallFlow += $mdCallQueueCallFlow
 
@@ -773,7 +780,13 @@ function Get-AutoAttendantDefaultCallFlow {
     $defaultCallFlowAction = $aa.DefaultCallFlow.Menu.MenuOptions.Action.Value
 
     # Get the current auto attentans default call flow greeting
-    $defaultCallFlowGreeting = "Greeting <br> $($defaultCallFlow.Greetings.ActiveType.Value)"
+    if (!$defaultCallFlow.Greetings.ActiveType.Value){
+        $defaultCallFlowGreeting = "Greeting <br> None"
+    }
+
+    else {
+        $defaultCallFlowGreeting = "Greeting <br> $($defaultCallFlow.Greetings.ActiveType.Value)"
+    }
 
     # Check if the default callflow action is transfer call to target
     if ($defaultCallFlowAction -eq "TransferCallToTarget") {
@@ -995,7 +1008,7 @@ if ($voiceAppType -eq "Auto Attendant") {
 
     }
 
-<#     if ($aaDefaultCallFlowForwardsToCq -eq $true) {
+    if ($aaDefaultCallFlowForwardsToCq -eq $true) {
 
         . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingCQIdentity
 
@@ -1004,7 +1017,7 @@ if ($voiceAppType -eq "Auto Attendant") {
     else {
 
     }
- #>
+
 }
 
 elseif ($voiceAppType -eq "Call Queue") {
