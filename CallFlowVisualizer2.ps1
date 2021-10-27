@@ -3,7 +3,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$docType = "Markdown",
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedDepth = $true,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedDepth = $false,
     [Parameter(Mandatory=$false)][Switch]$SubSequentRun,
     [Parameter(Mandatory=$false)][string]$PhoneNumber
 
@@ -70,7 +70,9 @@ flowchart TB
     $mermaidCode += $mdVoiceApp
     $mermaidCode += $mdNodeAdditionalNumbers
     $mermaidCode += $mdHolidayAndAfterHoursCheck
-    $mermaidCode += $mdCallQueueCallFlow
+    $mermaidCode += $mdInitialCallQueueCallFlow
+    $mermaidCode += $nestedCallQueueTimeOutCallFlow
+    $mermaidCode += $nestedCallQueueOverFlowCallFlow
     $mermaidCode += $mdEnd
     
 }
@@ -478,7 +480,9 @@ $nodeElementAfterHoursCheck -->|No| $mdAutoAttendantAfterHoursCallFlow
 function Get-CallQueueCallFlow {
     param (
         [Parameter(Mandatory=$true)][String]$MatchingCQIdentity,
-        [Parameter(Mandatory=$false)][Bool]$InvokedByNesting = $false
+        [Parameter(Mandatory=$false)][Bool]$InvokedByNesting = $false,
+        [Parameter(Mandatory=$false)][String]$NestedCQType
+
     )
 
     if (!$cqCallFlowCounter) {
@@ -697,8 +701,20 @@ function Get-CallQueueCallFlow {
     switch ($voiceAppType) {
         "Auto Attendant" {
 
-            if ($InvokedByNesting -eq $true) {
+<#             if ($InvokedByNesting -eq $true) {
                 $voiceAppTypeSpecificCallFlow = "--> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+            }
+
+            else {
+                $voiceAppTypeSpecificCallFlow = "defaultCallFlowAction$($cqCallFlowCounter)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName) --> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+            } #>
+
+            if ($NestedCQType -eq "TimeOut") {
+                $voiceAppTypeSpecificCallFlow = "--> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+            }
+
+            elseif ($NestedCQType -eq "OverFlow") {
+                $voiceAppTypeSpecificCallFlow = "cqOverFlowActionTarget$($cqCallFlowCounter -2) --> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
             }
 
             else {
@@ -708,7 +724,27 @@ function Get-CallQueueCallFlow {
         }
         "Call Queue" {
 
-            $voiceAppTypeSpecificCallFlow = "--> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+<#             if ($InvokedByNesting -eq $true) {
+                #$voiceAppTypeSpecificCallFlow = "cqOverFlowActionTarget$($cqCallFlowCounter -1) --> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+                $voiceAppTypeSpecificCallFlow = "--> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+            }
+
+            else {
+                $voiceAppTypeSpecificCallFlow = "--> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+            } #>
+
+            if ($NestedCQType -eq "TimeOut") {
+                $voiceAppTypeSpecificCallFlow = "--> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+            }
+
+            elseif ($NestedCQType -eq "OverFlow") {
+                $voiceAppTypeSpecificCallFlow = "cqOverFlowActionTarget$($cqCallFlowCounter -2) --> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+            }
+
+            else {
+                $voiceAppTypeSpecificCallFlow = $null
+            }
+
 
             $defaultCallFlowcCqIsTopLevel = $null
 
@@ -746,21 +782,30 @@ cqResult$($cqCallFlowCounter) --> |Yes| cqEnd$($cqCallFlowCounter)((Call Connect
 cqResult$($cqCallFlowCounter) --> |No| $CqTimeoutActionFriendly
 
 "@
+
+    if ($InvokedByNesting -eq $false) {
+        $mdInitialCallQueueCallFlow = $mdCallQueueCallFlow
+    }
+
     
 }
 
 function Get-NestedCallQueueCallFlow {
     param (
-        [Parameter(Mandatory=$true)][String]$MatchingCQIdentity
+        [Parameter(Mandatory=$true)][String]$MatchingCQIdentity,
+        [Parameter(Mandatory=$true)][String]$NestedCQType
+
     )
 
-    $nestedCallQueueCallFlow = $mdCallQueueCallFlow
+    . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingCQIdentity -InvokedByNesting $true -NestedCQType $NestedCQType
 
-    . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingCQIdentity -InvokedByNesting $true
+    if ($NestedCQType -eq "TimeOut") {
+        $nestedCallQueueTimeOutCallFlow = $mdCallQueueCallFlow
+    }
 
-    $nestedCallQueueCallFlow += $mdCallQueueCallFlow
-
-    $mdCallQueueCallFlow = $nestedCallQueueCallFlow
+    if ($NestedCQType -eq "OverFlow") {
+        $nestedCallQueueOverFlowCallFlow = $mdCallQueueCallFlow
+    }
 
 }
 
@@ -1024,9 +1069,24 @@ elseif ($voiceAppType -eq "Call Queue") {
     . Get-CallQueueCallFlow -MatchingCQIdentity $VoiceApp.Identity
 }
 
-if ($ShowNestedDepth -and $MatchingTimeoutCQ) {
+if ($ShowNestedDepth -eq $true) {
 
-    . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingTimeoutCQ.Identity
+    if ($MatchingTimeoutCQ) {
+        . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingTimeoutCQ.Identity -NestedCQType "TimeOut"
+    }
+
+    else {
+        $nestedCallQueueTimeOutCallFlow = $null
+    }
+
+    if ($MatchingOverFlowCQ) {
+        . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingOverFlowCQ.Identity -NestedCQType "OverFlow"
+    }
+
+    else {
+        $nestedCallQueueOverFlowCallFlow = $null
+    }
+
 }
 
 
