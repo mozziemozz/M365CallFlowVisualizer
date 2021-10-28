@@ -332,6 +332,8 @@ elementAAHoliday$($HolidayCounter)(Schedule <br> $($holidaySchedule.FixedSchedul
         # Convert from csv to read the business hours per day
         $aaBusinessHoursFriendly = $aaBusinessHours | ConvertFrom-Csv
 
+        $aaTimeZone = $aa.TimeZoneId
+
         # Monday
         # Check if Monday has business hours which are open 24 hours per day
         if ($aaBusinessHoursFriendly.DisplayMondayHours -eq "00:00:00-1.00:00:00") {
@@ -416,7 +418,7 @@ elementAAHoliday$($HolidayCounter)(Schedule <br> $($holidaySchedule.FixedSchedul
         }
 
         # Create the mermaid node for business hours check including the actual business hours
-        $nodeElementAfterHoursCheck = "elementAfterHoursCheck$($aaCounter){During Business Hours? <br> $mondayHours <br> $tuesdayHours  <br> $wednesdayHours  <br> $thursdayHours <br> $fridayHours <br> $saturdayHours <br> $sundayHours}"
+        $nodeElementAfterHoursCheck = "elementAfterHoursCheck$($aaCounter){During Business Hours? <br> Time Zone: $aaTimeZone <br> $mondayHours <br> $tuesdayHours  <br> $wednesdayHours  <br> $thursdayHours <br> $fridayHours <br> $saturdayHours <br> $sundayHours}"
 
     } # End if aa has after hours
 
@@ -701,14 +703,6 @@ function Get-CallQueueCallFlow {
     switch ($voiceAppType) {
         "Auto Attendant" {
 
-<#             if ($InvokedByNesting -eq $true) {
-                $voiceAppTypeSpecificCallFlow = "--> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
-            }
-
-            else {
-                $voiceAppTypeSpecificCallFlow = "defaultCallFlowAction$($cqCallFlowCounter)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName) --> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
-            } #>
-
             if ($NestedCQType -eq "TimeOut") {
                 $voiceAppTypeSpecificCallFlow = "--> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
             }
@@ -724,15 +718,6 @@ function Get-CallQueueCallFlow {
         }
         "Call Queue" {
 
-<#             if ($InvokedByNesting -eq $true) {
-                #$voiceAppTypeSpecificCallFlow = "cqOverFlowActionTarget$($cqCallFlowCounter -1) --> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
-                $voiceAppTypeSpecificCallFlow = "--> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
-            }
-
-            else {
-                $voiceAppTypeSpecificCallFlow = "--> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
-            } #>
-
             if ($NestedCQType -eq "TimeOut") {
                 $voiceAppTypeSpecificCallFlow = "--> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
             }
@@ -745,10 +730,106 @@ function Get-CallQueueCallFlow {
                 $voiceAppTypeSpecificCallFlow = $null
             }
 
-
-            $defaultCallFlowcCqIsTopLevel = $null
-
         }
+
+    }
+
+    if ($cqCallFlowCounter -le 1) {
+
+        $nestedCallQueues = @()
+    
+        $nestedCallQueues += $MatchingCQ
+        $nestedCallQueues += $MatchingTimeoutCQ
+        $nestedCallQueues += $MatchingOverFlowCQ
+    
+        $nestedCallQueueTopLevelNumbers = @()
+        $nestedCallQueueTopLevelNumbersCheck = @()
+    
+        if (!$nestedTopLevelCqCounter) {
+            $nestedTopLevelCqCounter = 0
+        }
+    
+        $nestedTopLevelCqCounter ++
+    
+    
+        foreach ($nestedCallQueue in $nestedCallQueues) {
+            
+            $cqAssociatedApplicationInstances = $nestedCallQueue.DisplayApplicationInstances.Split("`n")
+    
+    
+            foreach ($cqAssociatedApplicationInstance in $cqAssociatedApplicationInstances) {
+    
+                $nestedCallQueueTopLevelNumber = ((Get-CsOnlineApplicationInstance -Identity $cqAssociatedApplicationInstance).PhoneNumber).Replace("tel:","")
+    
+                if ($nestedCallQueueTopLevelNumber) {
+    
+                    if ($MatchingCQ.DisplayApplicationInstances -match $cqAssociatedApplicationInstance) {
+    
+                        $nestedCallQueueTopLevelNumberTargetNode = "((Incoming Call at <br> $($nestedCallQueueTopLevelNumber))) -....-> defaultCallFlowAction$($cqCallFlowCounter)`n"
+                        $nestedCallQueueTopLevelNumberNode = "additionalStart$($nestedTopLevelCqCounter)" +$nestedCallQueueTopLevelNumberTargetNode
+                        
+                        if ($nestedCallQueueTopLevelNumbersCheck -notcontains $nestedCallQueueTopLevelNumberTargetNode) {
+    
+                            $nestedCallQueueTopLevelNumbersCheck += $nestedCallQueueTopLevelNumberTargetNode
+    
+                            $nestedCallQueueTopLevelNumbers += $nestedCallQueueTopLevelNumberNode
+    
+                            $nestedTopLevelCqCounter ++
+    
+                        }
+    
+                    }
+    
+                    if ($MatchingTimeoutCQ.DisplayApplicationInstances -match $cqAssociatedApplicationInstance) {
+                        
+                        $nestedCallQueueTopLevelNumberTargetNode = "((Incoming Call at <br> $($nestedCallQueueTopLevelNumber))) -....-> cqTimeoutActionTarget$($cqCallFlowCounter)`n"
+                        $nestedCallQueueTopLevelNumberNode = "additionalStart$($nestedTopLevelCqCounter)" +$nestedCallQueueTopLevelNumberTargetNode
+                        
+                        if ($nestedCallQueueTopLevelNumbersCheck -notcontains $nestedCallQueueTopLevelNumberTargetNode) {
+    
+                            $nestedCallQueueTopLevelNumbersCheck += $nestedCallQueueTopLevelNumberTargetNode
+    
+                            $nestedCallQueueTopLevelNumbers += $nestedCallQueueTopLevelNumberNode
+    
+                            $nestedTopLevelCqCounter ++
+    
+                        }
+    
+                    }
+    
+                    if ($MatchingOverFlowCQ.DisplayApplicationInstances -match $cqAssociatedApplicationInstance) {
+                        
+                        $nestedCallQueueTopLevelNumberTargetNode = "((Incoming Call at <br> $($nestedCallQueueTopLevelNumber))) -....-> cqOverFlowActionTarget$($cqCallFlowCounter)`n"
+                        $nestedCallQueueTopLevelNumberNode = "additionalStart$($nestedTopLevelCqCounter)" +$nestedCallQueueTopLevelNumberTargetNode
+                        
+                        if ($nestedCallQueueTopLevelNumbersCheck -notcontains $nestedCallQueueTopLevelNumberTargetNode) {
+    
+                            $nestedCallQueueTopLevelNumbersCheck += $nestedCallQueueTopLevelNumberTargetNode
+    
+                            $nestedCallQueueTopLevelNumbers += $nestedCallQueueTopLevelNumberNode
+    
+                            $nestedTopLevelCqCounter ++
+    
+                        }
+    
+                    }
+    
+    
+    
+                }
+    
+                else {
+                    $nestedCallQueueTopLevelNumbers = $null
+                }
+    
+            }
+    
+        }
+    
+    }
+
+    else {
+        $nestedCallQueueTopLevelNumbers = $null
     }
 
     # Create default callflow mermaid code
@@ -759,7 +840,7 @@ $voiceAppTypeSpecificCallFlow
 overFlow$($cqCallFlowCounter) ---> |Yes| $CqOverFlowActionFriendly
 overFlow$($cqCallFlowCounter) ---> |No| routingMethod$($cqCallFlowCounter)
 
-$defaultCallFlowcCqIsTopLevel
+$nestedCallQueueTopLevelNumbers
 
 subgraph Call Distribution
 subgraph CQ Settings
@@ -808,7 +889,6 @@ function Get-NestedCallQueueCallFlow {
     }
 
 }
-
 function Get-AutoAttendantDefaultCallFlow {
     param (
         [Parameter(Mandatory=$false)][String]$VoiceAppId
@@ -862,20 +942,6 @@ function Get-AutoAttendantDefaultCallFlow {
                 else {
 
                     $MatchingCQ = Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id}
-
-                    $cqAssociatedApplicationInstance = Get-CsOnlineApplicationInstance -Identity $MatchingCQ.DisplayApplicationInstances
-
-<#                     # check if call queue also has its own phone number
-                    if ($cqAssociatedApplicationInstance.PhoneNumber) {
-                        $secondTopLevelNumber = $($cqAssociatedApplicationInstance.PhoneNumber).Replace("tel:","")
-                        $defaultCallFlowcCqIsTopLevel = "start200((Incoming Call at <br> $($secondTopLevelNumber))) -...-> defaultCallFlowAction"
-
-                    }
-
-                    else {
-                        
-                        $defaultCallFlowcCqIsTopLevel = $null
-                    } #>
 
                     $defaultCallFlowTargetTypeFriendly = "[Call Queue"
                     $defaultCallFlowTargetName = "$($MatchingCQ.Name)]"
