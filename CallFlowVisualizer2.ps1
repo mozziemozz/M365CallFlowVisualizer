@@ -3,13 +3,17 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$docType = "Markdown",
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedDepth = $false,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedQueues = $true,
+    [Parameter(Mandatory=$false)][Bool]$ShowAdditionalEntryPoints = $true,
     [Parameter(Mandatory=$false)][Switch]$SubSequentRun,
-    [Parameter(Mandatory=$false)][string]$PhoneNumber
+    [Parameter(Mandatory=$false)][string]$PhoneNumber,
+    [Parameter(Mandatory=$false)][Bool]$SetClipBoard = $true
 
 )
 
-Write-Host "Show nested depth $ShowNestedDepth" -ForegroundColor Cyan
+Write-Host "Show nested queues: $ShowNestedQueues" -ForegroundColor Cyan
+Write-Host "Show additional entry points: $ShowAdditionalEntryPoints" -ForegroundColor Cyan
+
 
 # From: https://community.idera.com/database-tools/powershell/powertips/b/tips/posts/clearing-all-user-variables
 function Get-UserVariable ($Name = '*') {
@@ -552,6 +556,30 @@ function Get-CallQueueCallFlow {
 
     }
 
+    if ($InvokedByNesting -eq $false) {
+
+        if ($MatchingCQ.OverflowActionTarget.Id -eq $MatchingCQ.TimeoutActionTarget.Id) {
+            $dynamicCqOverFlowActionTarget = "cqTimeoutActionTarget"
+        }
+    
+        else {
+            $dynamicCqOverFlowActionTarget = "cqOverFlowActionTarget"
+        }  
+
+    }
+
+    else {
+
+        if ($MatchingTimeoutCQ.Identity -eq $MatchingOverFlowCQ.Identity) {
+            $dynamicCqOverFlowActionTarget = "cqTimeoutActionTarget"
+        }
+    
+        else {
+            $dynamicCqOverFlowActionTarget = "cqOverFlowActionTarget"
+        } 
+
+    }
+
     # Switch through call queue overflow action target
     switch ($CqOverFlowAction) {
         DisconnectWithBusy {
@@ -581,7 +609,7 @@ function Get-CallQueueCallFlow {
 
                 if ($MatchingOverFlowAA) {
 
-                    $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowCounter)(TransferCallToTarget) --> cqOverFlowActionTarget$($cqCallFlowCounter)([Auto Attendant <br> $MatchingOverFlowAA])"
+                    $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowCounter)(TransferCallToTarget) --> $dynamicCqOverFlowActionTarget$($cqCallFlowCounter)([Auto Attendant <br> $MatchingOverFlowAA])"
 
                 }
 
@@ -589,7 +617,7 @@ function Get-CallQueueCallFlow {
 
                     $MatchingOverFlowCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.OverflowActionTarget.Id})
 
-                    $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowCounter)(TransferCallToTarget) --> cqOverFlowActionTarget$($cqCallFlowCounter)([Call Queue <br> $($MatchingOverFlowCQ.Name)])"
+                    $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowCounter)(TransferCallToTarget) --> $dynamicCqOverFlowActionTarget$($cqCallFlowCounter)([Call Queue <br> $($MatchingOverFlowCQ.Name)])"
 
                 }
 
@@ -734,7 +762,7 @@ function Get-CallQueueCallFlow {
 
     }
 
-    if ($cqCallFlowCounter -le 1) {
+    if ($cqCallFlowCounter -le 1 -and $ShowAdditionalEntryPoints -eq $true) {
 
         $nestedCallQueues = @()
     
@@ -763,9 +791,9 @@ function Get-CallQueueCallFlow {
     
                 if ($nestedCallQueueTopLevelNumber) {
     
-                    if ($MatchingCQ.DisplayApplicationInstances -match $cqAssociatedApplicationInstance) {
+                    if ($MatchingCQ.DisplayApplicationInstances -match $cqAssociatedApplicationInstance -and $voiceAppType -eq "Auto Attendant") {
     
-                        $nestedCallQueueTopLevelNumberTargetNode = "((Incoming Call at <br> $($nestedCallQueueTopLevelNumber))) -....-> defaultCallFlowAction$($cqCallFlowCounter)`n"
+                        $nestedCallQueueTopLevelNumberTargetNode = "((Incoming Call at <br> $($nestedCallQueueTopLevelNumber))) -...-> defaultCallFlowAction$($cqCallFlowCounter)`n"
                         $nestedCallQueueTopLevelNumberNode = "additionalStart$($nestedTopLevelCqCounter)" +$nestedCallQueueTopLevelNumberTargetNode
                         
                         if ($nestedCallQueueTopLevelNumbersCheck -notcontains $nestedCallQueueTopLevelNumberTargetNode) {
@@ -782,7 +810,7 @@ function Get-CallQueueCallFlow {
     
                     if ($MatchingTimeoutCQ.DisplayApplicationInstances -match $cqAssociatedApplicationInstance) {
                         
-                        $nestedCallQueueTopLevelNumberTargetNode = "((Incoming Call at <br> $($nestedCallQueueTopLevelNumber))) -....-> cqTimeoutActionTarget$($cqCallFlowCounter)`n"
+                        $nestedCallQueueTopLevelNumberTargetNode = "((Incoming Call at <br> $($nestedCallQueueTopLevelNumber))) -...-> cqTimeoutActionTarget$($cqCallFlowCounter)`n"
                         $nestedCallQueueTopLevelNumberNode = "additionalStart$($nestedTopLevelCqCounter)" +$nestedCallQueueTopLevelNumberTargetNode
                         
                         if ($nestedCallQueueTopLevelNumbersCheck -notcontains $nestedCallQueueTopLevelNumberTargetNode) {
@@ -799,7 +827,7 @@ function Get-CallQueueCallFlow {
     
                     if ($MatchingOverFlowCQ.DisplayApplicationInstances -match $cqAssociatedApplicationInstance) {
                         
-                        $nestedCallQueueTopLevelNumberTargetNode = "((Incoming Call at <br> $($nestedCallQueueTopLevelNumber))) -....-> cqOverFlowActionTarget$($cqCallFlowCounter)`n"
+                        $nestedCallQueueTopLevelNumberTargetNode = "((Incoming Call at <br> $($nestedCallQueueTopLevelNumber))) -...-> $dynamicCqOverFlowActionTarget$($cqCallFlowCounter)`n"
                         $nestedCallQueueTopLevelNumberNode = "additionalStart$($nestedTopLevelCqCounter)" +$nestedCallQueueTopLevelNumberTargetNode
                         
                         if ($nestedCallQueueTopLevelNumbersCheck -notcontains $nestedCallQueueTopLevelNumberTargetNode) {
@@ -1135,7 +1163,7 @@ elseif ($voiceAppType -eq "Call Queue") {
     . Get-CallQueueCallFlow -MatchingCQIdentity $VoiceApp.Identity
 }
 
-if ($ShowNestedDepth -eq $true) {
+if ($ShowNestedQueues -eq $true) {
 
     if ($MatchingTimeoutCQ) {
         . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingTimeoutCQ.Identity -NestedCQType "TimeOut"
@@ -1145,7 +1173,7 @@ if ($ShowNestedDepth -eq $true) {
         $nestedCallQueueTimeOutCallFlow = $null
     }
 
-    if ($MatchingOverFlowCQ) {
+    if ($MatchingOverFlowCQ -and $MatchingOverFlowCQ.Identity -ne $MatchingTimeoutCQ.Identity) {
         . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingOverFlowCQ.Identity -NestedCQType "OverFlow"
     }
 
@@ -1158,7 +1186,12 @@ if ($ShowNestedDepth -eq $true) {
 
 . Set-Mermaid -docType $docType
 
-$mermaidCode -Replace('```mermaid','') `
--Replace('```','') | Set-Clipboard
+Set-Content -Path ".\$(($VoiceApp.Name).Replace(" ","_"))_CallFlow$fileExtension" -Value $mermaidCode -Encoding UTF8
 
-Write-Host "Mermaid code copied to clipboard." -ForegroundColor Cyan
+if ($SetClipBoard -eq $true) {
+    $mermaidCode -Replace('```mermaid','') `
+    -Replace('```','') | Set-Clipboard
+
+    Write-Host "Mermaid code copied to clipboard. Paste it on https://mermaid.live" -ForegroundColor Cyan
+}
+
