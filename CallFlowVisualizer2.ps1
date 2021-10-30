@@ -1,3 +1,42 @@
+<#
+    .SYNOPSIS
+    Reads the configuration from a Microsoft 365 Phone System auto attendant or call queue and visualizes the call flow using mermaid-js.
+
+    .DESCRIPTION
+    Presents a selection of available auto attendants or call queues and then reads the config of that auto attendant and writes it into a mermaid-js flowchart file.
+
+    Author:             Martin Heusser
+    Version:            2.0.0
+    Revision:
+        20.10.2021:     Creation
+        21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
+        21.10.2021:     Add support for top level call queues (besides auto attendants)
+        21.10.2021:     Move call queue specific operations into a function
+        24.10.2021:     Fixed a bug where Disconnect Call was not reflected in mermaid correctly when CQ timeout action was disconnect call
+        30.10.2021:     V2: most of the script logic was moved into functions. Added parameters for specifig resource account (specified by phone number), added support for nested queues, added support to display only 1 queue if timeout and overflow go to the same queue.
+
+    .PARAMETER Name
+    -docType
+        Mandatory=$false
+        [String], allowed values: Markdown (default), Mermaid
+            Markdown: Creates a markdown file (*.md) with mermaid code declaration
+            Mermaid: Creates a mermaid file (*.mmd)
+
+    .INPUTS
+    - Auto Attendant Name (through Out-GridView)
+    - Phone Number of resource account
+
+    .OUTPUTS
+    - Markdown including Mermaid flowchart
+    - Mermaid flowchart
+    - Mermaid flowchart in clipboard
+
+    .EXAMPLE
+
+    .LINK
+    https://github.com/mozziemozz/M365CallFlowVisualizer
+#>
+
 #Requires -Modules MsOnline, MicrosoftTeams
 
 [CmdletBinding()]
