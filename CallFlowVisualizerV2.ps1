@@ -16,22 +16,57 @@
         30.10.2021:     V2: most of the script logic was moved into functions. Added parameters for specifig resource account (specified by phone number), added support for nested queues, added support to display only 1 queue if timeout and overflow go to the same queue.
 
     .PARAMETER Name
-    -docType
-        Mandatory=$false
-        [String], allowed values: Markdown (default), Mermaid
-            Markdown: Creates a markdown file (*.md) with mermaid code declaration
-            Mermaid: Creates a mermaid file (*.mmd)
+    -DocType
+        Specifies the document type.
+        Required:           false
+        Type:                string
+        Accepted values:     Markdown, Mermaid
+        Default value:       Markdown
+    
+    -ShowNestedQueues
+        Specifies whether or not to also display the call flows of nested call queues.
+        Required:           false
+        Type:               boolean
+        Default value:      false
+
+    -ShowNestedPhoneNumbers
+        Specifies whether or not to also display phone numbers of call queues which are nested behind another call queue or auto attendant.
+        Required:           false
+        Type:               boolean
+        Default value:      false
+    
+    -SetClipBoard
+        Specifies if the mermaid code should be copied to the clipboard after the script has finished.
+        Required:           false
+        Type:               boolean
+        Default value:      false
+
+    -PhoneNumber
+        If provided, you won't be provided with a selection of available resource accounts. You can directly specify a resource account by phone number.
+        Required:           false
+        Type:               string
+        Accepted values:    Phone number without leading + or tel: prefix, no whitespaces
+        Default value:      
 
     .INPUTS
-    - Auto Attendant Name (through Out-GridView)
-    - Phone Number of resource account
+        None.
 
     .OUTPUTS
-    - Markdown including Mermaid flowchart
-    - Mermaid flowchart
-    - Mermaid flowchart in clipboard
+        Files:
+            - *.md
+            - *.mmd
 
     .EXAMPLE
+        .\CallFlowVisualizerV2.ps1
+
+    .EXAMPLE
+        .\CallFlowVisualizerV2.ps1 -ShowNestedQueues $true -ShowNestedPhoneNumbers $true
+
+    .EXAMPLE
+        .\CallFlowVisualizerV2.ps1 -ShowNestedQueues $true -ShowNestedPhoneNumbers $true -DocType Mermaid -SetClipBoard $true
+
+    .EXAMPLE
+        .\CallFlowVisualizerV2.ps1 -ShowNestedQueues $true -ShowNestedPhoneNumbers $true -DocType Markdown -PhoneNumber 4144xxxxxxx
 
     .LINK
     https://github.com/mozziemozz/M365CallFlowVisualizer
@@ -41,9 +76,9 @@
 
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$docType = "Markdown",
+    [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][Bool]$ShowNestedQueues = $true,
-    [Parameter(Mandatory=$false)][Bool]$ShowAdditionalEntryPoints = $true,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedPhoneNumbers = $true,
     [Parameter(Mandatory=$false)][Switch]$SubSequentRun,
     [Parameter(Mandatory=$false)][string]$PhoneNumber,
     [Parameter(Mandatory=$false)][Bool]$SetClipBoard = $true
@@ -51,7 +86,7 @@ param(
 )
 
 Write-Host "Show nested queues: $ShowNestedQueues" -ForegroundColor Cyan
-Write-Host "Show additional entry points: $ShowAdditionalEntryPoints" -ForegroundColor Cyan
+Write-Host "Show additional entry points: $ShowNestedPhoneNumbers" -ForegroundColor Cyan
 
 
 # From: https://community.idera.com/database-tools/powershell/powertips/b/tips/posts/clearing-all-user-variables
@@ -77,10 +112,10 @@ if ($SubSequentRun) {
 
 function Set-Mermaid {
     param (
-        [Parameter(Mandatory=$true)][String]$docType
+        [Parameter(Mandatory=$true)][String]$DocType
         )
 
-    if ($docType -eq "Markdown") {
+    if ($DocType -eq "Markdown") {
         $mdStart =@"
 ``````mermaid
 flowchart TB
@@ -801,7 +836,7 @@ function Get-CallQueueCallFlow {
 
     }
 
-    if ($cqCallFlowCounter -le 1 -and $ShowAdditionalEntryPoints -eq $true) {
+    if ($cqCallFlowCounter -le 1 -and $ShowNestedPhoneNumbers -eq $true) {
 
         $nestedCallQueues = @()
     
@@ -1223,7 +1258,7 @@ if ($ShowNestedQueues -eq $true) {
 }
 
 
-. Set-Mermaid -docType $docType
+. Set-Mermaid -docType $DocType
 
 Set-Content -Path ".\$(($VoiceApp.Name).Replace(" ","_"))_CallFlow$fileExtension" -Value $mermaidCode -Encoding UTF8
 
