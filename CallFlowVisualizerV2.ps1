@@ -15,7 +15,8 @@
         24.10.2021:     Fixed a bug where Disconnect Call was not reflected in mermaid correctly when CQ timeout action was disconnect call
         30.10.2021:     V2: most of the script logic was moved into functions. Added parameters for specifig resource account (specified by phone number), added support for nested queues, added support to display only 1 queue if timeout and overflow go to the same queue.
         01.11.2021:     Add support to display call queues for an after hours call flow of an auto attendant
-
+        01.11.2021:     Fix issue where additional entry point numbers were not shown on after hours call flow call queues
+        
     .PARAMETER Name
     -DocType
         Specifies the document type.
@@ -78,7 +79,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedQueues = $false,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedQueues = $true,
     [Parameter(Mandatory=$false)][Bool]$ShowNestedPhoneNumbers = $true,
     [Parameter(Mandatory=$false)][Switch]$SubSequentRun,
     [Parameter(Mandatory=$false)][string]$PhoneNumber,
@@ -860,6 +861,8 @@ function Get-CallQueueCallFlow {
         $nestedCallQueues += $MatchingCQ
         $nestedCallQueues += $MatchingTimeoutCQ
         $nestedCallQueues += $MatchingOverFlowCQ
+        $nestedCallQueues += $MatchingCqAaDefaultCallFlow
+        $nestedCallQueues += $MatchingCqAaAfterHoursCallFlow
     
         $nestedCallQueueTopLevelNumbers = @()
         $nestedCallQueueTopLevelNumbersCheck = @()
@@ -869,7 +872,6 @@ function Get-CallQueueCallFlow {
         }
     
         $nestedTopLevelCqCounter ++
-    
     
         foreach ($nestedCallQueue in $nestedCallQueues) {
             
@@ -885,7 +887,7 @@ function Get-CallQueueCallFlow {
                     if ($MatchingCQ.DisplayApplicationInstances -match $cqAssociatedApplicationInstance -and $voiceAppType -eq "Auto Attendant") {
     
                         $nestedCallQueueTopLevelNumberTargetNode = "((Incoming Call at <br> $($nestedCallQueueTopLevelNumber))) -...-> defaultCallFlowAction$($cqCallFlowCounter)`n"
-                        $nestedCallQueueTopLevelNumberNode = "additionalStart$($nestedTopLevelCqCounter)" +$nestedCallQueueTopLevelNumberTargetNode
+                        $nestedCallQueueTopLevelNumberNode = "additionalStart$($nestedTopLevelCqCounter)" + $nestedCallQueueTopLevelNumberTargetNode
                         
                         if ($nestedCallQueueTopLevelNumbersCheck -notcontains $nestedCallQueueTopLevelNumberTargetNode) {
     
@@ -919,6 +921,23 @@ function Get-CallQueueCallFlow {
                     if ($MatchingOverFlowCQ.DisplayApplicationInstances -match $cqAssociatedApplicationInstance) {
                         
                         $nestedCallQueueTopLevelNumberTargetNode = "((Incoming Call at <br> $($nestedCallQueueTopLevelNumber))) -...-> $dynamicCqOverFlowActionTarget$($cqCallFlowCounter)`n"
+                        $nestedCallQueueTopLevelNumberNode = "additionalStart$($nestedTopLevelCqCounter)" +$nestedCallQueueTopLevelNumberTargetNode
+                        
+                        if ($nestedCallQueueTopLevelNumbersCheck -notcontains $nestedCallQueueTopLevelNumberTargetNode) {
+    
+                            $nestedCallQueueTopLevelNumbersCheck += $nestedCallQueueTopLevelNumberTargetNode
+    
+                            $nestedCallQueueTopLevelNumbers += $nestedCallQueueTopLevelNumberNode
+    
+                            $nestedTopLevelCqCounter ++
+    
+                        }
+    
+                    }
+
+                    if ($MatchingCqAaAfterHoursCallFlow.DisplayApplicationInstances -match $cqAssociatedApplicationInstance) {
+                        
+                        $nestedCallQueueTopLevelNumberTargetNode = "((Incoming Call at <br> $($nestedCallQueueTopLevelNumber))) -...-> afterHoursCallFlowAction$($cqCallFlowCounter)`n"
                         $nestedCallQueueTopLevelNumberNode = "additionalStart$($nestedTopLevelCqCounter)" +$nestedCallQueueTopLevelNumberTargetNode
                         
                         if ($nestedCallQueueTopLevelNumbersCheck -notcontains $nestedCallQueueTopLevelNumberTargetNode) {
