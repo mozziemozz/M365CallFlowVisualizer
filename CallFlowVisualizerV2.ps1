@@ -816,7 +816,15 @@ function Get-CallQueueCallFlow {
         "Auto Attendant" {
 
             if ($NestedCQType -eq "TimeOut") {
-                $voiceAppTypeSpecificCallFlow = "cqTimeoutActionTarget$($cqCallFlowCounter -2) --> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+
+                if ($MatchingCqAaDefaultCallFlow -and $MatchingCqAaAfterHoursCallFlow) {
+                    $voiceAppTypeSpecificCallFlow = "cqTimeoutActionTarget$($cqCallFlowCounter -2) --> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+                }
+
+                else {
+                    $voiceAppTypeSpecificCallFlow = "cqTimeoutActionTarget$($cqCallFlowCounter -1) --> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+                }
+                
             }
 
             elseif ($NestedCQType -eq "OverFlow") {
@@ -861,7 +869,6 @@ function Get-CallQueueCallFlow {
         $nestedCallQueues += $MatchingCQ
         $nestedCallQueues += $MatchingTimeoutCQ
         $nestedCallQueues += $MatchingOverFlowCQ
-        $nestedCallQueues += $MatchingCqAaDefaultCallFlow
         $nestedCallQueues += $MatchingCqAaAfterHoursCallFlow
     
         $nestedCallQueueTopLevelNumbers = @()
@@ -884,7 +891,7 @@ function Get-CallQueueCallFlow {
     
                 if ($nestedCallQueueTopLevelNumber) {
     
-                    if ($MatchingCQ.DisplayApplicationInstances -match $cqAssociatedApplicationInstance -and $voiceAppType -eq "Auto Attendant") {
+                    if ($MatchingCQ.DisplayApplicationInstances -match $cqAssociatedApplicationInstance -and $voiceAppType -eq "Auto Attendant" -and $defaultCallFlowTargetType -eq "ApplicationEndpoint") {
     
                         $nestedCallQueueTopLevelNumberTargetNode = "((Incoming Call at <br> $($nestedCallQueueTopLevelNumber))) -...-> defaultCallFlowAction$($cqCallFlowCounter)`n"
                         $nestedCallQueueTopLevelNumberNode = "additionalStart$($nestedTopLevelCqCounter)" + $nestedCallQueueTopLevelNumberTargetNode
@@ -1027,7 +1034,7 @@ function Get-NestedCallQueueCallFlow {
     }
 
     if ($NestedCQType -eq "AaDefaultCallFlow") {
-        $mdNestedCallQueueAaDefaultCallFlow = $mdCallQueueCallFlow
+        $mdInitialCallQueueCallFlow = $mdCallQueueCallFlow
     }
 
     if ($NestedCQType -eq "AaAfterHoursCallFlow") {
@@ -1267,7 +1274,7 @@ if ($voiceAppType -eq "Auto Attendant") {
 
     if ($aaDefaultCallFlowForwardsToCq -eq $true) {
 
-        . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingCqAaDefaultCallFlow.Identity -NestedCQType "AaDefaultCallFlow"
+        . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingCqAaDefaultCallFlow.Identity
 
     }
 
