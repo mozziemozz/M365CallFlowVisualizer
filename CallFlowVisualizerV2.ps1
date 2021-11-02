@@ -16,7 +16,8 @@
         30.10.2021:     V2: most of the script logic was moved into functions. Added parameters for specifig resource account (specified by phone number), added support for nested queues, added support to display only 1 queue if timeout and overflow go to the same queue.
         01.11.2021:     Add support to display call queues for an after hours call flow of an auto attendant
         01.11.2021:     Fix issue where additional entry point numbers were not shown on after hours call flow call queues
-        
+        02.11.2021:     Add support for nested Auto Attendants
+
     .PARAMETER Name
     -DocType
         Specifies the document type.
@@ -80,6 +81,7 @@
 param(
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][Bool]$ShowNestedQueues = $true,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedAttendants = $true,
     [Parameter(Mandatory=$false)][Bool]$ShowNestedPhoneNumbers = $true,
     [Parameter(Mandatory=$false)][Switch]$SubSequentRun,
     [Parameter(Mandatory=$false)][string]$PhoneNumber,
@@ -88,6 +90,7 @@ param(
 )
 
 Write-Host "Show nested queues: $ShowNestedQueues" -ForegroundColor Cyan
+Write-Host "Show nested attendants: $ShowNestedAttendants" -ForegroundColor Cyan
 Write-Host "Show additional entry points: $ShowNestedPhoneNumbers" -ForegroundColor Cyan
 
 
@@ -155,7 +158,9 @@ flowchart TB
     $mermaidCode += $mdIncomingCall
     $mermaidCode += $mdVoiceApp
     $mermaidCode += $mdNodeAdditionalNumbers
-    $mermaidCode += $mdHolidayAndAfterHoursCheck
+    $mermaidCode += $mdInitialHolidayAndAfterHoursCheck
+    $mermaidCode += $mdNestedAaDefaultCallFlowHolidayAndAfterHoursCheck
+    $mermaidCode += $mdNestedAaAfterHoursCallFlowHolidayAndAfterHoursCheck
     $mermaidCode += $mdInitialCallQueueCallFlow
     $mermaidCode += $mdNestedCallQueueAaDefaultCallFlow
     $mermaidCode += $mdNestedCallQueueAaAfterHoursCallFlow
@@ -290,6 +295,9 @@ function Find-AfterHours {
 
 function Get-AutoAttendantHolidaysAndAfterHours {
     param (
+        [Parameter(Mandatory=$true)][String]$VoiceAppId,
+        [Parameter(Mandatory=$false)][Bool]$InvokedByNesting = $false,
+        [Parameter(Mandatory=$false)][String]$NestedAaCallFlowType
     )
 
     if (!$aaCounter) {
@@ -518,8 +526,8 @@ elementAAHoliday$($HolidayCounter)(Schedule <br> $($holidaySchedule.FixedSchedul
 --> $nodeElementHolidayCheck
 $nodeElementHolidayCheck -->|Yes| Holidays
 $nodeElementHolidayCheck -->|No| $nodeElementAfterHoursCheck
-$nodeElementAfterHoursCheck -->|Yes| $mdAutoAttendantDefaultCallFlow
 $nodeElementAfterHoursCheck -->|No| $mdAutoAttendantAfterHoursCallFlow
+$nodeElementAfterHoursCheck -->|Yes| $mdAutoAttendantDefaultCallFlow
 
 $mdSubGraphHolidays
 
@@ -547,8 +555,9 @@ $mdSubGraphHolidays
 
             $mdHolidayAndAfterHoursCheck =@"
 --> $nodeElementAfterHoursCheckCheck
-$nodeElementAfterHoursCheck -->|Yes| $mdAutoAttendantDefaultCallFlow
 $nodeElementAfterHoursCheck -->|No| $mdAutoAttendantAfterHoursCallFlow
+$nodeElementAfterHoursCheck -->|Yes| $mdAutoAttendantDefaultCallFlow
+
 
 "@      
         }
@@ -563,6 +572,24 @@ $nodeElementAfterHoursCheck -->|No| $mdAutoAttendantAfterHoursCallFlow
         }
 
     
+    }
+
+    if ($InvokedByNesting -eq $false) {
+        $mdInitialHolidayAndAfterHoursCheck = $mdHolidayAndAfterHoursCheck
+    }
+
+    else {
+
+        if ($NestedAaCallFlowType -eq "Default") {
+            $mdNestedAaDefaultCallFlowHolidayAndAfterHoursCheck = $mdHolidayAndAfterHoursCheck
+        }
+        elseif ($NestedAaCallFlowType -eq "AfterHours") {
+            $mdNestedAaAfterHoursCallFlowHolidayAndAfterHoursCheck = $mdHolidayAndAfterHoursCheck
+        }
+        else {
+            $mdNestedAaDefaultCallFlowHolidayAndAfterHoursCheck = $null
+            $mdNestedAaAfterHoursCallFlowHolidayAndAfterHoursCheck = $null
+        }
     }
 
 }
@@ -840,7 +867,7 @@ function Get-CallQueueCallFlow {
             }
 
             else {
-                $voiceAppTypeSpecificCallFlow = "defaultCallFlowAction$($cqCallFlowCounter)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName) --> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
+                $voiceAppTypeSpecificCallFlow = "defaultCallFlowAction$($aaDefaultCallFlowCounter)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName) --> cqGreeting$($cqCallFlowCounter)>Greeting <br> $CqGreeting]"
             }
 
         }
@@ -1044,7 +1071,9 @@ function Get-NestedCallQueueCallFlow {
 }
 function Get-AutoAttendantDefaultCallFlow {
     param (
-        [Parameter(Mandatory=$false)][String]$VoiceAppId
+        [Parameter(Mandatory=$false)][String]$VoiceAppId,
+        [Parameter(Mandatory=$false)][Bool]$InvokedByNesting = $false,
+        [Parameter(Mandatory=$false)][String]$NestedAaCallFlowType
     )
 
     if (!$aaDefaultCallFlowCounter) {
@@ -1090,6 +1119,12 @@ function Get-AutoAttendantDefaultCallFlow {
                     $defaultCallFlowTargetTypeFriendly = "[Auto Attendant"
                     $defaultCallFlowTargetName = "$($MatchingAA.Name)]"
 
+                    if ($InvokedByNesting -eq $false) {
+                        $aaDefaultCallFlowForwardsToAa = $true
+                        $aaDefaultCallFlowNestedAaIdentity = $MatchingAA.Identity
+                    }
+
+
                 }
 
                 else {
@@ -1098,6 +1133,14 @@ function Get-AutoAttendantDefaultCallFlow {
 
                     $defaultCallFlowTargetTypeFriendly = "[Call Queue"
                     $defaultCallFlowTargetName = "$($MatchingCqAaDefaultCallFlow.Name)]"
+
+                    if ($InvokedByNesting -eq $false) {
+                        $aaDefaultCallFlowForwardsToCq = $true
+                    }
+
+                    else {
+                        $aaNestedDefaultCallFlowForwardsToCq = $true
+                    }
 
                 }
 
@@ -1114,8 +1157,6 @@ function Get-AutoAttendantDefaultCallFlow {
         if ($defaultCallFlowTargetTypeFriendly -eq "[Call Queue") {
 
             $MatchingCQIdentity = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id}).Identity
-
-            $aaDefaultCallFlowForwardsToCq = $true
 
             $mdAutoAttendantDefaultCallFlow = "defaultCallFlowGreeting$($aaDefaultCallFlowCounter)>$defaultCallFlowGreeting] --> defaultCallFlow$($aaDefaultCallFlowCounter)($defaultCallFlowAction) --> defaultCallFlowAction$($aaDefaultCallFlowCounter)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)"
 
@@ -1143,7 +1184,9 @@ function Get-AutoAttendantDefaultCallFlow {
 
 function Get-AutoAttendantAfterHoursCallFlow {
     param (
-        [Parameter(Mandatory=$false)][String]$VoiceAppId
+        [Parameter(Mandatory=$false)][String]$VoiceAppId,
+        [Parameter(Mandatory=$false)][Bool]$InvokedByNesting = $false,
+        [Parameter(Mandatory=$false)][String]$NestedAaCallFlowType
     )
 
     if (!$aaAfterHoursCallFlowCounter) {
@@ -1182,6 +1225,12 @@ function Get-AutoAttendantAfterHoursCallFlow {
                     $afterHoursCallFlowTargetTypeFriendly = "[Auto Attendant"
                     $afterHoursCallFlowTargetName = "$($MatchingAA.Name)]"
 
+                    if ($InvokedByNesting -eq $false) {
+                        $aaAfterHoursCallFlowForwardsToAa = $true
+                        $aaAfterHoursCallFlowNestedAaIdentity = $MatchingAA.Identity
+
+                    }
+
                 }
 
                 else {
@@ -1190,6 +1239,11 @@ function Get-AutoAttendantAfterHoursCallFlow {
 
                     $afterHoursCallFlowTargetTypeFriendly = "[Call Queue"
                     $afterHoursCallFlowTargetName = "$($MatchingCqAaAfterHoursCallFlow.Name)]"
+
+                    if ($InvokedByNesting -eq $false) {
+                        $aaAfterHoursCallFlowForwardsToCq = $true
+                    }
+
 
                 }
 
@@ -1206,8 +1260,6 @@ function Get-AutoAttendantAfterHoursCallFlow {
         if ($afterHoursCallFlowTargetTypeFriendly -eq "[Call Queue") {
 
             $MatchingCQIdentity = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $aa.AfterHoursCallFlow.Menu.MenuOptions.CallTarget.Id}).Identity
-
-            $aaAfterHoursCallFlowForwardsToCq = $true
 
             $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowCounter)>$AfterHoursCallFlowGreeting] --> AfterHoursCallFlow$($aaAfterHoursCallFlowCounter)($AfterHoursCallFlowAction) --> AfterHoursCallFlowAction$($aaAfterHoursCallFlowCounter)($AfterHoursCallFlowTargetTypeFriendly <br> $AfterHoursCallFlowTargetName)"
 
@@ -1265,7 +1317,7 @@ if ($voiceAppType -eq "Auto Attendant") {
 
         . Get-AutoAttendantDefaultCallFlow -VoiceAppId $VoiceApp.Identity
 
-        $mdHolidayAndAfterHoursCheck =@"
+        $mdInitialHolidayAndAfterHoursCheck =@"
         --> $mdAutoAttendantDefaultCallFlow
         
 "@
@@ -1281,6 +1333,49 @@ if ($voiceAppType -eq "Auto Attendant") {
     if ($aaAfterHoursCallFlowForwardsToCq -eq $true) {
 
         . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingCqAaAfterHoursCallFlow.Identity -NestedCQType "AaAfterHoursCallFlow"
+
+    }
+
+    if ($ShowNestedAttendants -eq $true) {
+
+        if ($aaDefaultCallFlowForwardsToAa -eq $true) {
+            . Find-Holidays -VoiceAppId $aaDefaultCallFlowNestedAaIdentity
+            . Find-AfterHours -VoiceAppId $aaDefaultCallFlowNestedAaIdentity
+
+            if ($aaHasHolidays -eq $true -or $aaHasAfterHours -eq $true) {
+
+                . Get-AutoAttendantDefaultCallFlow -VoiceAppId $aaDefaultCallFlowNestedAaIdentity -InvokedByNesting $true -NestedAaCallFlowType "Default"
+        
+                . Get-AutoAttendantAfterHoursCallFlow -VoiceAppId $aaDefaultCallFlowNestedAaIdentity -InvokedByNesting $true -NestedAaCallFlowType "Default"
+        
+                . Get-AutoAttendantHolidaysAndAfterHours -VoiceAppId $aaDefaultCallFlowNestedAaIdentity -InvokedByNesting $true -NestedAaCallFlowType "Default"
+        
+            }
+        
+            else {
+        
+                . Get-AutoAttendantDefaultCallFlow -VoiceAppId $aaDefaultCallFlowNestedAaIdentity -InvokedByNesting $true -NestedAaCallFlowType "Default"
+        
+                $mdNestedAaDefaultCallFlowHolidayAndAfterHoursCheck =@"
+defaultCallFlowAction1 --> $mdAutoAttendantDefaultCallFlow
+                
+"@
+        
+            }
+        
+            if ($aaNestedDefaultCallFlowForwardsToCq -eq $true) {
+        
+                . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingCqAaDefaultCallFlow.Identity
+        
+            }
+        
+            if ($aaAfterHoursCallFlowForwardsToCq -eq $true) {
+        
+                . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingCqAaAfterHoursCallFlow.Identity -NestedCQType "AaAfterHoursCallFlow"
+        
+            }
+
+        }
 
     }
 
