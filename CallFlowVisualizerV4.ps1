@@ -156,6 +156,10 @@ flowchart TB
 
     $mermaidCode += $mdStart
     $mermaidCode += $mdIncomingCall
+    
+}
+
+function Add-Mermaid {
     $mermaidCode += $mdVoiceApp
     $mermaidCode += $mdNodeAdditionalNumbers
     $mermaidCode += $mdInitialHolidayAndAfterHoursCheck
@@ -167,7 +171,6 @@ flowchart TB
     $mermaidCode += $mdNestedCallQueueTimeOutCallFlow
     $mermaidCode += $mdNestedCallQueueOverFlowCallFlow
     $mermaidCode += $mdEnd
-    
 }
 
 function Get-VoiceApp {
@@ -1338,100 +1341,8 @@ if ($voiceAppType -eq "Auto Attendant") {
 
     }
 
-<#     if ($aaDefaultCallFlowForwardsToCq -eq $true) {
-
-        . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingCqAaDefaultCallFlow.Identity
-
-    }
-
-    if ($aaAfterHoursCallFlowForwardsToCq -eq $true) {
-
-        . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingCqAaAfterHoursCallFlow.Identity -NestedCQType "AaAfterHoursCallFlow"
-
-    } #>
-
-    if ($ShowNestedAttendants -eq $true) {
-
-        if ($aaDefaultCallFlowForwardsToAa -eq $true) {
-            . Find-Holidays -VoiceAppId $aaDefaultCallFlowNestedAaIdentity
-            . Find-AfterHours -VoiceAppId $aaDefaultCallFlowNestedAaIdentity
-
-            if ($aaHasHolidays -eq $true -or $aaHasAfterHours -eq $true) {
-
-                . Get-AutoAttendantDefaultCallFlow -VoiceAppId $aaDefaultCallFlowNestedAaIdentity -InvokedByNesting $true -NestedAaCallFlowType "Default"
-        
-                . Get-AutoAttendantAfterHoursCallFlow -VoiceAppId $aaDefaultCallFlowNestedAaIdentity -InvokedByNesting $true -NestedAaCallFlowType "Default"
-        
-                . Get-AutoAttendantHolidaysAndAfterHours -VoiceAppId $aaDefaultCallFlowNestedAaIdentity -InvokedByNesting $true -NestedAaCallFlowType "Default"
-        
-            }
-        
-            else {
-        
-                . Get-AutoAttendantDefaultCallFlow -VoiceAppId $aaDefaultCallFlowNestedAaIdentity -InvokedByNesting $true -NestedAaCallFlowType "Default"
-        
-                $mdNestedAaDefaultCallFlowHolidayAndAfterHoursCheck =@"
-defaultCallFlowAction1 --> $mdAutoAttendantDefaultCallFlow
-                
-"@
-        
-            }
-        
-        }
-        
-<#         if ($aaNestedDefaultCallFlowForwardsToCq -eq $true) {
-    
-            . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingCqAaDefaultCallFlow.Identity
-    
-        }
-    
-        if ($aaNestedAfterHoursCallFlowForwardsToCq -eq $true) {
-    
-            . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingCqAaAfterHoursCallFlow.Identity -NestedCQType "AaAfterHoursCallFlow"
-    
-        } #>
 
 
-        if ($aaAfterHoursCallFlowForwardsToAa -eq $true) {
-            . Find-Holidays -VoiceAppId $aaAfterHoursCallFlowNestedAaIdentity
-            . Find-AfterHours -VoiceAppId $aaAfterHoursCallFlowNestedAaIdentity
-
-            if ($aaHasHolidays -eq $true -or $aaHasAfterHours -eq $true) {
-
-                . Get-AutoAttendantDefaultCallFlow -VoiceAppId $aaAfterHoursCallFlowNestedAaIdentity -InvokedByNesting $true -NestedAaCallFlowType "AfterHours"
-        
-                . Get-AutoAttendantAfterHoursCallFlow -VoiceAppId $aaAfterHoursCallFlowNestedAaIdentity -InvokedByNesting $true -NestedAaCallFlowType "AfterHours"
-        
-                . Get-AutoAttendantHolidaysAndAfterHours -VoiceAppId $aaAfterHoursCallFlowNestedAaIdentity -InvokedByNesting $true -NestedAaCallFlowType "AfterHours"
-        
-            }
-        
-            else {
-        
-                . Get-AutoAttendantDefaultCallFlow -VoiceAppId $aaAfterHoursCallFlowNestedAaIdentity -InvokedByNesting $true -NestedAaCallFlowType "AfterHours"
-        
-                $mdNestedAaAfterHoursCallFlowHolidayAndAfterHoursCheck =@"
-afterHoursCallFlowAction1 --> $mdAutoAttendantDefaultCallFlow
-                
-"@
-        
-            }
-
-        }
-        
-<#             if ($aaNestedDefaultCallFlowForwardsToCq -eq $true) {
-        
-                . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingCqAaDefaultCallFlow.Identity
-        
-            }
-        
-            if ($aaNestedAfterHoursCallFlowForwardsToCq -eq $true) {
-        
-                . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingCqAaAfterHoursCallFlow.Identity -NestedCQType "AaAfterHoursCallFlow"
-        
-            } #>
-
-    }
 
 }
 
@@ -1439,28 +1350,10 @@ elseif ($voiceAppType -eq "Call Queue") {
     . Get-CallQueueCallFlow -MatchingCQIdentity $VoiceApp.Identity
 }
 
-if ($ShowNestedQueues -eq $true) {
-
-    if ($MatchingTimeoutCQ) {
-        . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingTimeoutCQ.Identity -NestedCQType "TimeOut"
-    }
-
-    else {
-        $mdNestedCallQueueTimeOutCallFlow = $null
-    }
-
-    if ($MatchingOverFlowCQ -and $MatchingOverFlowCQ.Identity -ne $MatchingTimeoutCQ.Identity) {
-        . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingOverFlowCQ.Identity -NestedCQType "OverFlow"
-    }
-
-    else {
-        $mdNestedCallQueueOverFlowCallFlow = $null
-    }
-
-}
-
 
 . Set-Mermaid -docType $DocType
+
+. Add-Mermaid
 
 Set-Content -Path ".\$(($VoiceApp.Name).Replace(" ","_"))_CallFlow$fileExtension" -Value $mermaidCode -Encoding UTF8
 
@@ -1470,4 +1363,3 @@ if ($SetClipBoard -eq $true) {
 
     Write-Host "Mermaid code copied to clipboard. Paste it on https://mermaid.live" -ForegroundColor Cyan
 }
-
