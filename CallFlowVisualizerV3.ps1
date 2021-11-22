@@ -64,8 +64,12 @@ flowchart TB
 
     $mermaidCode = @()
 
-    $mermaidCode += $mdStart
-    $mermaidCode += $mdIncomingCall
+    if ($voiceAppCounter -le 1) {
+        $mermaidCode += $mdStart
+        $mermaidCode += $mdIncomingCall
+
+    }
+
     $mermaidCode += $mdNodeAdditionalNumbers
     $mermaidCode += $mdInitialHolidayAndAfterHoursCheck
     $mermaidCode += $mdInitialCallQueueCallFlow
