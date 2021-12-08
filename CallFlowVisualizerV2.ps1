@@ -80,9 +80,9 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedQueues = $false,
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedAttendants = $false,
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedPhoneNumbers = $false,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedQueues = $true,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedAttendants = $true,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedPhoneNumbers = $true,
     [Parameter(Mandatory=$false)][Switch]$SubSequentRun,
     [Parameter(Mandatory=$false)][string]$PhoneNumber,
     [Parameter(Mandatory=$false)][Bool]$SetClipBoard = $true
@@ -1338,7 +1338,7 @@ if ($voiceAppType -eq "Auto Attendant") {
 
     }
 
-<#     if ($aaDefaultCallFlowForwardsToCq -eq $true) {
+    if ($aaDefaultCallFlowForwardsToCq -eq $true) {
 
         . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingCqAaDefaultCallFlow.Identity
 
@@ -1348,7 +1348,7 @@ if ($voiceAppType -eq "Auto Attendant") {
 
         . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingCqAaAfterHoursCallFlow.Identity -NestedCQType "AaAfterHoursCallFlow"
 
-    } #>
+    }
 
     if ($ShowNestedAttendants -eq $true) {
 
@@ -1379,7 +1379,7 @@ defaultCallFlowAction1 --> $mdAutoAttendantDefaultCallFlow
         
         }
         
-<#         if ($aaNestedDefaultCallFlowForwardsToCq -eq $true) {
+        if ($aaNestedDefaultCallFlowForwardsToCq -eq $true) {
     
             . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingCqAaDefaultCallFlow.Identity
     
@@ -1389,7 +1389,7 @@ defaultCallFlowAction1 --> $mdAutoAttendantDefaultCallFlow
     
             . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingCqAaAfterHoursCallFlow.Identity -NestedCQType "AaAfterHoursCallFlow"
     
-        } #>
+        }
 
 
         if ($aaAfterHoursCallFlowForwardsToAa -eq $true) {
@@ -1419,7 +1419,7 @@ afterHoursCallFlowAction1 --> $mdAutoAttendantDefaultCallFlow
 
         }
         
-<#             if ($aaNestedDefaultCallFlowForwardsToCq -eq $true) {
+            if ($aaNestedDefaultCallFlowForwardsToCq -eq $true) {
         
                 . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingCqAaDefaultCallFlow.Identity
         
@@ -1429,7 +1429,7 @@ afterHoursCallFlowAction1 --> $mdAutoAttendantDefaultCallFlow
         
                 . Get-NestedCallQueueCallFlow -MatchingCQIdentity $MatchingCqAaAfterHoursCallFlow.Identity -NestedCQType "AaAfterHoursCallFlow"
         
-            } #>
+            }
 
     }
 

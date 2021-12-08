@@ -1,245 +1,51 @@
-<#
-    .SYNOPSIS
-    Reads the configuration from a Microsoft 365 Phone System auto attendant or call queue and visualizes the call flow using mermaid-js.
-
-    .DESCRIPTION
-    Presents a selection of available auto attendants or call queues and then reads the config of that auto attendant and writes it into a mermaid-js flowchart file.
-
-    Author:             Martin Heusser
-    Version:            2.0.0
-    Revision:
-        20.10.2021:     Creation
-        21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
-        21.10.2021:     Add support for top level call queues (besides auto attendants)
-        21.10.2021:     Move call queue specific operations into a function
-        24.10.2021:     Fixed a bug where Disconnect Call was not reflected in mermaid correctly when CQ timeout action was disconnect call
-        30.10.2021:     V2: most of the script logic was moved into functions. Added parameters for specifig resource account (specified by phone number), added support for nested queues, added support to display only 1 queue if timeout and overflow go to the same queue.
-        01.11.2021:     Add support to display call queues for an after hours call flow of an auto attendant
-        01.11.2021:     Fix issue where additional entry point numbers were not shown on after hours call flow call queues
-        02.11.2021:     Add support for nested Auto Attendants
-
-    .PARAMETER Name
-    -DocType
-        Specifies the document type.
-        Required:           false
-        Type:               string
-        Accepted values:    Markdown, Mermaid
-        Default value:      Markdown
-    
-    -ShowNestedQueues
-        Specifies whether or not to also display the call flows of nested call queues.
-        Required:           false
-        Type:               boolean
-        Default value:      false
-
-    -ShowNestedPhoneNumbers
-        Specifies whether or not to also display phone numbers of call queues which are nested behind another call queue or auto attendant.
-        Required:           false
-        Type:               boolean
-        Default value:      false
-    
-    -SetClipBoard
-        Specifies if the mermaid code should be copied to the clipboard after the script has finished.
-        Required:           false
-        Type:               boolean
-        Default value:      false
-
-    -PhoneNumber
-        If provided, you won't be provided with a selection of available resource accounts. You can directly specify a resource account by phone number.
-        Required:           false
-        Type:               string
-        Accepted values:    Phone number without leading + or tel: prefix, no whitespaces
-        Default value:      
-
-    .INPUTS
-        None.
-
-    .OUTPUTS
-        Files:
-            - *.md
-            - *.mmd
-
-    .EXAMPLE
-        .\CallFlowVisualizerV2.ps1
-
-    .EXAMPLE
-        .\CallFlowVisualizerV2.ps1 -ShowNestedQueues $true -ShowNestedPhoneNumbers $true
-
-    .EXAMPLE
-        .\CallFlowVisualizerV2.ps1 -ShowNestedQueues $true -ShowNestedPhoneNumbers $true -DocType Mermaid -SetClipBoard $true
-
-    .EXAMPLE
-        .\CallFlowVisualizerV2.ps1 -ShowNestedQueues $true -ShowNestedPhoneNumbers $true -DocType Markdown -PhoneNumber 4144xxxxxxx
-
-    .LINK
-    https://github.com/mozziemozz/M365CallFlowVisualizer
-#>
-
-#Requires -Modules MsOnline, MicrosoftTeams
-
-[CmdletBinding()]
-param(
-    [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedQueues = $false,
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedAttendants = $false,
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedPhoneNumbers = $false,
-    [Parameter(Mandatory=$false)][Switch]$SubSequentRun,
-    [Parameter(Mandatory=$false)][string]$PhoneNumber,
-    [Parameter(Mandatory=$false)][Bool]$SetClipBoard = $true
-
-)
-
-Write-Host "Show nested queues: $ShowNestedQueues" -ForegroundColor Cyan
-Write-Host "Show nested attendants: $ShowNestedAttendants" -ForegroundColor Cyan
-Write-Host "Show additional entry points: $ShowNestedPhoneNumbers" -ForegroundColor Cyan
 
 
-# From: https://community.idera.com/database-tools/powershell/powertips/b/tips/posts/clearing-all-user-variables
-function Get-UserVariable ($Name = '*') {
-# these variables may exist in certain environments (like ISE, or after use of foreach)
-$special = 'ps','psise','psunsupportedconsoleapplications', 'foreach', 'profile'
-
-$ps = [PowerShell]::Create()
-$null = $ps.AddScript('$null=$host;Get-Variable') 
-$reserved = $ps.Invoke() | Select-Object -ExpandProperty Name
-$ps.Runspace.Close()
-$ps.Dispose()
-Get-Variable -Scope Global | 
-    Where-Object Name -like $Name |
-    Where-Object { $reserved -notcontains $_.Name } |
-    Where-Object { $special -notcontains $_.Name } |
-    Where-Object Name 
-}
-
-if ($SubSequentRun) {
-
-    $UserVariables = Get-UserVariable
-
-    if ($UserVariables) {
-        Get-UserVariable | Remove-Variable
-    }
-
-}
-
-function Set-Mermaid {
+function Select-AutoAttendantsAndCallQueues {
     param (
-        [Parameter(Mandatory=$true)][String]$DocType
-        )
+        [Parameter(Mandatory=$false)][String]$VoiceAppId
+    )
 
-    if ($DocType -eq "Markdown") {
-        $mdStart =@"
-``````mermaid
-flowchart TB
-"@
+    if ($VoiceAppId) {
 
-        $mdEnd =@"
+        try {
+            $VoiceApp = Get-CsAutoAttendant -Identity $VoiceAppId
+            $VoiceAppType = "AutoAttendant"
+        }
+        catch {
+            $VoiceApp = Get-CsCallQueue -Identity $VoiceAppId
+            $VoiceAppType = "CallQueue"
+        }
+        finally {
+            Write-Host $VoiceApp.Name
+            Write-Host $VoiceAppType
+        }
 
-``````
-"@
-
-        $fileExtension = ".md"
     }
 
     else {
-        $mdStart =@"
-flowchart TB
-"@
 
-        $mdEnd =@"
+        $TenantAutoAttendants = (Get-CsAutoAttendant | Select-Object Name, Identity)
+        $TenantCallQueues = (Get-CsCallQueue | Select-Object Name, Identity)
 
-"@
+        $VoiceAppId = (($TenantAutoAttendants += $TenantCallQueues) | Out-GridView -Title "Please choose an auto attendant or a call queue from the list." -PassThru).Identity
 
-        $fileExtension = ".mmd"
+        try {
+            $VoiceApp = Get-CsAutoAttendant -Identity $VoiceAppId
+            $VoiceAppType = "AutoAttendant"
+        }
+        catch {
+            $VoiceApp = Get-CsCallQueue -Identity $VoiceAppId
+            $VoiceAppType = "CallQueue"
+        }
+        finally {
+            Write-Host $VoiceApp.Name
+            Write-Host $VoiceAppType
+        }
+
     }
 
-    $mermaidCode = @()
-
-    $mermaidCode += $mdStart
-    #$mermaidCode += $mdIncomingCall
-    
 }
 
-function Add-Mermaid {
-    $mermaidCode += $mdVoiceApp
-    $mermaidCode += $mdNodeAdditionalNumbers
-    $mermaidCode += $mdInitialHolidayAndAfterHoursCheck
-    $mermaidCode += $mdNestedAaDefaultCallFlowHolidayAndAfterHoursCheck
-    $mermaidCode += $mdNestedAaAfterHoursCallFlowHolidayAndAfterHoursCheck
-    $mermaidCode += $mdInitialCallQueueCallFlow
-    $mermaidCode += $mdNestedCallQueueAaDefaultCallFlow
-    $mermaidCode += $mdNestedCallQueueAaAfterHoursCallFlow
-    $mermaidCode += $mdNestedCallQueueTimeOutCallFlow
-    $mermaidCode += $mdNestedCallQueueOverFlowCallFlow
-    $mermaidCode += $mdEnd
-}
-
-function Get-VoiceApp {
-    param (
-        [Parameter(Mandatory=$false)][String]$PhoneNumber
-        )
-
-        if ($PhoneNumber) {
-            $resourceAccount = Get-CsOnlineApplicationInstance | Where-Object {$_.PhoneNumber -match $PhoneNumber}
-        }
-
-        else {
-            # Get resource account (it was a design choice to select a resource account instead of a voice app, people tend to know the phone number and want to know what happens when a particular number is called.)
-            $resourceAccount = Get-CsOnlineApplicationInstance | Where-Object {$_.PhoneNumber -notlike ""} | Select-Object DisplayName, PhoneNumber, ObjectId, ApplicationId | Out-GridView -PassThru -Title "Choose an auto attendant or a call queue from the list:"
-
-        }
-
-        switch ($resourceAccount.ApplicationId) {
-            # Application Id for auto attendants
-            "ce933385-9390-45d1-9512-c8d228074e07" {
-                $voiceAppType = "Auto Attendant"
-                $voiceApp = Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -contains $resourceAccount.ObjectId}
-            }
-            # Application Id for call queues
-            "11cd3e2e-fccb-42ad-ad00-878b93575e07" {
-                $voiceAppType = "Call Queue"
-                $voiceApp = Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $resourceAccount.ObjectId}
-            }
-        }
-
-        # Create ps object to store properties from voice app and resource account
-        $voiceAppProperties = New-Object -TypeName psobject
-        $voiceAppProperties | Add-Member -MemberType NoteProperty -Name "PhoneNumber" -Value $($resourceAccount.PhoneNumber).Replace("tel:","")
-        $voiceAppProperties | Add-Member -MemberType NoteProperty -Name "DisplayName" -Value $VoiceApp.Name
-
-        if (!$voiceAppCounter) {
-            $voiceAppCounter = 0
-        }
-
-        $voiceAppCounter ++
-        
-
-        if (!$resourceAccountCounter) {
-            $resourceAccountCounter = 0
-        }
-
-        $resourceAccountCounter ++
-
-
-        $mdIncomingCall = "start$($resourceAccountCounter)((Incoming Call at <br> $($voiceAppProperties.PhoneNumber))) --> "
-        $mdVoiceApp = "voiceApp$($voiceAppCounter)([$($voiceAppType) <br> $($voiceAppProperties.DisplayName)])"
-
-        $mdNodeAdditionalNumbers = @()
-
-        foreach ($ApplicationInstance in ($VoiceApp.ApplicationInstances | Where-Object {$_ -notcontains $resourceAccount.ObjectId})) {
-
-            $resourceAccountCounter ++
-
-            $additionalResourceAccount = ((Get-CsOnlineApplicationInstance -Identity $ApplicationInstance).PhoneNumber) -replace ("tel:","")
-
-            $mdNodeAdditionalNumber = "start$($resourceAccountCounter)((Incoming Call at <br> $additionalResourceAccount)) -.-> voiceApp$($voiceAppCounter)"
-
-            $mdNodeAdditionalNumbers += $mdNodeAdditionalNumber
-
-        }
-
-        
-
-}
 
 function Find-Holidays {
     param (
@@ -316,7 +122,7 @@ function Get-AutoAttendantHolidaysAndAfterHours {
 
         # Create empty mermaid subgraph for holidays
         $mdSubGraphHolidays =@"
-subgraph $($aaCounter)-Holidays
+subgraph Holidays-$($aaCounter)
     direction LR
 "@
 
@@ -527,7 +333,7 @@ elementAAHoliday$($aaCounter)-$($HolidayCounter)(Schedule <br> $($holidaySchedul
 
             $mdHolidayAndAfterHoursCheck =@"
 --> $nodeElementHolidayCheck
-$nodeElementHolidayCheck -->|Yes| $($aaCounter)-Holidays
+$nodeElementHolidayCheck -->|Yes| Holidays-$($aaCounter)
 $nodeElementHolidayCheck -->|No| $nodeElementAfterHoursCheck
 $nodeElementAfterHoursCheck -->|No| $mdAutoAttendantAfterHoursCallFlow
 $nodeElementAfterHoursCheck -->|Yes| $mdAutoAttendantDefaultCallFlow
@@ -540,7 +346,7 @@ $mdSubGraphHolidays
         else {
             $mdHolidayAndAfterHoursCheck =@"
 --> $nodeElementHolidayCheck
-$nodeElementHolidayCheck -->|Yes| $($aaCounter)-Holidays
+$nodeElementHolidayCheck -->|Yes| Holidays-$($aaCounter)
 $nodeElementHolidayCheck -->|No| $mdAutoAttendantDefaultCallFlow
 
 $mdSubGraphHolidays
@@ -594,6 +400,230 @@ $nodeElementAfterHoursCheck -->|Yes| $mdAutoAttendantDefaultCallFlow
             $mdNestedAaAfterHoursCallFlowHolidayAndAfterHoursCheck = $null
         }
     }
+
+}
+
+function Get-AutoAttendantDefaultCallFlow {
+    param (
+        [Parameter(Mandatory=$false)][String]$VoiceAppId,
+        [Parameter(Mandatory=$false)][Bool]$InvokedByNesting = $false,
+        [Parameter(Mandatory=$false)][String]$NestedAaCallFlowType
+    )
+
+    if (!$aaDefaultCallFlowCounter) {
+        $aaDefaultCallFlowCounter = 0
+    }
+
+    $aaDefaultCallFlowCounter ++
+
+    # Get the current auto attendants default call flow and default call flow action
+    $defaultCallFlow = $aa.DefaultCallFlow
+    $defaultCallFlowAction = $aa.DefaultCallFlow.Menu.MenuOptions.Action.Value
+
+    # Get the current auto attentans default call flow greeting
+    if (!$defaultCallFlow.Greetings.ActiveType.Value){
+        $defaultCallFlowGreeting = "Greeting <br> None"
+    }
+
+    else {
+        $defaultCallFlowGreeting = "Greeting <br> $($defaultCallFlow.Greetings.ActiveType.Value)"
+    }
+
+    # Check if the default callflow action is transfer call to target
+    if ($defaultCallFlowAction -eq "TransferCallToTarget") {
+
+        # Get transfer target type
+        $defaultCallFlowTargetType = $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Type.Value
+
+        # Switch through transfer target type and set variables accordingly
+        switch ($defaultCallFlowTargetType) {
+            User { 
+                $defaultCallFlowTargetTypeFriendly = "User"
+                $defaultCallFlowTargetName = (Get-MsolUser -ObjectId $($aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName}
+            ExternalPstn { 
+                $defaultCallFlowTargetTypeFriendly = "External PSTN"
+                $defaultCallFlowTargetName = ($aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id).Replace("tel:","")}
+            ApplicationEndpoint {
+
+                # Check if application endpoint is auto attendant or call queue
+                $MatchingAA = Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id}
+
+                if ($MatchingAA) {
+
+                    $defaultCallFlowTargetTypeFriendly = "[Auto Attendant"
+                    $defaultCallFlowTargetName = "$($MatchingAA.Name)]"
+
+                    if ($InvokedByNesting -eq $false) {
+                        $aaDefaultCallFlowForwardsToAa = $true
+                        $aaDefaultCallFlowNestedAaIdentity = $MatchingAA.Identity
+                    }
+
+
+                }
+
+                else {
+
+                    $MatchingCqAaDefaultCallFlow = Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id}
+
+                    $defaultCallFlowTargetTypeFriendly = "[Call Queue"
+                    $defaultCallFlowTargetName = "$($MatchingCqAaDefaultCallFlow.Name)]"
+
+                    if ($InvokedByNesting -eq $false) {
+                        $aaDefaultCallFlowForwardsToCq = $true
+                    }
+
+                    else {
+                        $aaNestedDefaultCallFlowForwardsToCq = $true
+                    }
+
+                }
+
+            }
+            SharedVoicemail {
+
+                $defaultCallFlowTargetTypeFriendly = "Voicemail"
+                $defaultCallFlowTargetName = (Get-MsolGroup -ObjectId $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id).DisplayName
+
+            }
+        }
+
+        # Check if transfer target type is call queue
+        if ($defaultCallFlowTargetTypeFriendly -eq "[Call Queue") {
+
+            $MatchingCQIdentity = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id}).Identity
+
+            $mdAutoAttendantDefaultCallFlow = "defaultCallFlowGreeting$($aaDefaultCallFlowCounter)>$defaultCallFlowGreeting] --> defaultCallFlow$($aaDefaultCallFlowCounter)($defaultCallFlowAction) --> defaultCallFlowAction$($aaDefaultCallFlowCounter)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)"
+
+            
+        } # End if transfer target type is call queue
+
+        # Check if default callflow action target is trasnfer call to target but something other than call queue
+        else {
+
+            $mdAutoAttendantDefaultCallFlow = "defaultCallFlowGreeting$($aaDefaultCallFlowCounter)>$defaultCallFlowGreeting] --> defaultCallFlow$($aaDefaultCallFlowCounter)($defaultCallFlowAction) --> defaultCallFlowAction$($aaDefaultCallFlowCounter)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)"
+
+        }
+
+    }
+
+    # Check if default callflow action is disconnect call
+    elseif ($defaultCallFlowAction -eq "DisconnectCall") {
+
+        $mdAutoAttendantDefaultCallFlow = "defaultCallFlowGreeting$($aaDefaultCallFlowCounter)>$defaultCallFlowGreeting] --> defaultCallFlow$($aaDefaultCallFlowCounter)(($defaultCallFlowAction))"
+
+    }
+    
+    
+}
+
+function Get-AutoAttendantAfterHoursCallFlow {
+    param (
+        [Parameter(Mandatory=$false)][String]$VoiceAppId,
+        [Parameter(Mandatory=$false)][Bool]$InvokedByNesting = $false,
+        [Parameter(Mandatory=$false)][String]$NestedAaCallFlowType
+    )
+
+    if (!$aaAfterHoursCallFlowCounter) {
+        $aaAfterHoursCallFlowCounter = 0
+    }
+
+    $aaAfterHoursCallFlowCounter ++
+
+    # Get after hours call flow
+    $afterHoursCallFlow = ($aa.CallFlows | Where-Object {$_.Name -Match "after hours"})
+    $afterHoursCallFlowAction = ($aa.CallFlows | Where-Object {$_.Name -Match "after hours"}).Menu.MenuOptions.Action.Value
+
+    # Get after hours greeting
+    $afterHoursCallFlowGreeting = "Greeting <br> $($afterHoursCallFlow.Greetings.ActiveType.Value)"
+
+    # Check if after hours action is transfer call to target
+    if ($afterHoursCallFlowAction -eq "TransferCallToTarget") {
+
+        $afterHoursCallFlowTargetType = $afterHoursCallFlow.Menu.MenuOptions.CallTarget.Type.Value
+
+        # Switch through after hours call flow target type
+        switch ($afterHoursCallFlowTargetType) {
+            User { 
+                $afterHoursCallFlowTargetTypeFriendly = "User"
+                $afterHoursCallFlowTargetName = (Get-MsolUser -ObjectId $($afterHoursCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName}
+            ExternalPstn { 
+                $afterHoursCallFlowTargetTypeFriendly = "External PSTN"
+                $afterHoursCallFlowTargetName = ($afterHoursCallFlow.Menu.MenuOptions.CallTarget.Id).Replace("tel:","")}
+            ApplicationEndpoint {
+
+                # Check if application endpoint is an auto attendant or a call queue
+                $MatchingAA = Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $afterHoursCallFlow.Menu.MenuOptions.CallTarget.Id}
+
+                if ($MatchingAA) {
+
+                    $afterHoursCallFlowTargetTypeFriendly = "[Auto Attendant"
+                    $afterHoursCallFlowTargetName = "$($MatchingAA.Name)]"
+
+                    if ($InvokedByNesting -eq $false) {
+                        $aaAfterHoursCallFlowForwardsToAa = $true
+                        $aaAfterHoursCallFlowNestedAaIdentity = $MatchingAA.Identity
+
+                    }
+
+                }
+
+                else {
+
+                    $MatchingCqAaAfterHoursCallFlow = Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $afterHoursCallFlow.Menu.MenuOptions.CallTarget.Id}
+
+                    $afterHoursCallFlowTargetTypeFriendly = "[Call Queue"
+                    $afterHoursCallFlowTargetName = "$($MatchingCqAaAfterHoursCallFlow.Name)]"
+
+                    if ($InvokedByNesting -eq $false) {
+                        $aaAfterHoursCallFlowForwardsToCq = $true
+                    }
+
+                    else {
+                        $aaNestedAfterHoursCallFlowForwardsToCq = $true
+                    }
+
+                }
+
+            }
+            SharedVoicemail {
+
+                $afterHoursCallFlowTargetTypeFriendly = "Voicemail"
+                $afterHoursCallFlowTargetName = (Get-MsolGroup -ObjectId $afterHoursCallFlow.Menu.MenuOptions.CallTarget.Id).DisplayName
+
+            }
+        }
+
+        # Check if transfer target type is call queue
+        if ($afterHoursCallFlowTargetTypeFriendly -eq "[Call Queue") {
+
+            $MatchingCQIdentity = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $aa.AfterHoursCallFlow.Menu.MenuOptions.CallTarget.Id}).Identity
+
+            $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowCounter)>$AfterHoursCallFlowGreeting] --> AfterHoursCallFlow$($aaAfterHoursCallFlowCounter)($AfterHoursCallFlowAction) --> AfterHoursCallFlowAction$($aaAfterHoursCallFlowCounter)($AfterHoursCallFlowTargetTypeFriendly <br> $AfterHoursCallFlowTargetName)"
+
+            
+        } # End if transfer target type is call queue
+
+        # Check if AfterHours callflow action target is trasnfer call to target but something other than call queue
+        else {
+
+            $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowCounter)>$AfterHoursCallFlowGreeting] --> AfterHoursCallFlow$($aaAfterHoursCallFlowCounter)($AfterHoursCallFlowAction) --> AfterHoursCallFlowAction$($aaAfterHoursCallFlowCounter)($AfterHoursCallFlowTargetTypeFriendly <br> $AfterHoursCallFlowTargetName)"
+
+        }
+
+
+        # Mermaid code for after hours call flow nodes
+        $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowCounter)>$AfterHoursCallFlowGreeting] --> afterHoursCallFlow$($aaAfterHoursCallFlowCounter)($afterHoursCallFlowAction) --> afterHoursCallFlowAction$($aaAfterHoursCallFlowCounter)($afterHoursCallFlowTargetTypeFriendly <br> $afterHoursCallFlowTargetName)"
+
+    }
+
+    elseif ($afterHoursCallFlowAction -eq "DisconnectCall") {
+
+        $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowCounter)>$AfterHoursCallFlowGreeting] --> afterHoursCallFlow$($aaAfterHoursCallFlowCounter)(($afterHoursCallFlowAction))"
+
+    }
+    
+
+    
 
 }
 
@@ -1055,320 +1085,4 @@ cqResult$($cqCallFlowCounter) --> |No| $CqTimeoutActionFriendly
     }
 
     
-}
-
-function Get-NestedCallQueueCallFlow {
-    param (
-        [Parameter(Mandatory=$true)][String]$MatchingCQIdentity,
-        [Parameter(Mandatory=$true)][String]$NestedCQType
-
-    )
-
-    . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingCQIdentity -InvokedByNesting $true -NestedCQType $NestedCQType
-
-    if ($NestedCQType -eq "TimeOut") {
-        $mdNestedCallQueueTimeOutCallFlow = $mdCallQueueCallFlow
-    }
-
-    if ($NestedCQType -eq "OverFlow") {
-        $mdNestedCallQueueOverFlowCallFlow = $mdCallQueueCallFlow
-    }
-
-    if ($NestedCQType -eq "AaDefaultCallFlow") {
-        $mdInitialCallQueueCallFlow = $mdCallQueueCallFlow
-    }
-
-    if ($NestedCQType -eq "AaAfterHoursCallFlow") {
-        $mdNestedCallQueueAaAfterHoursCallFlow = $mdCallQueueCallFlow
-    }
-
-}
-function Get-AutoAttendantDefaultCallFlow {
-    param (
-        [Parameter(Mandatory=$false)][String]$VoiceAppId,
-        [Parameter(Mandatory=$false)][Bool]$InvokedByNesting = $false,
-        [Parameter(Mandatory=$false)][String]$NestedAaCallFlowType
-    )
-
-    if (!$aaDefaultCallFlowCounter) {
-        $aaDefaultCallFlowCounter = 0
-    }
-
-    $aaDefaultCallFlowCounter ++
-
-    # Get the current auto attendants default call flow and default call flow action
-    $defaultCallFlow = $aa.DefaultCallFlow
-    $defaultCallFlowAction = $aa.DefaultCallFlow.Menu.MenuOptions.Action.Value
-
-    # Get the current auto attentans default call flow greeting
-    if (!$defaultCallFlow.Greetings.ActiveType.Value){
-        $defaultCallFlowGreeting = "Greeting <br> None"
-    }
-
-    else {
-        $defaultCallFlowGreeting = "Greeting <br> $($defaultCallFlow.Greetings.ActiveType.Value)"
-    }
-
-    # Check if the default callflow action is transfer call to target
-    if ($defaultCallFlowAction -eq "TransferCallToTarget") {
-
-        # Get transfer target type
-        $defaultCallFlowTargetType = $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Type.Value
-
-        # Switch through transfer target type and set variables accordingly
-        switch ($defaultCallFlowTargetType) {
-            User { 
-                $defaultCallFlowTargetTypeFriendly = "User"
-                $defaultCallFlowTargetName = (Get-MsolUser -ObjectId $($aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName}
-            ExternalPstn { 
-                $defaultCallFlowTargetTypeFriendly = "External PSTN"
-                $defaultCallFlowTargetName = ($aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id).Replace("tel:","")}
-            ApplicationEndpoint {
-
-                # Check if application endpoint is auto attendant or call queue
-                $MatchingAA = Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id}
-
-                if ($MatchingAA) {
-
-                    $defaultCallFlowTargetTypeFriendly = "[Auto Attendant"
-                    $defaultCallFlowTargetName = "$($MatchingAA.Name)]"
-
-                    if ($InvokedByNesting -eq $false) {
-                        $aaDefaultCallFlowForwardsToAa = $true
-                        $aaDefaultCallFlowNestedAaIdentity = $MatchingAA.Identity
-                    }
-
-
-                }
-
-                else {
-
-                    $MatchingCqAaDefaultCallFlow = Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id}
-
-                    $defaultCallFlowTargetTypeFriendly = "[Call Queue"
-                    $defaultCallFlowTargetName = "$($MatchingCqAaDefaultCallFlow.Name)]"
-
-                    if ($InvokedByNesting -eq $false) {
-                        $aaDefaultCallFlowForwardsToCq = $true
-                    }
-
-                    else {
-                        $aaNestedDefaultCallFlowForwardsToCq = $true
-                    }
-
-                }
-
-            }
-            SharedVoicemail {
-
-                $defaultCallFlowTargetTypeFriendly = "Voicemail"
-                $defaultCallFlowTargetName = (Get-MsolGroup -ObjectId $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id).DisplayName
-
-            }
-        }
-
-        # Check if transfer target type is call queue
-        if ($defaultCallFlowTargetTypeFriendly -eq "[Call Queue") {
-
-            $MatchingCQIdentity = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $aa.DefaultCallFlow.Menu.MenuOptions.CallTarget.Id}).Identity
-
-            $mdAutoAttendantDefaultCallFlow = "defaultCallFlowGreeting$($aaDefaultCallFlowCounter)>$defaultCallFlowGreeting] --> defaultCallFlow$($aaDefaultCallFlowCounter)($defaultCallFlowAction) --> defaultCallFlowAction$($aaDefaultCallFlowCounter)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)"
-
-            
-        } # End if transfer target type is call queue
-
-        # Check if default callflow action target is trasnfer call to target but something other than call queue
-        else {
-
-            $mdAutoAttendantDefaultCallFlow = "defaultCallFlowGreeting$($aaDefaultCallFlowCounter)>$defaultCallFlowGreeting] --> defaultCallFlow$($aaDefaultCallFlowCounter)($defaultCallFlowAction) --> defaultCallFlowAction$($aaDefaultCallFlowCounter)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)"
-
-        }
-
-    }
-
-    # Check if default callflow action is disconnect call
-    elseif ($defaultCallFlowAction -eq "DisconnectCall") {
-
-        $mdAutoAttendantDefaultCallFlow = "defaultCallFlowGreeting$($aaDefaultCallFlowCounter)>$defaultCallFlowGreeting] --> defaultCallFlow$($aaDefaultCallFlowCounter)(($defaultCallFlowAction))"
-
-    }
-    
-    
-}
-
-function Get-AutoAttendantAfterHoursCallFlow {
-    param (
-        [Parameter(Mandatory=$false)][String]$VoiceAppId,
-        [Parameter(Mandatory=$false)][Bool]$InvokedByNesting = $false,
-        [Parameter(Mandatory=$false)][String]$NestedAaCallFlowType
-    )
-
-    if (!$aaAfterHoursCallFlowCounter) {
-        $aaAfterHoursCallFlowCounter = 0
-    }
-
-    $aaAfterHoursCallFlowCounter ++
-
-    # Get after hours call flow
-    $afterHoursCallFlow = ($aa.CallFlows | Where-Object {$_.Name -Match "after hours"})
-    $afterHoursCallFlowAction = ($aa.CallFlows | Where-Object {$_.Name -Match "after hours"}).Menu.MenuOptions.Action.Value
-
-    # Get after hours greeting
-    $afterHoursCallFlowGreeting = "Greeting <br> $($afterHoursCallFlow.Greetings.ActiveType.Value)"
-
-    # Check if after hours action is transfer call to target
-    if ($afterHoursCallFlowAction -eq "TransferCallToTarget") {
-
-        $afterHoursCallFlowTargetType = $afterHoursCallFlow.Menu.MenuOptions.CallTarget.Type.Value
-
-        # Switch through after hours call flow target type
-        switch ($afterHoursCallFlowTargetType) {
-            User { 
-                $afterHoursCallFlowTargetTypeFriendly = "User"
-                $afterHoursCallFlowTargetName = (Get-MsolUser -ObjectId $($afterHoursCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName}
-            ExternalPstn { 
-                $afterHoursCallFlowTargetTypeFriendly = "External PSTN"
-                $afterHoursCallFlowTargetName = ($afterHoursCallFlow.Menu.MenuOptions.CallTarget.Id).Replace("tel:","")}
-            ApplicationEndpoint {
-
-                # Check if application endpoint is an auto attendant or a call queue
-                $MatchingAA = Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $afterHoursCallFlow.Menu.MenuOptions.CallTarget.Id}
-
-                if ($MatchingAA) {
-
-                    $afterHoursCallFlowTargetTypeFriendly = "[Auto Attendant"
-                    $afterHoursCallFlowTargetName = "$($MatchingAA.Name)]"
-
-                    if ($InvokedByNesting -eq $false) {
-                        $aaAfterHoursCallFlowForwardsToAa = $true
-                        $aaAfterHoursCallFlowNestedAaIdentity = $MatchingAA.Identity
-
-                    }
-
-                }
-
-                else {
-
-                    $MatchingCqAaAfterHoursCallFlow = Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $afterHoursCallFlow.Menu.MenuOptions.CallTarget.Id}
-
-                    $afterHoursCallFlowTargetTypeFriendly = "[Call Queue"
-                    $afterHoursCallFlowTargetName = "$($MatchingCqAaAfterHoursCallFlow.Name)]"
-
-                    if ($InvokedByNesting -eq $false) {
-                        $aaAfterHoursCallFlowForwardsToCq = $true
-                    }
-
-                    else {
-                        $aaNestedAfterHoursCallFlowForwardsToCq = $true
-                    }
-
-                }
-
-            }
-            SharedVoicemail {
-
-                $afterHoursCallFlowTargetTypeFriendly = "Voicemail"
-                $afterHoursCallFlowTargetName = (Get-MsolGroup -ObjectId $afterHoursCallFlow.Menu.MenuOptions.CallTarget.Id).DisplayName
-
-            }
-        }
-
-        # Check if transfer target type is call queue
-        if ($afterHoursCallFlowTargetTypeFriendly -eq "[Call Queue") {
-
-            $MatchingCQIdentity = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $aa.AfterHoursCallFlow.Menu.MenuOptions.CallTarget.Id}).Identity
-
-            $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowCounter)>$AfterHoursCallFlowGreeting] --> AfterHoursCallFlow$($aaAfterHoursCallFlowCounter)($AfterHoursCallFlowAction) --> AfterHoursCallFlowAction$($aaAfterHoursCallFlowCounter)($AfterHoursCallFlowTargetTypeFriendly <br> $AfterHoursCallFlowTargetName)"
-
-            
-        } # End if transfer target type is call queue
-
-        # Check if AfterHours callflow action target is trasnfer call to target but something other than call queue
-        else {
-
-            $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowCounter)>$AfterHoursCallFlowGreeting] --> AfterHoursCallFlow$($aaAfterHoursCallFlowCounter)($AfterHoursCallFlowAction) --> AfterHoursCallFlowAction$($aaAfterHoursCallFlowCounter)($AfterHoursCallFlowTargetTypeFriendly <br> $AfterHoursCallFlowTargetName)"
-
-        }
-
-
-        # Mermaid code for after hours call flow nodes
-        $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowCounter)>$AfterHoursCallFlowGreeting] --> afterHoursCallFlow$($aaAfterHoursCallFlowCounter)($afterHoursCallFlowAction) --> afterHoursCallFlowAction$($aaAfterHoursCallFlowCounter)($afterHoursCallFlowTargetTypeFriendly <br> $afterHoursCallFlowTargetName)"
-
-    }
-
-    elseif ($afterHoursCallFlowAction -eq "DisconnectCall") {
-
-        $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowCounter)>$AfterHoursCallFlowGreeting] --> afterHoursCallFlow$($aaAfterHoursCallFlowCounter)(($afterHoursCallFlowAction))"
-
-    }
-    
-
-    
-
-}
-
-if ($PhoneNumber) {
-    . Get-VoiceApp -PhoneNumber $PhoneNumber
-}
-
-else {
-    . Get-VoiceApp
-}
-
-
-function Get-CurrentCallFlow {
-    param (
-        [Parameter(Mandatory=$false)][String]$VoiceAppId
-    )
-
-    if ($voiceAppType -eq "Auto Attendant") {
-        . Find-Holidays -VoiceAppId $VoiceApp.Identity
-        . Find-AfterHours -VoiceAppId $VoiceApp.Identity
-    
-        if ($aaHasHolidays -eq $true -or $aaHasAfterHours -eq $true) {
-    
-            . Get-AutoAttendantDefaultCallFlow -VoiceAppId $VoiceApp.Identity
-    
-            . Get-AutoAttendantAfterHoursCallFlow -VoiceAppId $VoiceApp.Identity
-    
-            . Get-AutoAttendantHolidaysAndAfterHours -VoiceAppId $VoiceApp.Identity
-    
-        }
-    
-        else {
-    
-            . Get-AutoAttendantDefaultCallFlow -VoiceAppId $VoiceApp.Identity
-    
-            $mdInitialHolidayAndAfterHoursCheck =@"
-            --> $mdAutoAttendantDefaultCallFlow
-            
-"@
-    
-        }
-    
-    
-    
-    
-    }
-    
-    elseif ($voiceAppType -eq "Call Queue") {
-        . Get-CallQueueCallFlow -MatchingCQIdentity $VoiceApp.Identity
-    }
-    
-}
-
-. Get-CurrentCallFlow
-
-
-. Set-Mermaid -docType $DocType
-
-. Add-Mermaid
-
-Set-Content -Path ".\$(($VoiceApp.Name).Replace(" ","_"))_CallFlow$fileExtension" -Value $mermaidCode -Encoding UTF8
-
-if ($SetClipBoard -eq $true) {
-    $mermaidCode -Replace('```mermaid','') `
-    -Replace('```','') | Set-Clipboard
-
-    Write-Host "Mermaid code copied to clipboard. Paste it on https://mermaid.live" -ForegroundColor Cyan
 }
