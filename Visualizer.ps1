@@ -758,30 +758,6 @@ function Get-CallQueueCallFlow {
 
     }
 
-<#     if ($InvokedByNesting -eq $false) {
-
-        if ($MatchingCQ.OverflowActionTarget.Id -eq $MatchingCQ.TimeoutActionTarget.Id) {
-            $dynamicCqOverFlowActionTarget = "cqTimeoutActionTarget"
-        }
-    
-        else {
-            $dynamicCqOverFlowActionTarget = "cqOverFlowActionTarget"
-        }  
-
-    } #>
-
-<#     else {
-
-        if ($MatchingTimeoutCQ.Identity -eq $MatchingOverFlowCQ.Identity) {
-            $dynamicCqOverFlowActionTarget = "cqTimeoutActionTarget"
-        }
-    
-        else {
-            $dynamicCqOverFlowActionTarget = "cqOverFlowActionTarget"
-        } 
-
-    } #>
-
     # Switch through call queue overflow action target
     switch ($CqOverFlowAction) {
         DisconnectWithBusy {
@@ -959,7 +935,13 @@ function Get-CallQueueCallFlow {
 
         Write-Host "proof that this is working... " -ForegroundColor Green
 
-        $lastCallFlowAction = "cqOverFlowActionTarget$($cqCallFlowCounter -1)"
+        if ($cqCallFlowCounter -eq 3) {
+            $lastCallFlowAction = "cqOverFlowActionTarget$($cqCallFlowCounter -2)"
+        }
+        else {
+            $lastCallFlowAction = "cqOverFlowActionTarget$($cqCallFlowCounter -1)"
+        }
+
 
     }
 
@@ -967,7 +949,13 @@ function Get-CallQueueCallFlow {
 
         Write-Host "proof that this is working... " -ForegroundColor Green
 
-        $lastCallFlowAction = "cqTimeoutActionTarget$($cqCallFlowCounter -2)"
+        if ($cqCallFlowCounter -eq 3) {
+            $lastCallFlowAction = "cqTimeoutActionTarget$($cqCallFlowCounter -2)"
+        }
+        else {
+            $lastCallFlowAction = "cqTimeoutActionTarget$($cqCallFlowCounter -1)"
+        }
+
 
     }
 
@@ -1037,16 +1025,7 @@ if ($InvokedByNesting -eq $false) {
 
 
 }
-
-
-<#     if ($MatchingTimeoutCQ) {
-
-        Write-Host "Getting Time Out CQ..."
-
-        . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingTimeoutCQ.Identity -InvokedByNesting $true -NestedCQType "TimeOut"
-
-    }
- #>    
+  
 }
 
 
@@ -1054,14 +1033,19 @@ if ($InvokedByNesting -eq $false) {
 
 function Get-CallFlow {
     param (
+        [Parameter(Mandatory=$false)][String]$VoiceAppId
     )
+
+    if (!$VoiceAppId) {
     
-    if ($PhoneNumber) {
-        . Get-VoiceApp -PhoneNumber $PhoneNumber
-    }
-    
-    else {
-        . Get-VoiceApp
+        if ($PhoneNumber) {
+            . Get-VoiceApp -PhoneNumber $PhoneNumber
+        }
+        
+        else {
+            . Get-VoiceApp
+        }
+
     }
 
     if ($voiceAppType -eq "Auto Attendant") {
@@ -1088,8 +1072,6 @@ function Get-CallFlow {
 "@
     
         }
-    
-    
     
     
     }
