@@ -828,22 +828,6 @@ function Get-CallQueueCallFlow {
 
                     $MatchingOverFlowCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.OverflowActionTarget.Id})
 
-<#                     if ($InvokedByNesting -eq $true) {
-
-                        $dynamicCqOverFlowActionTarget = "cqOverFlowActionTarget$($cqCallFlowCounter -1)"
-
-
-                    }
-
-                    else {
-
-                        $dynamicCqOverFlowActionTarget = "cqOverFlowActionTarget$($cqCallFlowCounter)"
-
-                    } #>
-
-                    #$dynamicCqOverFlowActionTarget = "cqOverFlowActionTarget$($cqCallFlowCounter)"
-
-
                     $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowCounter)(TransferCallToTarget) --> cqOverFlowActionTarget$($cqCallFlowCounter)([Call Queue <br> $($MatchingOverFlowCQ.Name)])"
 
                 }
@@ -878,6 +862,9 @@ function Get-CallQueueCallFlow {
     switch ($CqTimeoutAction) {
         Disconnect {
             $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowCounter)((Disconnect Call))"
+
+            $MatchingTimeoutCQ = $null
+
         }
         Forward {
     
@@ -886,6 +873,8 @@ function Get-CallQueueCallFlow {
                 $MatchingTimeoutUser = (Get-MsolUser -ObjectId $MatchingCQ.TimeoutActionTarget.Id).DisplayName
     
                 $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowCounter)(TransferCallToTarget) --> cqTimeoutActionTarget$($cqCallFlowCounter)(User <br> $MatchingTimeoutUser)"
+
+                $MatchingTimeoutCQ = $null
     
             }
     
@@ -894,6 +883,8 @@ function Get-CallQueueCallFlow {
                 $cqTimeoutPhoneNumber = ($MatchingCQ.TimeoutActionTarget.Id).Replace("tel:","")
     
                 $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowCounter)(TransferCallToTarget) --> cqTimeoutActionTarget$($cqCallFlowCounter)(External Number <br> $cqTimeoutPhoneNumber)"
+
+                $MatchingTimeoutCQ = $null
                 
             }
     
@@ -904,12 +895,16 @@ function Get-CallQueueCallFlow {
                 if ($MatchingTimeoutAA) {
     
                     $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowCounter)(TransferCallToTarget) --> cqTimeoutActionTarget$($cqCallFlowCounter)([Auto Attendant <br> $MatchingTimeoutAA])"
+
+                    $MatchingTimeoutCQ = $null
     
                 }
     
                 else {
     
                     $MatchingTimeoutCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id})
+
+                    Write-Host "Matching Time Out CQ Name: $($MatchingTimeoutCQ.Name)"
 
                     $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowCounter)(TransferCallToTarget) --> cqTimeoutActionTarget$($cqCallFlowCounter)([Call Queue <br> $($MatchingTimeoutCQ.Name)])"
     
@@ -920,6 +915,8 @@ function Get-CallQueueCallFlow {
         }
         SharedVoicemail {
             $MatchingTimeoutVoicemail = (Get-MsolGroup -ObjectId $MatchingCQ.TimeoutActionTarget.Id).DisplayName
+
+            $MatchingTimeoutCQ = $null
     
             if ($MatchingCQ.TimeoutSharedVoicemailTextToSpeechPrompt) {
     
@@ -958,11 +955,19 @@ function Get-CallQueueCallFlow {
     }
 
 
-    if ($InvokedByNesting -eq $true) {
+    if ($InvokedByNesting -eq $true -and $NestedCQType -eq "OverFlow") {
 
         Write-Host "proof that this is working... " -ForegroundColor Green
 
         $lastCallFlowAction = "cqOverFlowActionTarget$($cqCallFlowCounter -1)"
+
+    }
+
+    if ($InvokedByNesting -eq $true -and $NestedCQType -eq "TimeOut") {
+
+        Write-Host "proof that this is working... " -ForegroundColor Green
+
+        $lastCallFlowAction = "cqTimeoutActionTarget$($cqCallFlowCounter -2)"
 
     }
 
@@ -1006,12 +1011,42 @@ cqResult$($cqCallFlowCounter) --> |No| $CqTimeoutActionFriendly
 
 $mermaidCode += $mdCallQueueCallFlow
 
-    if ($MatchingOverFlowCQ) {
+if ($InvokedByNesting -eq $false) {
 
-        . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingOverFlowCQ.Identity -InvokedByNesting $true
-    
+    $InitialMatchingCQ = $MatchingCQ
+
+    Write-Host "Initial Function Run for $($InitialMatchingCQ.Name)" -ForegroundColor DarkGreen
+
+    if ($MatchingOverFlowCQ -or $MatchingTimeoutCQ) {
+
+        Write-Host "Initial CQ time out or forward action is another CQ" -ForegroundColor DarkGreen
+
+        $InitialMatchingCqTimeoutActionTarget = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.TimeoutActionTarget.Id}).Identity
+        $InitialMatchingCqOverFlowActionTarget = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.OverFlowActionTarget.Id}).Identity  
+
+        Write-Host "Getting Over Flow CQ..."
+
+        . Get-CallQueueCallFlow -MatchingCQIdentity $InitialMatchingCqOverFlowActionTarget -InvokedByNesting $true -NestedCQType "OverFlow"
+
+        Write-Host "Getting Time Out CQ..."
+
+        . Get-CallQueueCallFlow -MatchingCQIdentity $InitialMatchingCqTimeoutActionTarget -InvokedByNesting $true -NestedCQType "TimeOut"
+
+   
     }
-    
+
+
+}
+
+
+<#     if ($MatchingTimeoutCQ) {
+
+        Write-Host "Getting Time Out CQ..."
+
+        . Get-CallQueueCallFlow -MatchingCQIdentity $MatchingTimeoutCQ.Identity -InvokedByNesting $true -NestedCQType "TimeOut"
+
+    }
+ #>    
 }
 
 
