@@ -401,23 +401,6 @@ elementAAHoliday$($aaCounter)-$($HolidayCounter)(Schedule <br> $($holidaySchedul
 
     } # End if aa has after hours
 
-<#     $aaCounterDifference = $aaCounter -1
-    $CallFlowLinkCounter = $aaCounter - $aaCounterDifference
-
-    if ($InvokedByNesting -eq $true -and $NestedAaCallFlowType -eq "AfterHours") {
-
-        $nodeElementHolidayLink = "afterHoursCallFlowAction$($CallFlowLinkCounter)"
-        
-        Write-Host "Proof this works too!" -ForegroundColor DarkYellow
-    }
-
-    if ($InvokedByNesting -eq $true -and $NestedAaCallFlowType -eq "Default") {
-
-        $nodeElementHolidayLink = "defaultCallFlowAction$($CallFlowLinkCounter)"
-
-        Write-Host "Proof this works too!" -ForegroundColor DarkYellow
-    }
- #>
     $nodeElementHolidayLink = "$($aa.Identity)([Auto Attendant <br> $($aa.Name)])"
 
     if ($aaHasHolidays -eq $true) {
@@ -924,11 +907,11 @@ function Get-CallQueueCallFlow {
     
             else {
     
-                $MatchingTimeoutAA = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id}).Name
+                $MatchingTimeoutAA = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id})
     
                 if ($MatchingTimeoutAA) {
     
-                    $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowCounter)(TransferCallToTarget) --> cqTimeoutActionTarget$($cqCallFlowCounter)([Auto Attendant <br> $MatchingTimeoutAA])"
+                    $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowCounter)(TransferCallToTarget) --> $($MatchingTimeoutAA.Identity)([Auto Attendant <br> $($MatchingTimeoutAA.Name)])"
 
                     #$MatchingTimeoutCQ = $null
     
@@ -1043,6 +1026,8 @@ if ($mermaidCode -notcontains $mdCallQueueCallFlow) {
 
 . Set-Mermaid -DocType $DocType
 
+$mdNodePhoneNumbersCounter = 0
+
 function Get-CallFlow {
     param (
         [Parameter(Mandatory=$false)][String]$VoiceAppId,
@@ -1116,6 +1101,38 @@ function Get-CallFlow {
 
     }
 
+    $mdNodePhoneNumbers = @()
+
+    foreach ($ApplicationInstance in ($VoiceApp.ApplicationInstances)) {
+
+        if ($mdNodePhoneNumbersCounter -eq 0) {
+
+            $mdPhoneNumberLinkType = "--> "
+
+        }
+
+        else {
+
+            $mdPhoneNumberLinkType = "-.-> "
+
+        }
+
+        $ApplicationInstancePhoneNumber = ((Get-CsOnlineApplicationInstance -Identity $ApplicationInstance).PhoneNumber) -replace ("tel:","")
+
+        $mdNodeNumber = "start$($ApplicationInstancePhoneNumber)((Incoming Call at <br> $ApplicationInstancePhoneNumber)) $mdPhoneNumberLinkType"
+
+        $mdNodePhoneNumbers += $mdNodeNumber
+
+        $mdNodePhoneNumbersCounter ++
+
+    }
+
+    if ($mermaidCode -notcontains $mdNodePhoneNumbers) {
+
+        $mermaidCode += $mdNodePhoneNumbers
+
+    }
+
     if ($voiceAppType -eq "AutoAttendant") {
         . Find-Holidays -VoiceAppId $VoiceApp.Identity
         . Find-AfterHours -VoiceAppId $VoiceApp.Identity
@@ -1163,9 +1180,11 @@ function Get-CallFlow {
 # Get First Call Flow
 #. Get-CallFlow -VoiceAppName $VoiceAppName -voiceAppType $VoiceAppType
 . Get-CallFlow -VoiceAppName "USA Toll Free Test" -voiceAppType "AutoAttendant"
-#. Get-CallFlow -VoiceAppName "TestAA" -voiceAppType "AutoAttendant"
+. Get-CallFlow -VoiceAppName "PS Test AA" -voiceAppType "AutoAttendant"
 #. Get-CallFlow -VoiceAppName "TestAA" -voiceAppType "AutoAttendant"
 . Get-CallFlow -voiceAppType "CallQueue" -VoiceAppName "CQ Team Green"
+. Get-CallFlow -voiceAppType "CallQueue" -VoiceAppName "PS Test CQ"
+
 
 
 Set-Content -Path ".\$(($VoiceApp.Name).Replace(" ","_"))_CallFlow$fileExtension" -Value $mermaidCode -Encoding UTF8
