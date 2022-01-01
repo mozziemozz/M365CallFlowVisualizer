@@ -1049,7 +1049,7 @@ function Get-CallFlow {
             $VoiceAppProperties = New-Object -TypeName psobject
 
             $VoiceAppProperties | Add-Member -MemberType NoteProperty -Name "Name" -Value $VoiceApp.Name
-            $VoiceAppProperties | Add-Member -MemberType NoteProperty -Name "Type" -Value "AutoAttendant"
+            $VoiceAppProperties | Add-Member -MemberType NoteProperty -Name "Type" -Value "Auto Attendant"
 
             $VoiceApps += $VoiceAppProperties
 
@@ -1060,7 +1060,7 @@ function Get-CallFlow {
             $VoiceAppProperties = New-Object -TypeName psobject
 
             $VoiceAppProperties | Add-Member -MemberType NoteProperty -Name "Name" -Value $VoiceApp.Name
-            $VoiceAppProperties | Add-Member -MemberType NoteProperty -Name "Type" -Value "CallQueue"
+            $VoiceAppProperties | Add-Member -MemberType NoteProperty -Name "Type" -Value "Call Queue"
 
             $VoiceApps += $VoiceAppProperties
 
@@ -1068,17 +1068,17 @@ function Get-CallFlow {
 
         $VoiceAppSelection = $VoiceApps | Out-GridView -Title "Choose an Auto Attendant or Call Queue from the list." -PassThru
 
-        if ($VoiceAppSelection.Type -eq "AutoAttendant") {
+        if ($VoiceAppSelection.Type -eq "Auto Attendant") {
 
             $VoiceApp = Get-CsAutoAttendant | Where-Object {$_.Name -eq $VoiceAppSelection.Name}
-            $voiceAppType = "AutoAttendant"
+            $voiceAppType = "Auto Attendant"
 
         }
 
         else {
 
             $VoiceApp = Get-CsCallQueue | Where-Object {$_.Name -eq $VoiceAppSelection.Name}
-            $voiceAppType = "CallQueue"
+            $voiceAppType = "Call Queue"
 
         }
 
@@ -1087,7 +1087,7 @@ function Get-CallFlow {
 
     else {
 
-        if ($voiceAppType -eq "AutoAttendant") {
+        if ($voiceAppType -eq "Auto Attendant") {
 
             $VoiceApp = Get-CsAutoAttendant | Where-Object {$_.Name -eq $VoiceAppName}
 
@@ -1107,23 +1107,28 @@ function Get-CallFlow {
 
         if ($mdNodePhoneNumbersCounter -eq 0) {
 
-            $mdPhoneNumberLinkType = "--> "
+            $mdPhoneNumberLinkType = "-->"
 
         }
 
         else {
 
-            $mdPhoneNumberLinkType = "-.-> "
+            $mdPhoneNumberLinkType = "-.->"
 
         }
 
         $ApplicationInstancePhoneNumber = ((Get-CsOnlineApplicationInstance -Identity $ApplicationInstance).PhoneNumber) -replace ("tel:","")
 
-        $mdNodeNumber = "start$($ApplicationInstancePhoneNumber)((Incoming Call at <br> $ApplicationInstancePhoneNumber)) $mdPhoneNumberLinkType"
+        if ($ApplicationInstancePhoneNumber) {
 
-        $mdNodePhoneNumbers += $mdNodeNumber
+            $mdNodeNumber = "start$($ApplicationInstancePhoneNumber)((Incoming Call at <br> $ApplicationInstancePhoneNumber)) $mdPhoneNumberLinkType $($VoiceApp.Identity)([$($voiceAppType) <br> $($VoiceApp.Name)])"
 
-        $mdNodePhoneNumbersCounter ++
+            $mdNodePhoneNumbers += $mdNodeNumber
+    
+            $mdNodePhoneNumbersCounter ++
+
+        }
+
 
     }
 
@@ -1133,7 +1138,7 @@ function Get-CallFlow {
 
     }
 
-    if ($voiceAppType -eq "AutoAttendant") {
+    if ($voiceAppType -eq "Auto Attendant") {
         . Find-Holidays -VoiceAppId $VoiceApp.Identity
         . Find-AfterHours -VoiceAppId $VoiceApp.Identity
     
@@ -1169,7 +1174,7 @@ function Get-CallFlow {
     
     }
     
-    elseif ($voiceAppType -eq "CallQueue") {
+    elseif ($voiceAppType -eq "Call Queue") {
         . Get-CallQueueCallFlow -MatchingCQIdentity $VoiceApp.Identity
     }
 
@@ -1179,13 +1184,13 @@ function Get-CallFlow {
 
 # Get First Call Flow
 #. Get-CallFlow -VoiceAppName $VoiceAppName -voiceAppType $VoiceAppType
-. Get-CallFlow -VoiceAppName "USA Toll Free Test" -voiceAppType "AutoAttendant"
-. Get-CallFlow -VoiceAppName "PS Test AA" -voiceAppType "AutoAttendant"
+. Get-CallFlow -VoiceAppName "USA Toll Free Test" -voiceAppType "Auto Attendant"
+. Get-CallFlow -VoiceAppName "PS Test AA" -voiceAppType "Auto Attendant"
 #. Get-CallFlow -VoiceAppName "TestAA" -voiceAppType "AutoAttendant"
-. Get-CallFlow -voiceAppType "CallQueue" -VoiceAppName "CQ Team Green"
-. Get-CallFlow -voiceAppType "CallQueue" -VoiceAppName "PS Test CQ"
+. Get-CallFlow -voiceAppType "Call Queue" -VoiceAppName "CQ Team Green"
+. Get-CallFlow -voiceAppType "Call Queue" -VoiceAppName "PS Test CQ"
 
-
+$mermaidCode.Replace(";",",")
 
 Set-Content -Path ".\$(($VoiceApp.Name).Replace(" ","_"))_CallFlow$fileExtension" -Value $mermaidCode -Encoding UTF8
 
