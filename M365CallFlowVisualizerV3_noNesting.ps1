@@ -6,7 +6,8 @@ param(
     [Parameter(Mandatory=$false)][string]$PhoneNumber,
     [Parameter(Mandatory=$false)][Bool]$SetClipBoard = $true,
     [Parameter(Mandatory=$false)][string]$VoiceAppName,
-    [Parameter(Mandatory=$false)][string]$VoiceAppType
+    [Parameter(Mandatory=$false)][string]$VoiceAppType,
+    [Parameter(Mandatory=$false)][string]$Identity
 )
 
 $MarkdownConnections = @()
@@ -48,7 +49,7 @@ flowchart TB
     
 }
 
-function Get-VoiceApp {
+<# function Get-VoiceApp {
     param (
         [Parameter(Mandatory=$false)][String]$PhoneNumber
         )
@@ -117,7 +118,7 @@ function Get-VoiceApp {
         $mermaidCode += $mdVoiceApp
         $mermaidCode += $mdNodeAdditionalNumbers
 
-}
+} #>
 
 function Find-Holidays {
     param (
@@ -484,10 +485,6 @@ function Get-AutoAttendantDefaultCallFlow {
 
     $aaDefaultCallFlowCounter = $aa.Identity
 
-    $MarkdownConnectionsCurrentVoiceApp | Add-Member -MemberType NoteProperty -Name "Type" -Value "AutoAttendant"
-    $MarkdownConnectionsCurrentVoiceApp | Add-Member -MemberType NoteProperty -Name "Name" -Value $VoiceApp.Name
-    $MarkdownConnectionsCurrentVoiceApp | Add-Member -MemberType NoteProperty -Name "Number" -Value $aaDefaultCallFlowCounter
-
     # Get the current auto attendants default call flow and default call flow action
     $defaultCallFlow = $aa.DefaultCallFlow
     $defaultCallFlowAction = $aa.DefaultCallFlow.Menu.MenuOptions.Action.Value
@@ -561,14 +558,24 @@ function Get-AutoAttendantDefaultCallFlow {
 
             $mdAutoAttendantDefaultCallFlow = "defaultCallFlowGreeting$($aaDefaultCallFlowCounter)>$defaultCallFlowGreeting] --> defaultCallFlow$($aaDefaultCallFlowCounter)($defaultCallFlowAction) --> $($MatchingCQIdentity)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)"
             
-            $MarkdownConnectionsCurrentVoiceApp | Add-Member -MemberType NoteProperty -Name "DefaultCallFlowTarget" -Value $defaultCallFlowTargetName.Replace("]","")
-            $MarkdownConnectionsCurrentVoiceApp | Add-Member -MemberType NoteProperty -Name "Loop" -Value "Yes"
+            if ($nestedVoiceApps -notcontains $MatchingCQIdentity) {
 
+                $nestedVoiceApps += $MatchingCQIdentity
+
+            }
+
+        
         } # End if transfer target type is call queue
 
         elseif ($defaultCallFlowTargetTypeFriendly -eq "[Auto Attendant") {
 
             $mdAutoAttendantDefaultCallFlow = "defaultCallFlowGreeting$($aaDefaultCallFlowCounter)>$defaultCallFlowGreeting] --> defaultCallFlow$($aaDefaultCallFlowCounter)($defaultCallFlowAction) --> $($MatchingAaDefaultCallFlowAa.Identity)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)"
+
+            if ($nestedVoiceApps -notcontains $MatchingAaDefaultCallFlowAa.Identity) {
+
+                $nestedVoiceApps += $MatchingAaDefaultCallFlowAa.Identity
+
+            }
 
         }
 
@@ -678,7 +685,11 @@ function Get-AutoAttendantAfterHoursCallFlow {
 
             $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowCounter)>$AfterHoursCallFlowGreeting] --> AfterHoursCallFlow$($aaAfterHoursCallFlowCounter)($AfterHoursCallFlowAction) --> $($MatchingCQIdentity)($AfterHoursCallFlowTargetTypeFriendly <br> $AfterHoursCallFlowTargetName)"
 
-            Write-Host "CQ" -ForegroundColor Blue
+            if ($nestedVoiceApps -notcontains $MatchingCQIdentity) {
+
+                $nestedVoiceApps += $MatchingCQIdentity
+
+            }
 
             
         } # End if transfer target type is call queue
@@ -686,7 +697,13 @@ function Get-AutoAttendantAfterHoursCallFlow {
         elseif ($afterHoursCallFlowTargetTypeFriendly -eq "[Auto Attendant") {
 
             $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowCounter)>$AfterHoursCallFlowGreeting] --> AfterHoursCallFlow$($aaAfterHoursCallFlowCounter)($AfterHoursCallFlowAction) --> $($MatchingAaAfterHoursCallFlowAa.Identity)($AfterHoursCallFlowTargetTypeFriendly <br> $AfterHoursCallFlowTargetName)"
-            Write-Host "AA" -ForegroundColor Blue
+
+            if ($nestedVoiceApps -notcontains $MatchingAaAfterHoursCallFlowAa.Identity) {
+
+                $nestedVoiceApps += $MatchingAaAfterHoursCallFlowAa.Identity
+
+            }
+
         }
 
         # Check if AfterHours callflow action target is trasnfer call to target but something other than call queue
@@ -835,6 +852,13 @@ function Get-CallQueueCallFlow {
 
                     #$MatchingOverFlowCQ = $null
 
+                    if ($nestedVoiceApps -notcontains $MatchingOverFlowAA.Identity) {
+
+                        $nestedVoiceApps += $MatchingOverFlowAA.Identity
+        
+                    }
+        
+
                 }
 
                 else {
@@ -842,6 +866,12 @@ function Get-CallQueueCallFlow {
                     $MatchingOverFlowCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.OverflowActionTarget.Id})
 
                     $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowCounter)(TransferCallToTarget) --> $($MatchingOverFlowCQ.Identity)([Call Queue <br> $($MatchingOverFlowCQ.Name)])"
+
+                    if ($nestedVoiceApps -notcontains $MatchingOverFlowCQ.Identity) {
+
+                        $nestedVoiceApps += $MatchingOverFlowCQ.Identity
+        
+                    }
 
                 }
 
@@ -914,6 +944,13 @@ function Get-CallQueueCallFlow {
                     $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowCounter)(TransferCallToTarget) --> $($MatchingTimeoutAA.Identity)([Auto Attendant <br> $($MatchingTimeoutAA.Name)])"
 
                     #$MatchingTimeoutCQ = $null
+
+                    if ($nestedVoiceApps -notcontains $MatchingTimeoutAA.Identity) {
+
+                        $nestedVoiceApps += $MatchingTimeoutAA.Identity
+        
+                    }
+
     
                 }
     
@@ -924,6 +961,12 @@ function Get-CallQueueCallFlow {
                     Write-Host "Matching Time Out CQ Name: $($MatchingTimeoutCQ.Name)"
 
                     $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowCounter)(TransferCallToTarget) --> $($MatchingTimeoutCQ.Identity)([Call Queue <br> $($MatchingTimeoutCQ.Name)])"
+
+                    if ($nestedVoiceApps -notcontains $MatchingTimeoutCQ.Identity) {
+
+                        $nestedVoiceApps += $MatchingTimeoutCQ.Identity
+        
+                    }
     
                 }
     
@@ -1026,7 +1069,11 @@ if ($mermaidCode -notcontains $mdCallQueueCallFlow) {
 
 . Set-Mermaid -DocType $DocType
 
+#This is needed to determine if the Get-CallFlow function is running for the first time or not.
 $mdNodePhoneNumbersCounter = 0
+
+#This array stores information about the voice app's forwading targets.
+$nestedVoiceApps = @()
 
 function Get-CallFlow {
     param (
@@ -1037,7 +1084,7 @@ function Get-CallFlow {
     
     $MarkdownConnectionsCurrentVoiceApp = New-Object -TypeName psobject
 
-    if (!$VoiceAppName -and !$voiceAppType) {
+    if (!$VoiceAppName -and !$voiceAppType -and !$VoiceAppId) {
         
         $VoiceApps = @()
 
@@ -1082,6 +1129,19 @@ function Get-CallFlow {
 
         }
 
+
+    }
+
+    elseif ($VoiceAppId) {
+
+        try {
+            $VoiceApp = Get-CsAutoAttendant -Identity $VoiceAppId
+            $voiceAppType = "Auto Attendant"
+        }
+        catch {
+            $VoiceApp = Get-CsCallQueue -Identity $VoiceAppId
+            $voiceAppType = "Call Queue"
+        }
 
     }
 
@@ -1170,8 +1230,7 @@ function Get-CallFlow {
             }
     
         }
-    
-    
+        
     }
     
     elseif ($voiceAppType -eq "Call Queue") {
@@ -1183,12 +1242,58 @@ function Get-CallFlow {
 }
 
 # Get First Call Flow
-#. Get-CallFlow -VoiceAppName $VoiceAppName -voiceAppType $VoiceAppType
+
+if ($Identity) {
+
+    #. Get-CallFlow -VoiceAppId $Identity
+
+}
+
+else {
+
+    #. Get-CallFlow -VoiceAppName $VoiceAppName -voiceAppType $VoiceAppType
+
+}
+
 . Get-CallFlow -VoiceAppName "USA Toll Free Test" -voiceAppType "Auto Attendant"
-. Get-CallFlow -VoiceAppName "PS Test AA" -voiceAppType "Auto Attendant"
+#. Get-CallFlow -VoiceAppName "PS Test AA" -voiceAppType "Auto Attendant"
 #. Get-CallFlow -VoiceAppName "TestAA" -voiceAppType "AutoAttendant"
-. Get-CallFlow -voiceAppType "Call Queue" -VoiceAppName "CQ Team Green"
-. Get-CallFlow -voiceAppType "Call Queue" -VoiceAppName "PS Test CQ"
+#. Get-CallFlow -voiceAppType "Call Queue" -VoiceAppName "CQ Team Green"
+#. Get-CallFlow -voiceAppType "Call Queue" -VoiceAppName "PS Test CQ"
+
+#$checkProcessedVoiceApps = "MOZZISM.CH"
+$processedVoiceApps = @()
+
+function Get-NestedCallFlow {
+    param (
+    )
+
+    foreach ($nestedVoiceApp in $nestedVoiceApps) {
+
+        if ($processedVoiceApps -notcontains $nestedVoiceApp) {
+
+            [Array]$processedVoiceApps += $nestedVoiceApp
+
+            . Get-CallFlow -VoiceAppId $nestedVoiceApp
+
+        }
+
+    }
+
+    if (Compare-Object -ReferenceObject $nestedVoiceApps -DifferenceObject $processedVoiceApps) {
+
+        . Get-NestedCallFlow
+
+    }
+
+}
+
+. Get-NestedCallFlow
+
+    Write-Host "Processed Voice Apps:"
+    $processedVoiceApps
+    Write-Host "Nested Voice Apps:"
+    $nestedVoiceApps
 
 $mermaidCode.Replace(";",",")
 
@@ -1201,4 +1306,7 @@ if ($SetClipBoard -eq $true) {
     Write-Host "Mermaid code copied to clipboard. Paste it on https://mermaid.live" -ForegroundColor Cyan
 }
 
-#$MarkdownConnections
+Write-Host "Processed Voice Apps:"
+$processedVoiceApps
+Write-Host "Nested Voice Apps:"
+$nestedVoiceApps
