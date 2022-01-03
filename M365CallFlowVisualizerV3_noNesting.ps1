@@ -815,8 +815,6 @@ function Get-CallQueueCallFlow {
         DisconnectWithBusy {
             $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowCounter)((Disconnect Call))"
 
-            #$MatchingOverFlowCQ = $null
-
         }
         Forward {
 
@@ -828,8 +826,6 @@ function Get-CallQueueCallFlow {
 
                 $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowCounter)(TransferCallToTarget) --> $($MatchingOverFlowIdentity)(User <br> $MatchingOverFlowUser)"
 
-                #$MatchingOverFlowCQ = $null
-
             }
 
             elseif ($MatchingCQ.OverflowActionTarget.Type -eq "Phone") {
@@ -837,8 +833,6 @@ function Get-CallQueueCallFlow {
                 $cqOverFlowPhoneNumber = ($MatchingCQ.OverflowActionTarget.Id).Replace("tel:","")
 
                 $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowCounter)(TransferCallToTarget) --> $($cqOverFlowPhoneNumber)(External Number <br> $cqOverFlowPhoneNumber)"
-
-                #$MatchingOverFlowCQ = $null
                 
             }
 
@@ -849,8 +843,6 @@ function Get-CallQueueCallFlow {
                 if ($MatchingOverFlowAA) {
 
                     $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowCounter)(TransferCallToTarget) --> $($MatchingOverFlowAA.Identity)([Auto Attendant <br> $($MatchingOverFlowAA.Name)])"
-
-                    #$MatchingOverFlowCQ = $null
 
                     if ($nestedVoiceApps -notcontains $MatchingOverFlowAA.Identity) {
 
@@ -1055,14 +1047,6 @@ if ($mermaidCode -notcontains $mdCallQueueCallFlow) {
     $mermaidCode += $mdCallQueueCallFlow
 
 }
-
-<# if ($InvokedByNesting -eq $false) {
-
-    $InitialMatchingCQ = $MatchingCQ
-
-    Write-Host "Initial Function Run for $($InitialMatchingCQ.Name)" -ForegroundColor DarkGreen
-
-} #>
   
 }
 
@@ -1261,7 +1245,6 @@ else {
 #. Get-CallFlow -voiceAppType "Call Queue" -VoiceAppName "CQ Team Green"
 #. Get-CallFlow -voiceAppType "Call Queue" -VoiceAppName "PS Test CQ"
 
-#$checkProcessedVoiceApps = "MOZZISM.CH"
 $processedVoiceApps = @()
 
 function Get-NestedCallFlow {
@@ -1272,7 +1255,7 @@ function Get-NestedCallFlow {
 
         if ($processedVoiceApps -notcontains $nestedVoiceApp) {
 
-            [Array]$processedVoiceApps += $nestedVoiceApp
+            $processedVoiceApps += $nestedVoiceApp
 
             . Get-CallFlow -VoiceAppId $nestedVoiceApp
 
