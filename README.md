@@ -129,7 +129,7 @@ If you want to implement Mermaid Diagrams into your markdown based documentation
 
 # Known limitations
 - No support for IVRs yet
-- The tool has only been tested on Windows systems!
+- The tool has only been tested on Windows systems. Some functionalty might not be available on other platforms.
 
 # Planned feature updates
 - Reflect if voicemail transcription or suppress system greeting is on
