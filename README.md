@@ -68,4 +68,4 @@ If you want to implement Mermaid Diagrams into your markdown based documentation
 These are planned changes. There is no ETA nor is it guaranteed that these features will ever be added.
 
 # Legal
-This script is provided free of charge. Please do not sell it in any form.
+This script is provided free of charge. Please do not sell it in any form. Please include my name, Twitter and GitHub handle/links if you plan to post about this tool online. Thank you.
