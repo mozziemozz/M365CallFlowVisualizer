@@ -71,6 +71,22 @@ This will run the script for the call queue called "PS Test CQ".
 
 This will run the script, present a list of the available voice apps and save the call flow to a markdown (*.md) file without copying the markdown syntax to the clipboard.
 
+### Example 6
+
+```PowerShell
+.\M365CallFlowVisualizerV2.ps1 -SafeToFile $false
+```
+
+This will run the script without saving the call flow to a file. Make sure to not set SetClipBoard to $false as this would result in no output at all.
+
+### Example 7
+
+```PowerShell
+.\M365CallFlowVisualizerV2.ps1 -CustomFilePath "C:\Temp"
+```
+
+This will run the script and save the output file to "C:\Temp".
+
 ## Preview Mermaid Code
 
 The script supports outputting Mermaid-JS code in either a Markdown file (.md) or a Mermaid file (.mmd).
@@ -124,4 +140,4 @@ If you want to implement Mermaid Diagrams into your markdown based documentation
 These are planned changes. There is no ETA nor is it guaranteed that these features will ever be added.
 
 # Legal
-This script is provided free of charge. Please do not sell it in any form. Please include my name, Twitter and GitHub handle/links if you plan to post about this tool online. Thank you.
+This script is provided free of charge. Please do not sell it in any form. Please include my name, Twitter and GitHub handle/links if you plan to post about this tool online or offline. Thank you.
