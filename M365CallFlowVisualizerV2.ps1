@@ -24,6 +24,7 @@
                         Fixed a bug where some phone numbers which contained extensions including a ";" were not rendered in mermaid. (replace ";" with ",")
                         Fixed a bug where nested voice apps of an auto attendant were rendered even though business hours were set to default.
                         Added support for custom file paths, option to disable saving the file
+        04.01.2022      Prettify format of business hours (remove seconds from string)
 
     .PARAMETER Name
     -Identity
@@ -390,25 +391,83 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
         $aaTimeZone = $aa.TimeZoneId
 
         # Monday
-        # Check if Monday has business hours which are open 24 hours per day
+        # Check if Monday has business hours which are open 24 Hours per day
         if ($aaBusinessHoursFriendly.DisplayMondayHours -eq "00:00:00-1.00:00:00") {
-            $mondayHours = "Monday Hours: Open 24 hours"
+            $mondayHours = "Monday Hours: Open 24 Hours"
         }
-        # Check if Monday has business hours set different than 24 hours open per day
+        # Check if Monday has business hours set different than 24 Hours open per day
         elseif ($aaBusinessHoursFriendly.DisplayMondayHours) {
             $mondayHours = "Monday Hours: $($aaBusinessHoursFriendly.DisplayMondayHours)"
+
+            if ($mondayHours -match ",") {
+
+                $mondayHoursTimeRanges = $mondayHours.Split(",")
+
+                $mondayHoursFirstTimeRange = "$($mondayHoursTimeRanges[0])"
+                $MondayHoursFirstTimeRangeStart = $mondayHoursFirstTimeRange.Split("-")[0].Remove(($mondayHoursFirstTimeRange.Split("-")[0]).Length -3)
+                $MondayHoursFirstTimeRangeEnd = $mondayHoursFirstTimeRange.Split("-")[1].Remove(($mondayHoursFirstTimeRange.Split("-")[1]).Length -3)
+                $mondayHours = "$MondayHoursFirstTimeRangeStart - $MondayHoursFirstTimeRangeEnd"
+    
+
+                foreach ($TimeRange in $mondayHoursTimeRanges | Where-Object {$_ -notcontains $mondayHoursTimeRanges[0]} ) {
+
+                    $MondayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Monday Hours: ","")
+                    $MondayHoursEnd = ($TimeRange.Split("-")[1].Remove(($TimeRange.Split("-")[1]).Length -3))
+
+                    $mondayHours += (", $MondayHoursStart - $MondayHoursEnd")
+                }
+
+            }
+
+            else {
+
+                $MondayHoursStart = $MondayHours.Split("-")[0].Remove(($MondayHours.Split("-")[0]).Length -3)
+                $MondayHoursEnd = $MondayHours.Split("-")[1].Remove(($MondayHours.Split("-")[1]).Length -3)
+                $MondayHours = "$MondayHoursStart - $MondayHoursEnd"    
+
+            }
+
         }
-        # Check if Monday has no business hours at all / is closed 24 hours per day
+        # Check if Monday has no business hours at all / is closed 24 Hours per day
         else {
             $mondayHours = "Monday Hours: Closed"
         }
 
         # Tuesday
         if ($aaBusinessHoursFriendly.DisplayTuesdayHours -eq "00:00:00-1.00:00:00") {
-            $TuesdayHours = "Tuesday Hours: Open 24 hours"
+            $TuesdayHours = "Tuesday Hours: Open 24 Hours"
         }
         elseif ($aaBusinessHoursFriendly.DisplayTuesdayHours) {
             $TuesdayHours = "Tuesday Hours: $($aaBusinessHoursFriendly.DisplayTuesdayHours)"
+
+            if ($TuesdayHours -match ",") {
+
+                $TuesdayHoursTimeRanges = $TuesdayHours.Split(",")
+
+                $TuesdayHoursFirstTimeRange = "$($TuesdayHoursTimeRanges[0])"
+                $TuesdayHoursFirstTimeRangeStart = $TuesdayHoursFirstTimeRange.Split("-")[0].Remove(($TuesdayHoursFirstTimeRange.Split("-")[0]).Length -3)
+                $TuesdayHoursFirstTimeRangeEnd = $TuesdayHoursFirstTimeRange.Split("-")[1].Remove(($TuesdayHoursFirstTimeRange.Split("-")[1]).Length -3)
+                $TuesdayHours = "$TuesdayHoursFirstTimeRangeStart - $TuesdayHoursFirstTimeRangeEnd"
+    
+
+                foreach ($TimeRange in $TuesdayHoursTimeRanges | Where-Object {$_ -notcontains $TuesdayHoursTimeRanges[0]} ) {
+
+                    $TuesdayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Tuesday Hours: ","")
+                    $TuesdayHoursEnd = ($TimeRange.Split("-")[1].Remove(($TimeRange.Split("-")[1]).Length -3))
+
+                    $TuesdayHours += (", $TuesdayHoursStart - $TuesdayHoursEnd")
+                }
+
+            }
+
+            else {
+
+                $TuesdayHoursStart = $TuesdayHours.Split("-")[0].Remove(($TuesdayHours.Split("-")[0]).Length -3)
+                $TuesdayHoursEnd = $TuesdayHours.Split("-")[1].Remove(($TuesdayHours.Split("-")[1]).Length -3)
+                $TuesdayHours = "$TuesdayHoursStart - $TuesdayHoursEnd"    
+
+            }
+
         } 
         else {
             $TuesdayHours = "Tuesday Hours: Closed"
@@ -416,10 +475,39 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
         # Wednesday
         if ($aaBusinessHoursFriendly.DisplayWednesdayHours -eq "00:00:00-1.00:00:00") {
-            $WednesdayHours = "Wednesday Hours: Open 24 hours"
+            $WednesdayHours = "Wednesday Hours: Open 24 Hours"
         } 
         elseif ($aaBusinessHoursFriendly.DisplayWednesdayHours) {
             $WednesdayHours = "Wednesday Hours: $($aaBusinessHoursFriendly.DisplayWednesdayHours)"
+
+            if ($WednesdayHours -match ",") {
+
+                $WednesdayHoursTimeRanges = $WednesdayHours.Split(",")
+
+                $WednesdayHoursFirstTimeRange = "$($WednesdayHoursTimeRanges[0])"
+                $WednesdayHoursFirstTimeRangeStart = $WednesdayHoursFirstTimeRange.Split("-")[0].Remove(($WednesdayHoursFirstTimeRange.Split("-")[0]).Length -3)
+                $WednesdayHoursFirstTimeRangeEnd = $WednesdayHoursFirstTimeRange.Split("-")[1].Remove(($WednesdayHoursFirstTimeRange.Split("-")[1]).Length -3)
+                $WednesdayHours = "$WednesdayHoursFirstTimeRangeStart - $WednesdayHoursFirstTimeRangeEnd"
+    
+
+                foreach ($TimeRange in $WednesdayHoursTimeRanges | Where-Object {$_ -notcontains $WednesdayHoursTimeRanges[0]} ) {
+
+                    $WednesdayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Wednesday Hours: ","")
+                    $WednesdayHoursEnd = ($TimeRange.Split("-")[1].Remove(($TimeRange.Split("-")[1]).Length -3))
+
+                    $WednesdayHours += (", $WednesdayHoursStart - $WednesdayHoursEnd")
+                }
+
+            }
+
+            else {
+
+                $WednesdayHoursStart = $WednesdayHours.Split("-")[0].Remove(($WednesdayHours.Split("-")[0]).Length -3)
+                $WednesdayHoursEnd = $WednesdayHours.Split("-")[1].Remove(($WednesdayHours.Split("-")[1]).Length -3)
+                $WednesdayHours = "$WednesdayHoursStart - $WednesdayHoursEnd"    
+
+            }
+
         }
         else {
             $WednesdayHours = "Wednesday Hours: Closed"
@@ -427,10 +515,39 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
         # Thursday
         if ($aaBusinessHoursFriendly.DisplayThursdayHours -eq "00:00:00-1.00:00:00") {
-            $ThursdayHours = "Thursday Hours: Open 24 hours"
+            $ThursdayHours = "Thursday Hours: Open 24 Hours"
         } 
         elseif ($aaBusinessHoursFriendly.DisplayThursdayHours) {
             $ThursdayHours = "Thursday Hours: $($aaBusinessHoursFriendly.DisplayThursdayHours)"
+
+            if ($ThursdayHours -match ",") {
+
+                $ThursdayHoursTimeRanges = $ThursdayHours.Split(",")
+
+                $ThursdayHoursFirstTimeRange = "$($ThursdayHoursTimeRanges[0])"
+                $ThursdayHoursFirstTimeRangeStart = $ThursdayHoursFirstTimeRange.Split("-")[0].Remove(($ThursdayHoursFirstTimeRange.Split("-")[0]).Length -3)
+                $ThursdayHoursFirstTimeRangeEnd = $ThursdayHoursFirstTimeRange.Split("-")[1].Remove(($ThursdayHoursFirstTimeRange.Split("-")[1]).Length -3)
+                $ThursdayHours = "$ThursdayHoursFirstTimeRangeStart - $ThursdayHoursFirstTimeRangeEnd"
+    
+
+                foreach ($TimeRange in $ThursdayHoursTimeRanges | Where-Object {$_ -notcontains $ThursdayHoursTimeRanges[0]} ) {
+
+                    $ThursdayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Thursday Hours: ","")
+                    $ThursdayHoursEnd = ($TimeRange.Split("-")[1].Remove(($TimeRange.Split("-")[1]).Length -3))
+
+                    $ThursdayHours += (", $ThursdayHoursStart - $ThursdayHoursEnd")
+                }
+
+            }
+
+            else {
+
+                $ThursdayHoursStart = $ThursdayHours.Split("-")[0].Remove(($ThursdayHours.Split("-")[0]).Length -3)
+                $ThursdayHoursEnd = $ThursdayHours.Split("-")[1].Remove(($ThursdayHours.Split("-")[1]).Length -3)
+                $ThursdayHours = "$ThursdayHoursStart - $ThursdayHoursEnd"    
+
+            }
+
         }
         else {
             $ThursdayHours = "Thursday Hours: Closed"
@@ -438,10 +555,39 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
         # Friday
         if ($aaBusinessHoursFriendly.DisplayFridayHours -eq "00:00:00-1.00:00:00") {
-            $FridayHours = "Friday Hours: Open 24 hours"
+            $FridayHours = "Friday Hours: Open 24 Hours"
         } 
         elseif ($aaBusinessHoursFriendly.DisplayFridayHours) {
             $FridayHours = "Friday Hours: $($aaBusinessHoursFriendly.DisplayFridayHours)"
+
+            if ($FridayHours -match ",") {
+
+                $FridayHoursTimeRanges = $FridayHours.Split(",")
+
+                $FridayHoursFirstTimeRange = "$($FridayHoursTimeRanges[0])"
+                $FridayHoursFirstTimeRangeStart = $FridayHoursFirstTimeRange.Split("-")[0].Remove(($FridayHoursFirstTimeRange.Split("-")[0]).Length -3)
+                $FridayHoursFirstTimeRangeEnd = $FridayHoursFirstTimeRange.Split("-")[1].Remove(($FridayHoursFirstTimeRange.Split("-")[1]).Length -3)
+                $FridayHours = "$FridayHoursFirstTimeRangeStart - $FridayHoursFirstTimeRangeEnd"
+    
+
+                foreach ($TimeRange in $FridayHoursTimeRanges | Where-Object {$_ -notcontains $FridayHoursTimeRanges[0]} ) {
+
+                    $FridayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Friday Hours: ","")
+                    $FridayHoursEnd = ($TimeRange.Split("-")[1].Remove(($TimeRange.Split("-")[1]).Length -3))
+
+                    $FridayHours += (", $FridayHoursStart - $FridayHoursEnd")
+                }
+
+            }
+
+            else {
+
+                $FridayHoursStart = $FridayHours.Split("-")[0].Remove(($FridayHours.Split("-")[0]).Length -3)
+                $FridayHoursEnd = $FridayHours.Split("-")[1].Remove(($FridayHours.Split("-")[1]).Length -3)
+                $FridayHours = "$FridayHoursStart - $FridayHoursEnd"    
+
+            }
+
         }
         else {
             $FridayHours = "Friday Hours: Closed"
@@ -449,11 +595,40 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
         # Saturday
         if ($aaBusinessHoursFriendly.DisplaySaturdayHours -eq "00:00:00-1.00:00:00") {
-            $SaturdayHours = "Saturday Hours: Open 24 hours"
+            $SaturdayHours = "Saturday Hours: Open 24 Hours"
         } 
 
         elseif ($aaBusinessHoursFriendly.DisplaySaturdayHours) {
             $SaturdayHours = "Saturday Hours: $($aaBusinessHoursFriendly.DisplaySaturdayHours)"
+
+            if ($SaturdayHours -match ",") {
+
+                $SaturdayHoursTimeRanges = $SaturdayHours.Split(",")
+
+                $SaturdayHoursFirstTimeRange = "$($SaturdayHoursTimeRanges[0])"
+                $SaturdayHoursFirstTimeRangeStart = $SaturdayHoursFirstTimeRange.Split("-")[0].Remove(($SaturdayHoursFirstTimeRange.Split("-")[0]).Length -3)
+                $SaturdayHoursFirstTimeRangeEnd = $SaturdayHoursFirstTimeRange.Split("-")[1].Remove(($SaturdayHoursFirstTimeRange.Split("-")[1]).Length -3)
+                $SaturdayHours = "$SaturdayHoursFirstTimeRangeStart - $SaturdayHoursFirstTimeRangeEnd"
+    
+
+                foreach ($TimeRange in $SaturdayHoursTimeRanges | Where-Object {$_ -notcontains $SaturdayHoursTimeRanges[0]} ) {
+
+                    $SaturdayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Saturday Hours: ","")
+                    $SaturdayHoursEnd = ($TimeRange.Split("-")[1].Remove(($TimeRange.Split("-")[1]).Length -3))
+
+                    $SaturdayHours += (", $SaturdayHoursStart - $SaturdayHoursEnd")
+                }
+
+            }
+
+            else {
+
+                $SaturdayHoursStart = $SaturdayHours.Split("-")[0].Remove(($SaturdayHours.Split("-")[0]).Length -3)
+                $SaturdayHoursEnd = $SaturdayHours.Split("-")[1].Remove(($SaturdayHours.Split("-")[1]).Length -3)
+                $SaturdayHours = "$SaturdayHoursStart - $SaturdayHoursEnd"    
+
+            }
+
         }
 
         else {
@@ -462,10 +637,39 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
         # Sunday
         if ($aaBusinessHoursFriendly.DisplaySundayHours -eq "00:00:00-1.00:00:00") {
-            $SundayHours = "Sunday Hours: Open 24 hours"
+            $SundayHours = "Sunday Hours: Open 24 Hours"
         }
         elseif ($aaBusinessHoursFriendly.DisplaySundayHours) {
             $SundayHours = "Sunday Hours: $($aaBusinessHoursFriendly.DisplaySundayHours)"
+
+            if ($SundayHours -match ",") {
+
+                $SundayHoursTimeRanges = $SundayHours.Split(",")
+
+                $SundayHoursFirstTimeRange = "$($SundayHoursTimeRanges[0])"
+                $SundayHoursFirstTimeRangeStart = $SundayHoursFirstTimeRange.Split("-")[0].Remove(($SundayHoursFirstTimeRange.Split("-")[0]).Length -3)
+                $SundayHoursFirstTimeRangeEnd = $SundayHoursFirstTimeRange.Split("-")[1].Remove(($SundayHoursFirstTimeRange.Split("-")[1]).Length -3)
+                $SundayHours = "$SundayHoursFirstTimeRangeStart - $SundayHoursFirstTimeRangeEnd"
+    
+
+                foreach ($TimeRange in $SundayHoursTimeRanges | Where-Object {$_ -notcontains $SundayHoursTimeRanges[0]} ) {
+
+                    $SundayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Sunday Hours: ","")
+                    $SundayHoursEnd = ($TimeRange.Split("-")[1].Remove(($TimeRange.Split("-")[1]).Length -3))
+
+                    $SundayHours += (", $SundayHoursStart - $SundayHoursEnd")
+                }
+
+            }
+
+            else {
+
+                $SundayHoursStart = $SundayHours.Split("-")[0].Remove(($SundayHours.Split("-")[0]).Length -3)
+                $SundayHoursEnd = $SundayHours.Split("-")[1].Remove(($SundayHours.Split("-")[1]).Length -3)
+                $SundayHours = "$SundayHoursStart - $SundayHoursEnd"    
+
+            }
+
         }
 
         else {
