@@ -36,7 +36,7 @@ This will run the script without any parameters / default parameters. You will b
 
 <div class="notecard note">
 <h4>Note</h4>
-<p>As this uses `| Out-Gridview` it's only supported on Windows platforms.</p>
+<p>As this uses "Out-Gridview" it's only supported on Windows platforms.</p>
 </div>
 
 ### Example 2
