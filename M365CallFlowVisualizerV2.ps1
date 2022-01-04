@@ -18,10 +18,12 @@
         01.11.2021:     Add support to display call queues for an after hours call flow of an auto attendant
         01.11.2021:     Fix issue where additional entry point numbers were not shown on after hours call flow call queues
         02.11.2021:     Add support for nested Auto Attendants
-        04.01.2022:     V2.1 more or less a complete rewrite of the script logic to make it really dynamic and support indefinite chaning/nesting of voice apps
+        03.01.2022:     V2.1 more or less a complete rewrite of the script logic to make it really dynamic and support indefinite chaning/nesting of voice apps
                         Add support to disable rendering of nested voice apps
                         Add support for voice app name and type parameters
                         Fixed a bug where some phone numbers which contained extensions including a ";" were not rendered in mermaid. (replace ";" with ",")
+                        Fixed a bug where nested voice apps of an auto attendant were rendered even though business hours were set to default.
+                        Added support for custom file paths, option to disable saving the file
 
     .PARAMETER Name
     -Identity
@@ -35,7 +37,21 @@
         Specifies if the mermaid code should be copied to the clipboard after the script has finished.
         Required:           false
         Type:               boolean
-        Default value:      false
+        Default value:      true
+    
+    -SaveToFile
+        Specifies if the mermaid code should be saved into either a mermaid or markdown file.
+        Required:           false
+        Type:               boolean
+        Default value:      true
+
+    -CustomFilePath
+        Specifies the file path for the output file. The directory must already exist.
+        Required:           false
+        Type:               string
+        Accepted values:    file paths e.g. "C:\Temp"
+        Default value:      ".\" (current folder)
+
 
     -DisplayNestedCallFlows
         Specifies whether or not to also display the call flows of nested call queues or auto attendants. If set to false, only the name of nested voice apps will be rendered. Nested call flows won't be expanded.
@@ -87,6 +103,12 @@
     .EXAMPLE
         .\M365CallFlowVisualizerV2.ps1 -DocType Markdown -SetClipBoard $false
 
+    .EXAMPLE
+        .\M365CallFlowVisualizerV2.ps1 -SafeToFile $false
+
+    .EXAMPLE
+        .\M365CallFlowVisualizerV2.ps1 -CustomFilePath "C:\Temp"
+
     .LINK
     https://github.com/mozziemozz/M365CallFlowVisualizer
     
@@ -98,13 +120,43 @@
 param(
     [Parameter(Mandatory=$false)][String]$Identity,
     [Parameter(Mandatory=$false)][Bool]$SetClipBoard = $true,
+    [Parameter(Mandatory=$false)][Bool]$SaveToFile = $true,
+    [Parameter(Mandatory=$false)][String]$CustomFilePath,
     [Parameter(Mandatory=$false)][Bool]$DisplayNestedCallFlows = $true,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Mermaid",
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$false)][String]$VoiceAppName,
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$true)][ValidateSet("Auto Attendant","Call Queue")][String]$VoiceAppType
 )
 
+Write-Host "Warning: Some versions of the 'MicrosoftTeams' Module can take a very long time to load. Give it a few minutes before cancelling." -ForegroundColor Yellow
+
+if ($SaveToFile -eq $false -and $CustomFilePath) {
+
+    Write-Host "Warning: Custom file path is specified but SaveToFile is set to false. The call flow won't be saved!" -ForegroundColor Yellow
+
+}
+
 $processedVoiceApps = @()
+
+function Connect-M365CFV {
+    param (
+    )
+
+    try {
+        Get-MsolDomain -ErrorAction Stop > $null
+    }
+    catch {
+        Connect-MsolService
+    }
+
+    try {
+        Get-CsOnlineSipDomain -ErrorAction Stop > $null
+    }
+    catch {
+        Connect-MicrosoftTeams
+    }    
+    
+}
 
 function Set-Mermaid {
     param (
@@ -687,7 +739,7 @@ function Get-AutoAttendantAfterHoursCallFlow {
 
             $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)>$AfterHoursCallFlowGreeting] --> AfterHoursCallFlow$($aaAfterHoursCallFlowAaObjectId)($AfterHoursCallFlowAction) --> $($MatchingCQIdentity)($AfterHoursCallFlowTargetTypeFriendly <br> $AfterHoursCallFlowTargetName)"
 
-            if ($nestedVoiceApps -notcontains $MatchingCQIdentity) {
+            if ($nestedVoiceApps -notcontains $MatchingCQIdentity -and $aaHasAfterHours -eq $true) {
 
                 $nestedVoiceApps += $MatchingCQIdentity
 
@@ -700,7 +752,7 @@ function Get-AutoAttendantAfterHoursCallFlow {
 
             $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)>$AfterHoursCallFlowGreeting] --> AfterHoursCallFlow$($aaAfterHoursCallFlowAaObjectId)($AfterHoursCallFlowAction) --> $($MatchingAaAfterHoursCallFlowAa.Identity)($AfterHoursCallFlowTargetTypeFriendly <br> $AfterHoursCallFlowTargetName)"
 
-            if ($nestedVoiceApps -notcontains $MatchingAaAfterHoursCallFlowAa.Identity) {
+            if ($nestedVoiceApps -notcontains $MatchingAaAfterHoursCallFlowAa.Identity -and $aaHasAfterHours -eq $true) {
 
                 $nestedVoiceApps += $MatchingAaAfterHoursCallFlowAa.Identity
 
@@ -1028,8 +1080,9 @@ if ($mermaidCode -notcontains $mdCallQueueCallFlow) {
   
 }
 
-
 . Set-Mermaid -DocType $DocType
+
+. Connect-M365CFV
 
 #This is needed to determine if the Get-CallFlow function is running for the first time or not.
 $mdNodePhoneNumbersCounter = 0
@@ -1128,6 +1181,7 @@ function Get-CallFlow {
         if ($mdNodePhoneNumbersCounter -eq 0) {
 
             $mdPhoneNumberLinkType = "-->"
+            $VoiceAppFileName = $VoiceApp.Name
 
         }
 
@@ -1200,7 +1254,6 @@ function Get-CallFlow {
 }
 
 # Get First Call Flow
-
 if ($Identity) {
 
     . Get-CallFlow -VoiceAppId $Identity
@@ -1259,7 +1312,25 @@ else {
 #Remove invalid characters from mermaid syntax
 $mermaidCode = $mermaidCode.Replace(";",",")
 
-Set-Content -Path ".\$(($VoiceApp.Name).Replace(" ","_"))_CallFlow$fileExtension" -Value $mermaidCode -Encoding UTF8
+if ($SaveToFile -eq $true) {
+
+    if ($CustomFilePath) {
+
+        $FilePath = $CustomFilePath
+
+    }
+
+    else {
+
+        $FilePath = "."
+
+    }
+
+    $mermaidCode += $mdEnd
+
+    Set-Content -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -Value $mermaidCode -Encoding UTF8
+
+}
 
 if ($SetClipBoard -eq $true) {
     $mermaidCode -Replace('```mermaid','') `
