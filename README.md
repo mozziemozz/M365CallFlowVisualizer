@@ -87,6 +87,14 @@ This will run the script without saving the call flow to a file. Make sure to no
 
 This will run the script and save the output file to "C:\Temp".
 
+### Example 8
+
+```PowerShell
+.\M365CallFlowVisualizerV2.ps1 -VoiceAppName "PS Test AA" -VoiceAppType "Auto Attendant" -DisplayNestedCallFlows $false
+```
+
+This will run the script without expanding and rendering call flows of auto attendants or call queues which are nested behind "PS Test AA". Only the names and types of these voice apps will be displayed.
+
 ## Preview Mermaid Code
 
 The script supports outputting Mermaid-JS code in either a Markdown file (.md) or a Mermaid file (.mmd).
@@ -130,6 +138,7 @@ If you want to implement Mermaid Diagrams into your markdown based documentation
 # Known limitations
 - No support for IVRs yet
 - The tool has only been tested on Windows systems. Some functionalty might not be available on other platforms.
+- Rendering of Mermaid code inside Markdown documents might not work everywhere
 
 # Planned feature updates
 - Reflect if voicemail transcription or suppress system greeting is on
