@@ -117,7 +117,7 @@ To preview Mermaid files I suggest the following [VS Code Extension](https://mar
 
 ![](/Examples/USA_Toll_Free_Test_Example.svg)
 
-These are some examples based on real configurations inside a Microsoft 365 Tenant. With the new V2 Version it's theoretically possible to render nested voice apps indefinitely. Loops should also be reflected correctly, altough the diagram can look a little weird. The logic now detects if multiple voice apps forward to the same target and will render each voice app only one time.
+These are some examples generated from real configurations inside a Microsoft 365 Tenant. Everthing you see has been generated and rendered 100% automatically. With the new V2 Version it's theoretically possible to render nested voice apps indefinitely. Loops should also be reflected correctly, altough the diagram can look a little weird. The logic now detects if multiple voice apps forward to the same target and will render each voice app only one time.
 
 ## Tips & Links
 
