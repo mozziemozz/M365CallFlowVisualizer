@@ -26,6 +26,7 @@
                         Added support for custom file paths, option to disable saving the file
         04.01.2022      Prettify format of business hours (remove seconds from string)
         05.01.2022      Add H1 Title to Markdown document, add support for mermaid themes default, dark, neutral and forest, change default DocType to Markdown
+        05.01.2022      Add new parameters and support for displaying call queue agents opt in status and phone number
 
     .PARAMETER Name
     -Identity
@@ -54,12 +55,23 @@
         Accepted values:    file paths e.g. "C:\Temp"
         Default value:      ".\" (current folder)
 
-
     -DisplayNestedCallFlows
         Specifies whether or not to also display the call flows of nested call queues or auto attendants. If set to false, only the name of nested voice apps will be rendered. Nested call flows won't be expanded.
         Required:           false
         Type:               boolean
         Default value:      true   
+
+    -ShowCqAgentPhoneNumbers
+        Specifies whether or not the agent subgraphs of call queues should include a users direct number.
+        Required:           false
+        Type:               boolean
+        Default value:      false   
+
+    -ShowCqAgentOptInStatus
+        Specifies whether or not the current opt in status of agents should be displayed.
+        Required:           false
+        Type:               boolean
+        Default value:      false   
 
     -DocType
         Specifies the document type.
@@ -107,7 +119,7 @@
         .\M365CallFlowVisualizerV2.ps1 -Theme dark
 
     .EXAMPLE
-        .\M365CallFlowVisualizerV2.ps1 -Identity "6fb84b40-f045-45e8-8c1a-8fc18188e46x"
+        .\M365CallFlowVisualizerV2.ps1 -Identity "6fb84b40-f045-45e8-8c1a-8fc18188exxx"
 
     .EXAMPLE
         .\M365CallFlowVisualizerV2.ps1 -VoiceAppName "PS Test AA" -VoiceAppType "Auto Attendant"
@@ -117,6 +129,9 @@
 
     .EXAMPLE
         .\M365CallFlowVisualizerV2.ps1 -VoiceAppName "PS Test CQ" -VoiceAppType "Call Queue"
+
+    .EXAMPLE
+        .\M365CallFlowVisualizerV2.ps1 -VoiceAppName "PS Test CQ" -VoiceAppType "Call Queue" -ShowCqAgentPhoneNumbers $true -ShowCqAgentOptInStatus $true
 
     .EXAMPLE
         .\M365CallFlowVisualizerV2.ps1 -DocType Markdown -SetClipBoard $false
@@ -141,7 +156,9 @@ param(
     [Parameter(Mandatory=$false)][Bool]$SaveToFile = $true,
     [Parameter(Mandatory=$false)][String]$CustomFilePath,
     [Parameter(Mandatory=$false)][Bool]$DisplayNestedCallFlows = $true,
-    [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Mermaid",
+    [Parameter(Mandatory=$false)][Bool]$ShowCqAgentPhoneNumbers = $false,
+    [Parameter(Mandatory=$false)][Bool]$ShowCqAgentOptInStatus = $false,
+    [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral")][String]$Theme = "default",
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$false)][String]$VoiceAppName,
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$true)][ValidateSet("Auto Attendant","Call Queue")][String]$VoiceAppType
@@ -1032,7 +1049,7 @@ function Get-CallQueueCallFlow {
     $CqTimeOut = $MatchingCQ.TimeoutThreshold
     $CqTimeoutAction = $MatchingCQ.TimeoutAction.Value
     $CqRoutingMethod = $MatchingCQ.RoutingMethod.Value
-    $CqAgents = $MatchingCQ.Agents.ObjectId
+    $CqAgents = $MatchingCQ.Agents
     $CqAgentOptOut = $MatchingCQ.AllowOptOut
     $CqConferenceMode = $MatchingCQ.ConferenceMode
     $CqAgentAlertTime = $MatchingCQ.AgentAlertTime
@@ -1260,7 +1277,22 @@ function Get-CallQueueCallFlow {
 
     # add each agent to the empty agents mermaid element
     foreach ($CqAgent in $CqAgents) {
-        $AgentDisplayName = (Get-MsolUser -ObjectId $CqAgent).DisplayName
+        $AgentDisplayName = (Get-MsolUser -ObjectId $CqAgent.ObjectId).DisplayName
+
+        if ($ShowCqAgentPhoneNumbers -eq $true) {
+
+            $CqAgentPhoneNumber = ((Get-CsOnlineUser -Identity $($CqAgent.ObjectId)).LineUri).Replace("tel:","")
+
+            $AgentDisplayName = "$AgentDisplayName <br> $CqAgentPhoneNumber"
+
+        }
+
+
+        if ($ShowCqAgentOptInStatus -eq $true) {
+
+            $AgentDisplayName = "$AgentDisplayName <br> OptIn: $($CqAgent.OptIn)"
+
+        }
 
         $AgentDisplayNames = "agentListType$($cqCallFlowObjectId) --> agent$($cqCallFlowObjectId)$($AgentCounter)($AgentDisplayName) --> timeOut$($cqCallFlowObjectId)`n"
 
