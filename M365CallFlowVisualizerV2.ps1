@@ -28,6 +28,7 @@
         05.01.2022      Add H1 Title to Markdown document, add support for mermaid themes default, dark, neutral and forest, change default DocType to Markdown
         05.01.2022      Add new parameters and support for displaying call queue agents opt in status and phone number
         05.01.2022      Fix clipboard content when markdown is selected, add support to display phone numbers assigned to voice apps in grid view selection
+        05.01.2022      Change Markdown title from H1 to H2. Fix bug in phone number listing on voice app selection
 
     .PARAMETER Name
     -Identity
@@ -208,7 +209,7 @@ function Set-Mermaid {
 "@ 
 
         $mdStart =@"
-# CallFlowNamePlaceHolder
+## CallFlowNamePlaceHolder
 
 ``````mermaid
 $MarkdownTheme
@@ -1380,9 +1381,11 @@ function Get-CallFlow {
 
             foreach ($ResourceAccount in $VoiceApp.ApplicationInstances) {
 
-                $ResourceAccountPhoneNumber = ((Get-CsOnlineApplicationInstance -Identity $ResourceAccount).PhoneNumber).Replace("tel:","")
+                $ResourceAccountPhoneNumber = ((Get-CsOnlineApplicationInstance -Identity $ResourceAccount).PhoneNumber)
 
                 if ($ResourceAccountPhoneNumber) {
+
+                    $ResourceAccountPhoneNumber = $ResourceAccountPhoneNumber.Replace("tel:","")
 
                     $ResourceAccountPhoneNumbers += "$ResourceAccountPhoneNumber, "
 
@@ -1422,9 +1425,11 @@ function Get-CallFlow {
 
             foreach ($ResourceAccount in $VoiceApp.ApplicationInstances) {
 
-                $ResourceAccountPhoneNumber = ((Get-CsOnlineApplicationInstance -Identity $ResourceAccount).PhoneNumber).Replace("tel:","")
+                $ResourceAccountPhoneNumber = ((Get-CsOnlineApplicationInstance -Identity $ResourceAccount).PhoneNumber)
 
                 if ($ResourceAccountPhoneNumber) {
+
+                    $ResourceAccountPhoneNumber = $ResourceAccountPhoneNumber.Replace("tel:","")
 
                     $ResourceAccountPhoneNumbers += "$ResourceAccountPhoneNumber, "
 
@@ -1639,7 +1644,7 @@ else {
 $mermaidCode = $mermaidCode.Replace(";",",")
 
 #Add H1 Title to Markdown code
-$mermaidCode = $mermaidCode.Replace("# CallFlowNamePlaceHolder","# Call Flow $VoiceAppFileName")
+$mermaidCode = $mermaidCode.Replace("## CallFlowNamePlaceHolder","# Call Flow $VoiceAppFileName")
 
 if ($SaveToFile -eq $true) {
 
