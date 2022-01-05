@@ -25,6 +25,7 @@
                         Fixed a bug where nested voice apps of an auto attendant were rendered even though business hours were set to default.
                         Added support for custom file paths, option to disable saving the file
         04.01.2022      Prettify format of business hours (remove seconds from string)
+        05.01.2022      Add H1 Title to Markdown document, add support for mermaid themes default, dark, neutral and forest, change default DocType to Markdown
 
     .PARAMETER Name
     -Identity
@@ -65,7 +66,14 @@
         Required:           false
         Type:               string
         Accepted values:    Markdown, Mermaid
-        Default value:      Mermaid
+        Default value:      Markdown
+
+    -Theme
+        Specifies the mermaid theme in Markdown
+        Required:           false
+        Type:               string
+        Accepted values:    default, dark, neutral, forest
+        Default value:      default
     
     -VoiceAppName
         If provided, you won't be provided with a selection of available voice apps. The script will search for a voice app with the specified name. This is the display name of a voice app, not a resource account. If you specify the VoiceAppName, VoiceAppType will become mandatory.
@@ -91,6 +99,12 @@
 
     .EXAMPLE
         .\M365CallFlowVisualizerV2.ps1
+
+    .EXAMPLE
+        .\M365CallFlowVisualizerV2.ps1 -DocType Mermaid
+
+    .EXAMPLE
+        .\M365CallFlowVisualizerV2.ps1 -Theme dark
 
     .EXAMPLE
         .\M365CallFlowVisualizerV2.ps1 -Identity "6fb84b40-f045-45e8-8c1a-8fc18188e46x"
@@ -128,6 +142,7 @@ param(
     [Parameter(Mandatory=$false)][String]$CustomFilePath,
     [Parameter(Mandatory=$false)][Bool]$DisplayNestedCallFlows = $true,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Mermaid",
+    [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral")][String]$Theme = "default",
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$false)][String]$VoiceAppName,
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$true)][ValidateSet("Auto Attendant","Call Queue")][String]$VoiceAppType
 )
@@ -168,8 +183,17 @@ function Set-Mermaid {
         )
 
     if ($DocType -eq "Markdown") {
+
+        $MarkdownTheme =@"
+%%{init: {'theme': '$($Theme)', "flowchart" : { "curve" : "basis" } } }%%
+
+"@ 
+
         $mdStart =@"
+# CallFlowNamePlaceHolder
+
 ``````mermaid
+$MarkdownTheme
 flowchart TB
 "@
 
@@ -1518,6 +1542,9 @@ else {
 
 #Remove invalid characters from mermaid syntax
 $mermaidCode = $mermaidCode.Replace(";",",")
+
+#Add H1 Title to Markdown code
+$mermaidCode = $mermaidCode.Replace("# CallFlowNamePlaceHolder","# Call Flow $VoiceAppFileName")
 
 if ($SaveToFile -eq $true) {
 

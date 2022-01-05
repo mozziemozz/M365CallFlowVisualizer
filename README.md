@@ -95,6 +95,22 @@ This will run the script and save the output file to "C:\Temp".
 
 This will run the script without expanding and rendering call flows of auto attendants or call queues which are nested behind "PS Test AA". Only the names and types of these voice apps will be displayed.
 
+### Example 9
+
+```PowerShell
+.\M365CallFlowVisualizerV2.ps1 -VoiceAppName "PS Test AA" -VoiceAppType "Auto Attendant" -DocType Mermaid
+```
+
+This will run the script and save the call flow into a Mermaid (*.mmd) file.
+
+### Example 10
+
+```PowerShell
+.\M365CallFlowVisualizerV2.ps1 -VoiceAppName "PS Test AA" -VoiceAppType "Auto Attendant" -Theme dark
+```
+
+This will run the script and set the Mermaid theme inside Markdown to dark theme.
+
 ## Preview Mermaid Code
 
 The script supports outputting Mermaid-JS code in either a Markdown file (.md) or a Mermaid file (.mmd).
