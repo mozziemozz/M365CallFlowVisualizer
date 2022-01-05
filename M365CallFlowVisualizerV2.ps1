@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.1.0
+    Version:            2.1.1
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -27,6 +27,7 @@
         04.01.2022      Prettify format of business hours (remove seconds from string)
         05.01.2022      Add H1 Title to Markdown document, add support for mermaid themes default, dark, neutral and forest, change default DocType to Markdown
         05.01.2022      Add new parameters and support for displaying call queue agents opt in status and phone number
+        05.01.2022      Fix clipboard content when markdown is selected, add support to display phone numbers assigned to voice apps in grid view selection
 
     .PARAMETER Name
     -Identity
@@ -1370,9 +1371,40 @@ function Get-CallFlow {
         foreach ($VoiceApp in $VoiceAppAas) {
 
             $VoiceAppProperties = New-Object -TypeName psobject
+            $ResourceAccountPhoneNumbers = ""
 
             $VoiceAppProperties | Add-Member -MemberType NoteProperty -Name "Name" -Value $VoiceApp.Name
             $VoiceAppProperties | Add-Member -MemberType NoteProperty -Name "Type" -Value "Auto Attendant"
+
+            $ApplicationInstanceAssociationCounter = 0
+
+            foreach ($ResourceAccount in $VoiceApp.ApplicationInstances) {
+
+                $ResourceAccountPhoneNumber = ((Get-CsOnlineApplicationInstance -Identity $ResourceAccount).PhoneNumber).Replace("tel:","")
+
+                if ($ResourceAccountPhoneNumber) {
+
+                    $ResourceAccountPhoneNumbers += "$ResourceAccountPhoneNumber, "
+
+                    $ApplicationInstanceAssociationCounter ++
+    
+                }
+
+            }
+
+            if ($ApplicationInstanceAssociationCounter -lt 2) {
+
+                $ResourceAccountPhoneNumbers = $ResourceAccountPhoneNumbers.Replace(",","")
+
+            }
+
+            else {
+
+                $ResourceAccountPhoneNumbers = $ResourceAccountPhoneNumbers.TrimEnd(", ")
+
+            }
+
+            $VoiceAppProperties | Add-Member -MemberType NoteProperty -Name "PhoneNumbers" -Value $ResourceAccountPhoneNumbers
 
             $VoiceApps += $VoiceAppProperties
 
@@ -1381,9 +1413,40 @@ function Get-CallFlow {
         foreach ($VoiceApp in $VoiceAppCqs) {
 
             $VoiceAppProperties = New-Object -TypeName psobject
+            $ResourceAccountPhoneNumbers = ""
 
             $VoiceAppProperties | Add-Member -MemberType NoteProperty -Name "Name" -Value $VoiceApp.Name
             $VoiceAppProperties | Add-Member -MemberType NoteProperty -Name "Type" -Value "Call Queue"
+
+            $ApplicationInstanceAssociationCounter = 0
+
+            foreach ($ResourceAccount in $VoiceApp.ApplicationInstances) {
+
+                $ResourceAccountPhoneNumber = ((Get-CsOnlineApplicationInstance -Identity $ResourceAccount).PhoneNumber).Replace("tel:","")
+
+                if ($ResourceAccountPhoneNumber) {
+
+                    $ResourceAccountPhoneNumbers += "$ResourceAccountPhoneNumber, "
+
+                    $ApplicationInstanceAssociationCounter ++
+    
+                }
+
+            }
+
+            if ($ApplicationInstanceAssociationCounter -lt 2) {
+
+                $ResourceAccountPhoneNumbers = $ResourceAccountPhoneNumbers.Replace(",","")
+
+            }
+
+            else {
+
+                $ResourceAccountPhoneNumbers = $ResourceAccountPhoneNumbers.TrimEnd(", ")
+                
+            }
+
+            $VoiceAppProperties | Add-Member -MemberType NoteProperty -Name "PhoneNumbers" -Value $ResourceAccountPhoneNumbers
 
             $VoiceApps += $VoiceAppProperties
 
@@ -1600,7 +1663,9 @@ if ($SaveToFile -eq $true) {
 
 if ($SetClipBoard -eq $true) {
     $mermaidCode -Replace('```mermaid','') `
-    -Replace('```','') | Set-Clipboard
+    -Replace('```','') `
+    -Replace("# Call Flow $VoiceAppFileName","") `
+    -Replace($MarkdownTheme,"") | Set-Clipboard
 
     Write-Host "Mermaid code copied to clipboard. Paste it on https://mermaid.live" -ForegroundColor Cyan
 }
