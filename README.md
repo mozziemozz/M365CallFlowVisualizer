@@ -3,6 +3,12 @@
 # Synopsis
 Reads a config from Microsoft 365 Phone System and renders them visually into a mermaid-js flowchart.
 
+# Updates
+
+| Date | Description |
+| --- | --- |
+| 07.01.2022 | The new release V 2.2.0 now even supports reading and rendering of voice menus (IVRs) including forwardings to announcements and to the operator. |
+
 # How to use it
 
 ## Prerequisites

@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.1.1
+    Version:            2.2.0
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -156,7 +156,7 @@
 
 [CmdletBinding(DefaultParametersetName="None")]
 param(
-    [Parameter(Mandatory=$false)][String]$Identity = "25ea1e61-b422-4e80-bf58-2bb3250a5cc8",
+    [Parameter(Mandatory=$false)][String]$Identity,
     [Parameter(Mandatory=$false)][Bool]$SetClipBoard = $true,
     [Parameter(Mandatory=$false)][Bool]$SaveToFile = $true,
     [Parameter(Mandatory=$false)][String]$CustomFilePath,
@@ -1143,7 +1143,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                 
                 $voiceMenuOptionAnnouncementType = $MenuOption.Prompt.ActiveType.Value
 
-                $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction <br> $voiceMenuOptionAnnouncementType) ----> afterHoursCallFlowMenuOptionsGreeting$($aaafterHoursCallFlowAaObjectId)`n"
+                $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction <br> $voiceMenuOptionAnnouncementType) ---> afterHoursCallFlowMenuOptionsGreeting$($aaafterHoursCallFlowAaObjectId)`n"
 
             }
 
