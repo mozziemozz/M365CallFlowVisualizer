@@ -152,7 +152,6 @@ You can find more information about Mermaid syntax [here](https://mermaid-js.git
 If you want to implement Mermaid Diagrams into your markdown based documentation site, I suggest to take a look at [DocFx](https://dotnet.github.io/docfx/).
 
 # Known limitations
-- No support for IVRs yet
 - The tool has only been tested on Windows systems. Some functionalty might not be available on other platforms.
 
 # Planned feature updates
