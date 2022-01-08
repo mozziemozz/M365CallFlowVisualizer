@@ -156,15 +156,16 @@
 
 [CmdletBinding(DefaultParametersetName="None")]
 param(
-    [Parameter(Mandatory=$false)][String]$Identity,
+    [Parameter(Mandatory=$false)][String]$Identity = "25ea1e61-b422-4e80-bf58-2bb3250a5cc8",
     [Parameter(Mandatory=$false)][Bool]$SetClipBoard = $true,
     [Parameter(Mandatory=$false)][Bool]$SaveToFile = $true,
     [Parameter(Mandatory=$false)][String]$CustomFilePath,
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowCqAgentPhoneNumbers = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowCqAgentOptInStatus = $false,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral")][String]$Theme = "default",
+    [Parameter(Mandatory=$false)][Bool]$UseCustomTheme = $true,
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$false)][String]$VoiceAppName,
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$true)][ValidateSet("Auto Attendant","Call Queue")][String]$VoiceAppType
 )
@@ -178,6 +179,7 @@ if ($SaveToFile -eq $false -and $CustomFilePath) {
 }
 
 $processedVoiceApps = @()
+$customHexNodes = @()
 
 function Connect-M365CFV {
     param (
@@ -485,6 +487,7 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
         # Mermaid node holiday check
         $nodeElementHolidayCheck = "elementHolidayCheck$($aaObjectId){During Holiday?}"
+        $customHexNodes += "elementHolidayCheck$($aaObjectId)"
     } # End if aa has holidays
 
     # Check if auto attendant has after hours and holidays
@@ -787,9 +790,13 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
         # Create the mermaid node for business hours check including the actual business hours
         $nodeElementAfterHoursCheck = "elementAfterHoursCheck$($aaObjectId){During Business Hours? <br> Time Zone: $aaTimeZone <br> $mondayHours <br> $tuesdayHours  <br> $wednesdayHours  <br> $thursdayHours <br> $fridayHours <br> $saturdayHours <br> $sundayHours}"
 
+        $customHexNodes += "elementAfterHoursCheck$($aaObjectId)"
+
     } # End if aa has after hours
 
     $nodeElementHolidayLink = "$($aa.Identity)([Auto Attendant <br> $($aa.Name)])"
+
+    $customHexNodes += "$($aa.Identity)"
 
     if ($aaHasHolidays -eq $true) {
 
@@ -882,6 +889,8 @@ function Get-AutoAttendantDefaultCallFlow {
 
         $mdAutoAttendantDefaultCallFlow = "defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting] --> defaultCallFlow$($aaDefaultCallFlowAaObjectId)(($defaultCallFlowAction))`n"
 
+        $customHexNodes += @("defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)","defaultCallFlow$($aaDefaultCallFlowAaObjectId)")
+
     }
 
     # Check if the default callflow action is transfer call to target
@@ -892,6 +901,8 @@ function Get-AutoAttendantDefaultCallFlow {
         if ($defaultCallFlowMenuOptions.Count -lt 2 -and !$defaultCallFlow.Menu.Prompts.ActiveType.Value) {
 
             $mdDefaultCallFlowGreeting = "defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting] --> "
+
+            $customHexNodes += @("defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)")
 
             $defaultCallFlowMenuOptionsKeyPress = $null
 
@@ -914,6 +925,8 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
             $mdAutoAttendantDefaultCallFlowMenuOptions =@"
 
 "@
+
+            $customHexNodes += @("defaultCallFlowMenuOptions$($aaDefaultCallFlowAaObjectId)","defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)","defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId)")
 
         }
 
@@ -942,6 +955,8 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                 $mdAutoAttendantdefaultCallFlow = "$mdDtmfLink defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction) --> $($OperatorIdentity)($OperatorTypeFriendly <br> $OperatorName)`n"
 
+                $customHexNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey","$($OperatorIdentity)")
+
             }
 
             elseif ($defaultCallFlowAction -eq "Announcement") {
@@ -949,6 +964,8 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                 $voiceMenuOptionAnnouncementType = $MenuOption.Prompt.ActiveType.Value
 
                 $mdAutoAttendantdefaultCallFlow = "$mdDtmfLink defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction <br> $voiceMenuOptionAnnouncementType) ---> defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId)`n"
+
+                $customHexNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey","defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId)")
 
             }
 
@@ -1012,6 +1029,8 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                     }
 
+                    $customHexNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)","$($MatchingCQIdentity)")
+
                 
                 } # End if transfer target type is call queue
 
@@ -1025,12 +1044,16 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                     }
 
+                    $customHexNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)","$($MatchingAaDefaultCallFlowAa.Identity)")
+
                 }
 
                 # Check if default callflow action target is trasnfer call to target but something other than call queue
                 else {
 
                     $mdAutoAttendantDefaultCallFlow = "$mdDtmfLink defaultCallFlow$($aaDefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction) --> $($defaultCallFlowTargetIdentity)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)`n"
+
+                    $customHexNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)","$($defaultCallFlowTargetIdentity)")
 
                 }
 
@@ -1076,6 +1099,8 @@ function Get-AutoAttendantAfterHoursCallFlow {
 
         $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)>$AfterHoursCallFlowGreeting] --> afterHoursCallFlow$($aaAfterHoursCallFlowAaObjectId)(($afterHoursCallFlowAction))`n"
 
+        $customHexNodes += @("afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)","afterHoursCallFlow$($aaAfterHoursCallFlowAaObjectId)")
+
     }
     
     # if after hours action is not disconnect call
@@ -1087,6 +1112,8 @@ function Get-AutoAttendantAfterHoursCallFlow {
         if ($afterHoursCallFlowMenuOptions.Count -lt 2 -and !$afterHoursCallFlow.Menu.Prompts.ActiveType.Value) {
 
             $mdafterHoursCallFlowGreeting = "afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlowGreeting] --> "
+
+            $customHexNodes += @("afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)")
 
             $afterHoursCallFlowMenuOptionsKeyPress = $null
 
@@ -1109,6 +1136,8 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
             $mdAutoAttendantafterHoursCallFlowMenuOptions =@"
 
 "@
+
+            $customHexNodes += @("afterHoursCallFlowMenuOptions$($aaafterHoursCallFlowAaObjectId)","afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)","afterHoursCallFlowMenuOptionsGreeting$($aaafterHoursCallFlowAaObjectId)")
 
         }
 
@@ -1137,6 +1166,8 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                 $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction) --> $($OperatorIdentity)($OperatorTypeFriendly <br> $OperatorName)`n"
 
+                $customHexNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey","$($OperatorIdentity)")
+
             }
 
             elseif ($afterHoursCallFlowAction -eq "Announcement") {
@@ -1144,6 +1175,8 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                 $voiceMenuOptionAnnouncementType = $MenuOption.Prompt.ActiveType.Value
 
                 $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction <br> $voiceMenuOptionAnnouncementType) ---> afterHoursCallFlowMenuOptionsGreeting$($aaafterHoursCallFlowAaObjectId)`n"
+
+                $customHexNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey","afterHoursCallFlowMenuOptionsGreeting$($aaafterHoursCallFlowAaObjectId)")
 
             }
 
@@ -1207,6 +1240,8 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                     }
 
+                    $customHexNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)","$($MatchingCQIdentity)")
+
                 
                 } # End if transfer target type is call queue
 
@@ -1220,12 +1255,16 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                     }
 
+                    $customHexNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)","$($MatchingAaafterHoursCallFlowAa.Identity)")
+
                 }
 
                 # Check if afterHours callflow action target is trasnfer call to target but something other than call queue
                 else {
 
                     $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction) --> $($afterHoursCallFlowTargetIdentity)($afterHoursCallFlowTargetTypeFriendly <br> $afterHoursCallFlowTargetName)`n"
+                    
+                    $customHexNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)","$($afterHoursCallFlowTargetIdentity)")
 
                 }
 
@@ -1746,6 +1785,8 @@ function Get-CallFlow {
     
             $mdNodePhoneNumbersCounter ++
 
+            $customHexNodes += "start$($ApplicationInstancePhoneNumber)"
+
         }
 
 
@@ -1860,6 +1901,56 @@ $mermaidCode = $mermaidCode.Replace(";",",")
 #Add H1 Title to Markdown code
 $mermaidCode = $mermaidCode.Replace("## CallFlowNamePlaceHolder","# Call Flow $VoiceAppFileName")
 
+# Custom Mermaid Color Themes
+function Set-CustomMermaidTheme {
+    param (
+        [Parameter(Mandatory=$false)][String]$NodeColor = "#00A4EF", # Microsoft Blue
+        [Parameter(Mandatory=$false)][String]$NodeBorderColor = "#7FBA00", # Microsoft Green
+        [Parameter(Mandatory=$false)][String]$FontColor = "#737373", # Microsoft Gray
+        [Parameter(Mandatory=$false)][String]$LinkColor = "#FFB900", # Microsoft Yellow
+        [Parameter(Mandatory=$false)][String]$LinkTextColor = "#F25022" # Microsoft Orange
+    )
+
+
+    $themedNodes = "classDef customTheme fill:$NodeColor,stroke:$NodeBorderColor,stroke-width:3px,color:$FontColor`n`nclass "
+
+    foreach ($node in $customHexNodes) {
+
+        $themedNodes += "$node,"
+
+    }
+
+    $mermaidString = ($mermaidCode | Out-String)
+    $NumberOfMermaidLinks = (Select-String -InputObject $mermaidString -Pattern "--" -AllMatches).Matches.Count
+
+    $themedNodes = ($themedNodes += " customTheme").Replace(", customTheme", " customTheme")
+
+    #linkStyle 1,2,3,0 stroke:#00a1f1
+    $themedLinks = "`nlinkStyle "
+
+    $currentMermaidLink = 0
+
+    do {
+        $themedLinks += "$currentMermaidLink,"
+
+        $currentMermaidLink ++
+
+    } until ($currentMermaidLink -eq ($NumberOfMermaidLinks))
+
+    $themedLinks = ($themedLinks += " stroke:$LinkColor,stroke-width:2px,color:$LinkTextColor").Replace(", stroke:"," stroke:")
+
+    $mermaidCode += @($themedNodes,$themedLinks)
+    
+}
+
+if ($UseCustomTheme -eq $true) {
+
+    . Set-CustomMermaidTheme
+
+}
+
+
+
 if ($SaveToFile -eq $true) {
 
     if ($CustomFilePath) {
@@ -1888,3 +1979,6 @@ if ($SetClipBoard -eq $true) {
 
     Write-Host "Mermaid code copied to clipboard. Paste it on https://mermaid.live" -ForegroundColor Cyan
 }
+
+
+
