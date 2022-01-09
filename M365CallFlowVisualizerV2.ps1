@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.2.0
+    Version:            2.3.0
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -32,6 +32,8 @@
         07.01.2022      Add support for IVRs in an auto attendants default call flow. After Hours call flows and forward to announcements are not supported yet.
         07.01.2022      Merge changes from default call flow to after hours call flow (IVR support), some optimizations regarding after hours call flow id (more robust way)
         07.01.2022      Add support for announcements and operators in IVRs
+        08.01.2022      Start implementing custom HEX colors for nodes, borders, links and fonts
+        09.01.2022      Add support for custom hex colors
 
     .PARAMETER Name
     -Identity
@@ -86,11 +88,46 @@
         Default value:      Markdown
 
     -Theme
-        Specifies the mermaid theme in Markdown
+        Specifies the mermaid theme in Markdown. Custom will use the default hex color codes below if not specified otherwise.
         Required:           false
         Type:               string
-        Accepted values:    default, dark, neutral, forest
+        Accepted values:    default, dark, neutral, forest, custom
         Default value:      default
+
+    -NodeColor
+        Specifies a custom color for the node fill
+        Required:           false
+        Type:               string
+        Accepted values:    Hexadecimal color codes starting with # enclosed by ""
+        Default value:      "#00A4EF"
+
+    -NodeBorderColor
+        Specifies a custom color for the node border
+        Required:           false
+        Type:               string
+        Accepted values:    Hexadecimal color codes starting with # enclosed by ""
+        Default value:      "#7FBA00"
+
+    -FontColor
+        Specifies a custom color for the node border
+        Required:           false
+        Type:               string
+        Accepted values:    Hexadecimal color codes starting with # enclosed by ""
+        Default value:      "#737373"
+
+    -LinkColor
+        Specifies a custom color for links
+        Required:           false
+        Type:               string
+        Accepted values:    Hexadecimal color codes starting with # enclosed by ""
+        Default value:      "#FFB900"
+
+    -LinkTextColor
+        Specifies a custom color for text on links
+        Required:           false
+        Type:               string
+        Accepted values:    Hexadecimal color codes starting with # enclosed by ""
+        Default value:      "#F25022"
     
     -VoiceAppName
         If provided, you won't be provided with a selection of available voice apps. The script will search for a voice app with the specified name. This is the display name of a voice app, not a resource account. If you specify the VoiceAppName, VoiceAppType will become mandatory.
@@ -122,6 +159,9 @@
 
     .EXAMPLE
         .\M365CallFlowVisualizerV2.ps1 -Theme dark
+
+    .EXAMPLE
+        .\M365CallFlowVisualizerV2.ps1 -Theme custom -NodeColor "#00A4EF" -NodeBorderColor "#7FBA00" -FontColor "#737373" -LinkColor "#FFB900" -LinkTextColor "#F25022"
 
     .EXAMPLE
         .\M365CallFlowVisualizerV2.ps1 -Identity "6fb84b40-f045-45e8-8c1a-8fc18188exxx"
@@ -156,16 +196,20 @@
 
 [CmdletBinding(DefaultParametersetName="None")]
 param(
-    [Parameter(Mandatory=$false)][String]$Identity = "25ea1e61-b422-4e80-bf58-2bb3250a5cc8",
+    [Parameter(Mandatory=$false)][String]$Identity,
     [Parameter(Mandatory=$false)][Bool]$SetClipBoard = $true,
     [Parameter(Mandatory=$false)][Bool]$SaveToFile = $true,
     [Parameter(Mandatory=$false)][String]$CustomFilePath,
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $false,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
     [Parameter(Mandatory=$false)][Bool]$ShowCqAgentPhoneNumbers = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowCqAgentOptInStatus = $false,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
-    [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral")][String]$Theme = "default",
-    [Parameter(Mandatory=$false)][Bool]$UseCustomTheme = $true,
+    [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral","custom")][String]$Theme = "default",
+    [Parameter(Mandatory=$false)][String]$NodeColor = "#00A4EF", # Microsoft Blue
+    [Parameter(Mandatory=$false)][String]$NodeBorderColor = "#7FBA00", # Microsoft Green
+    [Parameter(Mandatory=$false)][String]$FontColor = "#737373", # Microsoft Gray
+    [Parameter(Mandatory=$false)][String]$LinkColor = "#FFB900", # Microsoft Yellow
+    [Parameter(Mandatory=$false)][String]$LinkTextColor = "#F25022", # Microsoft Orange
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$false)][String]$VoiceAppName,
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$true)][ValidateSet("Auto Attendant","Call Queue")][String]$VoiceAppType
 )
@@ -179,7 +223,7 @@ if ($SaveToFile -eq $false -and $CustomFilePath) {
 }
 
 $processedVoiceApps = @()
-$customHexNodes = @()
+$allMermaidNodes = @()
 
 function Connect-M365CFV {
     param (
@@ -208,10 +252,20 @@ function Set-Mermaid {
 
     if ($DocType -eq "Markdown") {
 
-        $MarkdownTheme =@"
+        if ($Theme -eq "custom") {
+
+            $MarkdownTheme = ""
+
+        }
+
+        else {
+
+            $MarkdownTheme =@"
 %%{init: {'theme': '$($Theme)', "flowchart" : { "curve" : "basis" } } }%%
 
 "@ 
+
+        }
 
         $mdStart =@"
 ## CallFlowNamePlaceHolder
@@ -413,6 +467,8 @@ subgraph $holidaySubgraphName
 
                 $nodeElementHolidayAction = "elementAAHolidayAction$($aaObjectId)-$($HolidayCounter)(($holidayAction))"
 
+                $allMermaidNodes += "elementAAHolidayAction$($aaObjectId)-$($HolidayCounter)"
+
             }
 
             else {
@@ -457,6 +513,8 @@ subgraph $holidaySubgraphName
                 # Create mermaid code for the holiday action node based on the variables created in the switch statemenet
                 $nodeElementHolidayAction = "elementAAHolidayAction$($aaObjectId)-$($HolidayCounter)($holidayAction) --> elementAAHolidayActionTargetType$($aaObjectId)-$($HolidayCounter)($holidayActionTargetTypeFriendly <br> $holidayActionTargetName)"
 
+                $allMermaidNodes += @("elementAAHolidayAction$($aaObjectId)-$($HolidayCounter)","elementAAHolidayActionTargetType$($aaObjectId)-$($HolidayCounter)")
+
             }
 
             # Create subgraph per holiday call handling inside the Holidays subgraph
@@ -467,6 +525,8 @@ direction LR
 elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedule.FixedSchedule.DateTimeRanges.Start) <br> $($holidaySchedule.FixedSchedule.DateTimeRanges.End)) --> elementAAHolidayGreeting$($aaObjectId)-$($HolidayCounter)>$holidayGreeting] --> $nodeElementHolidayAction
     end
 "@
+
+            $allMermaidNodes += @("elementAAHoliday$($aaObjectId)-$($HolidayCounter)","elementAAHolidayGreeting$($aaObjectId)-$($HolidayCounter)")
 
             # Increase the counter by 1
             $HolidayCounter ++
@@ -487,7 +547,7 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
         # Mermaid node holiday check
         $nodeElementHolidayCheck = "elementHolidayCheck$($aaObjectId){During Holiday?}"
-        $customHexNodes += "elementHolidayCheck$($aaObjectId)"
+        $allMermaidNodes += "elementHolidayCheck$($aaObjectId)"
     } # End if aa has holidays
 
     # Check if auto attendant has after hours and holidays
@@ -790,13 +850,13 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
         # Create the mermaid node for business hours check including the actual business hours
         $nodeElementAfterHoursCheck = "elementAfterHoursCheck$($aaObjectId){During Business Hours? <br> Time Zone: $aaTimeZone <br> $mondayHours <br> $tuesdayHours  <br> $wednesdayHours  <br> $thursdayHours <br> $fridayHours <br> $saturdayHours <br> $sundayHours}"
 
-        $customHexNodes += "elementAfterHoursCheck$($aaObjectId)"
+        $allMermaidNodes += "elementAfterHoursCheck$($aaObjectId)"
 
     } # End if aa has after hours
 
     $nodeElementHolidayLink = "$($aa.Identity)([Auto Attendant <br> $($aa.Name)])"
 
-    $customHexNodes += "$($aa.Identity)"
+    $allMermaidNodes += "$($aa.Identity)"
 
     if ($aaHasHolidays -eq $true) {
 
@@ -889,7 +949,7 @@ function Get-AutoAttendantDefaultCallFlow {
 
         $mdAutoAttendantDefaultCallFlow = "defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting] --> defaultCallFlow$($aaDefaultCallFlowAaObjectId)(($defaultCallFlowAction))`n"
 
-        $customHexNodes += @("defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)","defaultCallFlow$($aaDefaultCallFlowAaObjectId)")
+        $allMermaidNodes += @("defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)","defaultCallFlow$($aaDefaultCallFlowAaObjectId)")
 
     }
 
@@ -902,7 +962,7 @@ function Get-AutoAttendantDefaultCallFlow {
 
             $mdDefaultCallFlowGreeting = "defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting] --> "
 
-            $customHexNodes += @("defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)")
+            $allMermaidNodes += @("defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)")
 
             $defaultCallFlowMenuOptionsKeyPress = $null
 
@@ -926,7 +986,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
 "@
 
-            $customHexNodes += @("defaultCallFlowMenuOptions$($aaDefaultCallFlowAaObjectId)","defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)","defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId)")
+            $allMermaidNodes += @("defaultCallFlowMenuOptions$($aaDefaultCallFlowAaObjectId)","defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)","defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId)")
 
         }
 
@@ -955,7 +1015,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                 $mdAutoAttendantdefaultCallFlow = "$mdDtmfLink defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction) --> $($OperatorIdentity)($OperatorTypeFriendly <br> $OperatorName)`n"
 
-                $customHexNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey","$($OperatorIdentity)")
+                $allMermaidNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey","$($OperatorIdentity)")
 
             }
 
@@ -965,7 +1025,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                 $mdAutoAttendantdefaultCallFlow = "$mdDtmfLink defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction <br> $voiceMenuOptionAnnouncementType) ---> defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId)`n"
 
-                $customHexNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey","defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId)")
+                $allMermaidNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey","defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId)")
 
             }
 
@@ -1029,7 +1089,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                     }
 
-                    $customHexNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)","$($MatchingCQIdentity)")
+                    $allMermaidNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey","$($MatchingCQIdentity)")
 
                 
                 } # End if transfer target type is call queue
@@ -1044,7 +1104,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                     }
 
-                    $customHexNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)","$($MatchingAaDefaultCallFlowAa.Identity)")
+                    $allMermaidNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey","$($MatchingAaDefaultCallFlowAa.Identity)")
 
                 }
 
@@ -1053,7 +1113,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                     $mdAutoAttendantDefaultCallFlow = "$mdDtmfLink defaultCallFlow$($aaDefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction) --> $($defaultCallFlowTargetIdentity)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)`n"
 
-                    $customHexNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)","$($defaultCallFlowTargetIdentity)")
+                    $allMermaidNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey","$($defaultCallFlowTargetIdentity)")
 
                 }
 
@@ -1099,7 +1159,7 @@ function Get-AutoAttendantAfterHoursCallFlow {
 
         $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)>$AfterHoursCallFlowGreeting] --> afterHoursCallFlow$($aaAfterHoursCallFlowAaObjectId)(($afterHoursCallFlowAction))`n"
 
-        $customHexNodes += @("afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)","afterHoursCallFlow$($aaAfterHoursCallFlowAaObjectId)")
+        $allMermaidNodes += @("afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)","afterHoursCallFlow$($aaAfterHoursCallFlowAaObjectId)")
 
     }
     
@@ -1113,7 +1173,7 @@ function Get-AutoAttendantAfterHoursCallFlow {
 
             $mdafterHoursCallFlowGreeting = "afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlowGreeting] --> "
 
-            $customHexNodes += @("afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)")
+            $allMermaidNodes += @("afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)")
 
             $afterHoursCallFlowMenuOptionsKeyPress = $null
 
@@ -1137,7 +1197,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
 "@
 
-            $customHexNodes += @("afterHoursCallFlowMenuOptions$($aaafterHoursCallFlowAaObjectId)","afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)","afterHoursCallFlowMenuOptionsGreeting$($aaafterHoursCallFlowAaObjectId)")
+            $allMermaidNodes += @("afterHoursCallFlowMenuOptions$($aaafterHoursCallFlowAaObjectId)","afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)","afterHoursCallFlowMenuOptionsGreeting$($aaafterHoursCallFlowAaObjectId)")
 
         }
 
@@ -1166,7 +1226,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                 $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction) --> $($OperatorIdentity)($OperatorTypeFriendly <br> $OperatorName)`n"
 
-                $customHexNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey","$($OperatorIdentity)")
+                $allMermaidNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey","$($OperatorIdentity)")
 
             }
 
@@ -1176,7 +1236,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                 $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction <br> $voiceMenuOptionAnnouncementType) ---> afterHoursCallFlowMenuOptionsGreeting$($aaafterHoursCallFlowAaObjectId)`n"
 
-                $customHexNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey","afterHoursCallFlowMenuOptionsGreeting$($aaafterHoursCallFlowAaObjectId)")
+                $allMermaidNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey","afterHoursCallFlowMenuOptionsGreeting$($aaafterHoursCallFlowAaObjectId)")
 
             }
 
@@ -1240,7 +1300,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                     }
 
-                    $customHexNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)","$($MatchingCQIdentity)")
+                    $allMermaidNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey","$($MatchingCQIdentity)")
 
                 
                 } # End if transfer target type is call queue
@@ -1255,7 +1315,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                     }
 
-                    $customHexNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)","$($MatchingAaafterHoursCallFlowAa.Identity)")
+                    $allMermaidNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey","$($MatchingAaafterHoursCallFlowAa.Identity)")
 
                 }
 
@@ -1264,7 +1324,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                     $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction) --> $($afterHoursCallFlowTargetIdentity)($afterHoursCallFlowTargetTypeFriendly <br> $afterHoursCallFlowTargetName)`n"
                     
-                    $customHexNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)","$($afterHoursCallFlowTargetIdentity)")
+                    $allMermaidNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey","$($afterHoursCallFlowTargetIdentity)")
 
                 }
 
@@ -1360,6 +1420,8 @@ function Get-CallQueueCallFlow {
         DisconnectWithBusy {
             $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)((Disconnect Call))"
 
+            $allMermaidNodes += "cqOverFlowAction$($cqCallFlowObjectId)"
+
         }
         Forward {
 
@@ -1371,6 +1433,8 @@ function Get-CallQueueCallFlow {
 
                 $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowIdentity)(User <br> $MatchingOverFlowUser)"
 
+                $allMermaidNodes += @("cqOverFlowAction$($cqCallFlowObjectId)","$($MatchingOverFlowIdentity)")
+
             }
 
             elseif ($MatchingCQ.OverflowActionTarget.Type -eq "Phone") {
@@ -1378,6 +1442,8 @@ function Get-CallQueueCallFlow {
                 $cqOverFlowPhoneNumber = ($MatchingCQ.OverflowActionTarget.Id).Replace("tel:","")
 
                 $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($cqOverFlowPhoneNumber)(External Number <br> $cqOverFlowPhoneNumber)"
+
+                $allMermaidNodes += @("cqOverFlowAction$($cqCallFlowObjectId)","$($cqOverFlowPhoneNumber)")
                 
             }
 
@@ -1394,6 +1460,8 @@ function Get-CallQueueCallFlow {
                         $nestedVoiceApps += $MatchingOverFlowAA.Identity
         
                     }
+
+                    $allMermaidNodes += @("cqOverFlowAction$($cqCallFlowObjectId)","$($MatchingOverFlowAA.Identity)")
         
 
                 }
@@ -1409,6 +1477,8 @@ function Get-CallQueueCallFlow {
                         $nestedVoiceApps += $MatchingOverFlowCQ.Identity
         
                     }
+
+                    $allMermaidNodes += @("cqOverFlowAction$($cqCallFlowObjectId)","$($MatchingOverFlowCQ.Identity)")
 
                 }
 
@@ -1434,6 +1504,8 @@ function Get-CallQueueCallFlow {
 
             $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqOverFlowVoicemailGreeting$($cqCallFlowObjectId)>Greeting <br> $CqOverFlowVoicemailGreeting] --> $($MatchingOverFlowIdentity)(Shared Voicemail <br> $MatchingOverFlowVoicemail)"
 
+            $allMermaidNodes += @("cqOverFlowAction$($cqCallFlowObjectId)","cqOverFlowVoicemailGreeting$($cqCallFlowObjectId)","$($MatchingOverFlowIdentity)")
+
         }
 
     }
@@ -1442,6 +1514,8 @@ function Get-CallQueueCallFlow {
     switch ($CqTimeoutAction) {
         Disconnect {
             $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)((Disconnect Call))"
+
+            $allMermaidNodes += "cqTimeoutAction$($cqCallFlowObjectId)"
 
         }
         Forward {
@@ -1453,6 +1527,8 @@ function Get-CallQueueCallFlow {
                 $MatchingTimeoutIdentity = $MatchingTimeoutUserProperties.ObjectId
     
                 $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingTimeoutIdentity)(User <br> $MatchingTimeoutUser)"
+
+                $allMermaidNodes += @("cqTimeoutAction$($cqCallFlowObjectId)","$($MatchingTimeoutIdentity)")
     
             }
     
@@ -1461,6 +1537,8 @@ function Get-CallQueueCallFlow {
                 $cqTimeoutPhoneNumber = ($MatchingCQ.TimeoutActionTarget.Id).Replace("tel:","")
     
                 $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($cqTimeoutPhoneNumber)(External Number <br> $cqTimeoutPhoneNumber)"
+
+                $allMermaidNodes += @("cqTimeoutAction$($cqCallFlowObjectId)","$($cqTimeoutPhoneNumber)")
                 
             }
     
@@ -1478,6 +1556,7 @@ function Get-CallQueueCallFlow {
         
                     }
 
+                    $allMermaidNodes += @("cqTimeoutAction$($cqCallFlowObjectId)","$($MatchingTimeoutAA.Identity)")
     
                 }
     
@@ -1494,6 +1573,8 @@ function Get-CallQueueCallFlow {
                         $nestedVoiceApps += $MatchingTimeoutCQ.Identity
         
                     }
+
+                    $allMermaidNodes += @("cqTimeoutAction$($cqCallFlowObjectId)","$($MatchingTimeoutCQ.Identity)")
     
                 }
     
@@ -1519,6 +1600,8 @@ function Get-CallQueueCallFlow {
     
             $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqTimeoutVoicemailGreeting$($cqCallFlowObjectId)>Greeting <br> $CqTimeoutVoicemailGreeting] --> $($MatchingTimeoutIdentity)(Shared Voicemail <br> $MatchingTimeoutVoicemail)"
     
+            $allMermaidNodes += @("cqTimeoutAction$($cqCallFlowObjectId)","cqTimeoutVoicemailGreeting$($cqCallFlowObjectId)","$($MatchingTimeoutIdentity)")
+
         }
     
     }
@@ -1551,12 +1634,17 @@ function Get-CallQueueCallFlow {
 
         $AgentDisplayNames = "agentListType$($cqCallFlowObjectId) --> agent$($cqCallFlowObjectId)$($AgentCounter)($AgentDisplayName) --> timeOut$($cqCallFlowObjectId)`n"
 
+        $allMermaidNodes += @("agentListType$($cqCallFlowObjectId)","agent$($cqCallFlowObjectId)$($AgentCounter)","timeOut$($cqCallFlowObjectId)")
+
         $mdCqAgentsDisplayNames += $AgentDisplayNames
 
         $AgentCounter ++
+
     }
 
     $lastCallFlowAction = "$($MatchingCQIdentity)([Call Queue <br> $($CqName)])"
+
+    $allMermaidNodes += "$($MatchingCQIdentity)"
 
     
     # Create default callflow mermaid code
@@ -1565,8 +1653,6 @@ $mdCallQueueCallFlow =@"
 $lastCallFlowAction --> cqGreeting$($cqCallFlowObjectId)>Greeting <br> $CqGreeting] --> overFlow$($cqCallFlowObjectId){More than $CqOverFlowThreshold <br> Active Calls?}
 overFlow$($cqCallFlowObjectId) ---> |Yes| $CqOverFlowActionFriendly
 overFlow$($cqCallFlowObjectId) ---> |No| routingMethod$($cqCallFlowObjectId)
-
-$nestedCallQueueTopLevelNumbers
 
 subgraph Call Distribution
 subgraph CQ Settings
@@ -1589,6 +1675,9 @@ cqResult$($cqCallFlowObjectId) --> |Yes| cqEnd$($cqCallFlowObjectId)((Call Conne
 cqResult$($cqCallFlowObjectId) --> |No| $CqTimeoutActionFriendly
 
 "@
+
+$allMermaidNodes += @("cqGreeting$($cqCallFlowObjectId)","overFlow$($cqCallFlowObjectId)","routingMethod$($cqCallFlowObjectId)","agentAlertTime$($cqCallFlowObjectId)","cqMusicOnHold$($cqCallFlowObjectId)";"conferenceMode$($cqCallFlowObjectId)","agentOptOut$($cqCallFlowObjectId)", `
+"presenceBasedRouting$($cqCallFlowObjectId)","timeOut$($cqCallFlowObjectId)","agentListType$($cqCallFlowObjectId)","cqResult$($cqCallFlowObjectId)","cqEnd$($cqCallFlowObjectId)")
 
 if ($mermaidCode -notcontains $mdCallQueueCallFlow) {
 
@@ -1785,7 +1874,7 @@ function Get-CallFlow {
     
             $mdNodePhoneNumbersCounter ++
 
-            $customHexNodes += "start$($ApplicationInstancePhoneNumber)"
+            $allMermaidNodes += "start$($ApplicationInstancePhoneNumber)"
 
         }
 
@@ -1904,28 +1993,29 @@ $mermaidCode = $mermaidCode.Replace("## CallFlowNamePlaceHolder","# Call Flow $V
 # Custom Mermaid Color Themes
 function Set-CustomMermaidTheme {
     param (
-        [Parameter(Mandatory=$false)][String]$NodeColor = "#00A4EF", # Microsoft Blue
-        [Parameter(Mandatory=$false)][String]$NodeBorderColor = "#7FBA00", # Microsoft Green
-        [Parameter(Mandatory=$false)][String]$FontColor = "#737373", # Microsoft Gray
-        [Parameter(Mandatory=$false)][String]$LinkColor = "#FFB900", # Microsoft Yellow
-        [Parameter(Mandatory=$false)][String]$LinkTextColor = "#F25022" # Microsoft Orange
+        [Parameter(Mandatory=$false)][String]$NodeColor,
+        [Parameter(Mandatory=$false)][String]$NodeBorderColor,
+        [Parameter(Mandatory=$false)][String]$FontColor,
+        [Parameter(Mandatory=$false)][String]$LinkColor,
+        [Parameter(Mandatory=$false)][String]$LinkTextColor
     )
 
 
     $themedNodes = "classDef customTheme fill:$NodeColor,stroke:$NodeBorderColor,stroke-width:3px,color:$FontColor`n`nclass "
 
-    foreach ($node in $customHexNodes) {
+    $allMermaidNodes = $allMermaidNodes | Sort-Object -Unique
+
+    foreach ($node in $allMermaidNodes) {
 
         $themedNodes += "$node,"
 
     }
 
     $mermaidString = ($mermaidCode | Out-String)
-    $NumberOfMermaidLinks = (Select-String -InputObject $mermaidString -Pattern "--" -AllMatches).Matches.Count
+    $NumberOfMermaidLinks = (Select-String -InputObject $mermaidString -Pattern '(--)|(-.-)' -AllMatches).Matches.Count
 
     $themedNodes = ($themedNodes += " customTheme").Replace(", customTheme", " customTheme")
 
-    #linkStyle 1,2,3,0 stroke:#00a1f1
     $themedLinks = "`nlinkStyle "
 
     $currentMermaidLink = 0
@@ -1943,9 +2033,9 @@ function Set-CustomMermaidTheme {
     
 }
 
-if ($UseCustomTheme -eq $true) {
+if ($Theme -eq "custom") {
 
-    . Set-CustomMermaidTheme
+    . Set-CustomMermaidTheme -NodeColor $NodeColor -NodeBorderColor $NodeBorderColor -FontColor $FontColor -LinkColor $LinkColor -LinkTextColor $LinkTextColor
 
 }
 

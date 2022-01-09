@@ -7,7 +7,8 @@ Reads a config from Microsoft 365 Phone System and renders them visually into a 
 
 | Date | Description |
 | --- | --- |
-| 07.01.2022 | The new release V 2.2.0 now even supports reading and rendering of voice menus (IVRs) including forwardings to announcements and to the operator. |
+| 07.01.2022 | V 2.2.0 now even supports reading and rendering of voice menus (IVRs) including forwardings to announcements and to the operator. |
+| 09.01.2022 | V 2.3.0 now supports specifying custom hex colors for Nodes, Borders, Fonts, Links and Text on Links |
 
 # How to use it
 
@@ -163,7 +164,7 @@ If you want to implement Mermaid Diagrams into your markdown based documentation
 # Planned feature updates
 - Reflect if voicemail transcription or suppress system greeting is on
 - Display call queue and auto attendant language settings
-- Custom HEX color support for the mermaid diagram
+- Custom HEX color support for the mermaid diagram --> Implemented in V 2.3.0
 - Migrate from MSOnline to Microsoft Graph PowerShell
 
 These are planned changes. There is no ETA nor is it guaranteed that these features will ever be added.
