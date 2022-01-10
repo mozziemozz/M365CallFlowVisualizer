@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.3.0
+    Version:            2.3.1
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -34,6 +34,7 @@
         07.01.2022      Add support for announcements and operators in IVRs
         08.01.2022      Start implementing custom HEX colors for nodes, borders, links and fonts
         09.01.2022      Add support for custom hex colors
+        10.01.2022      fix bug where custom hex colors were not applied if auto attendant doesn't have business hours
 
     .PARAMETER Name
     -Identity
@@ -1564,8 +1565,6 @@ function Get-CallQueueCallFlow {
     
                     $MatchingTimeoutCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -eq $MatchingCQ.TimeoutActionTarget.Id})
 
-                    Write-Host "Matching Time Out CQ Name: $($MatchingTimeoutCQ.Name)"
-
                     $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingTimeoutCQ.Identity)([Call Queue <br> $($MatchingTimeoutCQ.Name)])"
 
                     if ($nestedVoiceApps -notcontains $MatchingTimeoutCQ.Identity) {
@@ -1911,6 +1910,8 @@ function Get-CallFlow {
             $nodeElementHolidayLink --> $mdAutoAttendantDefaultCallFlow
             
 "@
+
+            $allMermaidNodes += "$($aa.Identity)"
 
             if ($mermaidCode -notcontains $mdHolidayAndAfterHoursCheck) {
 
