@@ -1780,6 +1780,13 @@ function Get-CallFlow {
 
                     $ResourceAccountPhoneNumber = $ResourceAccountPhoneNumber.Replace("tel:","")
 
+                    # Add leading + if PS fails to read it from online application
+                    if ($ResourceAccountPhoneNumber -notmatch "\+") {
+
+                        $ResourceAccountPhoneNumber = "+$ResourceAccountPhoneNumber"
+
+                    }
+
                     $ResourceAccountPhoneNumbers += "$ResourceAccountPhoneNumber, "
 
                     $ApplicationInstanceAssociationCounter ++
@@ -1874,6 +1881,12 @@ function Get-CallFlow {
         $ApplicationInstancePhoneNumber = ((Get-CsOnlineApplicationInstance -Identity $ApplicationInstance).PhoneNumber) -replace ("tel:","")
 
         if ($ApplicationInstancePhoneNumber) {
+
+            if ($ApplicationInstancePhoneNumber -notmatch "\+") {
+            
+                $ApplicationInstancePhoneNumber = "+$ApplicationInstancePhoneNumber"
+    
+            }
 
             $mdNodeNumber = "start$($ApplicationInstancePhoneNumber)((Incoming Call at <br> $ApplicationInstancePhoneNumber)) $mdPhoneNumberLinkType $($VoiceApp.Identity)([$($voiceAppType) <br> $($VoiceApp.Name)])"
 
