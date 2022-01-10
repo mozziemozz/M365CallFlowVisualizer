@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.3.1
+    Version:            2.3.2
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -35,6 +35,7 @@
         08.01.2022      Start implementing custom HEX colors for nodes, borders, links and fonts
         09.01.2022      Add support for custom hex colors
         10.01.2022      fix bug where custom hex colors were not applied if auto attendant doesn't have business hours
+        10.01.2022      sometimes Teams PS fails to read leading + from OnlineApplicationInstance, added code to add + if not present
 
     .PARAMETER Name
     -Identity
@@ -215,7 +216,7 @@ param(
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$true)][ValidateSet("Auto Attendant","Call Queue")][String]$VoiceAppType
 )
 
-#Write-Host "Warning: Some versions of the 'MicrosoftTeams' Module can take a very long time to load. Give it a few minutes before cancelling." -ForegroundColor Yellow
+Write-Host "Warning: Some versions of the 'MicrosoftTeams' Module can take a very long time to load, especially in IDEs like VS Code. Give it a few minutes before cancelling." -ForegroundColor Yellow
 
 if ($SaveToFile -eq $false -and $CustomFilePath) {
 
@@ -1727,6 +1728,13 @@ function Get-CallFlow {
                 if ($ResourceAccountPhoneNumber) {
 
                     $ResourceAccountPhoneNumber = $ResourceAccountPhoneNumber.Replace("tel:","")
+
+                    # Add leading + if PS fails to read it from online application
+                    if ($ResourceAccountPhoneNumber -notmatch "\+") {
+
+                        $ResourceAccountPhoneNumber = "+$ResourceAccountPhoneNumber"
+
+                    }
 
                     $ResourceAccountPhoneNumbers += "$ResourceAccountPhoneNumber, "
 
