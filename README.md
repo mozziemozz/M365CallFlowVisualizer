@@ -9,18 +9,18 @@ Reads a config from Microsoft 365 Phone System and renders them visually into a 
 | --- | --- |
 | 07.01.2022 | V 2.2.0 now even supports reading and rendering of voice menus (IVRs) including forwardings to announcements and to the operator. |
 | 09.01.2022 | V 2.3.0 now supports specifying custom hex colors for Nodes, Borders, Fonts, Links and Text on Links |
-| 12.01.2022 | V 2.4 now uses Microsoft.Graph instead of MSOnline PowerShell Module. It's now possible to export call flows as *.htm for easier access and sharing. |
+| 12.01.2022 | V 2.4 now uses Microsoft.Graph instead of MSOnline PowerShell Module. It's now possible to export call flows as *.htm for easier access and sharing. Some Cq settings were consolidated into a single node |
 
 # How to use it
 
 ## Prerequisites
 
 I suggest using Visual Studio Code and the official PowerShell Extension. This script needs the "Microsoft.Graph" and "MicrosoftTeams" PowerShell modules. At least "Microsoft.Graph.Users" and "Microsoft.Graph.Groups" are needed.
-It has been tested with MicrosoftTeams PowerShell version 3.0.0 and 3.0.1-preview.
+It has been tested with MicrosoftTeams PowerShell version 3.0.0 and 3.0.1-preview and Microsoft.Graph 1.9.1.
 
 ### Install Modules
 
-Run these two commands in an elevated PowerShell window.
+Run these two commands in an elevated PowerShell window to install the modules from the PSGallery.
 
 ```PowerShell
 Install-Module Microsoft.Graph 

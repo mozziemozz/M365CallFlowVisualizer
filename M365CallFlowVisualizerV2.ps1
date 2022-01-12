@@ -2103,7 +2103,7 @@ if ($SetClipBoard -eq $true) {
 
 if ($ExportHtml -eq $true) {
 
-    $HtmlOutput = Get-Content -Path .\HtmlTemplate.htm | Out-String
+    $HtmlOutput = Get-Content -Path .\HtmlTemplate.html | Out-String
 
     if ($DocType -eq "Markdown") {
 
