@@ -1657,11 +1657,8 @@ overFlow$($cqCallFlowObjectId) ---> |No| routingMethod$($cqCallFlowObjectId)
 subgraph Call Distribution
 subgraph CQ Settings
 routingMethod$($cqCallFlowObjectId)[(Routing Method: $CqRoutingMethod)] --> agentAlertTime$($cqCallFlowObjectId)
-agentAlertTime$($cqCallFlowObjectId)[(Agent Alert Time: $CqAgentAlertTime)] -.- cqMusicOnHold$($cqCallFlowObjectId)
-cqMusicOnHold$($cqCallFlowObjectId)[(Music On Hold: $CqMusicOnHold)] -.- conferenceMode$($cqCallFlowObjectId)
-conferenceMode$($cqCallFlowObjectId)[(Conference Mode Enabled: $CqConferenceMode)] -.- agentOptOut$($cqCallFlowObjectId)
-agentOptOut$($cqCallFlowObjectId)[(Agent Opt Out Allowed: $CqAgentOptOut)] -.- presenceBasedRouting$($cqCallFlowObjectId)
-presenceBasedRouting$($cqCallFlowObjectId)[(Presence Based Routing: $CqPresenceBasedRouting)] -.- timeOut$($cqCallFlowObjectId)
+agentAlertTime$($cqCallFlowObjectId)[(Agent Alert Time: $CqAgentAlertTime)] -.- cqSettingsContainer$($cqCallFlowObjectId)
+cqSettingsContainer$($cqCallFlowObjectId)[(Music On Hold: $CqMusicOnHold <br> Conference Mode Enabled: $CqConferenceMode <br> Agent Opt Out Allowed: $CqAgentOptOut <br> Presence Based Routing: $CqPresenceBasedRouting)] -.- timeOut$($cqCallFlowObjectId)
 timeOut$($cqCallFlowObjectId)[(Timeout: $CqTimeOut Seconds)]
 end
 subgraph Agents $($MatchingCQ.Name)
@@ -1676,8 +1673,7 @@ cqResult$($cqCallFlowObjectId) --> |No| $CqTimeoutActionFriendly
 
 "@
 
-$allMermaidNodes += @("cqGreeting$($cqCallFlowObjectId)","overFlow$($cqCallFlowObjectId)","routingMethod$($cqCallFlowObjectId)","agentAlertTime$($cqCallFlowObjectId)","cqMusicOnHold$($cqCallFlowObjectId)";"conferenceMode$($cqCallFlowObjectId)","agentOptOut$($cqCallFlowObjectId)", `
-"presenceBasedRouting$($cqCallFlowObjectId)","timeOut$($cqCallFlowObjectId)","agentListType$($cqCallFlowObjectId)","cqResult$($cqCallFlowObjectId)","cqEnd$($cqCallFlowObjectId)")
+$allMermaidNodes += @("cqGreeting$($cqCallFlowObjectId)","overFlow$($cqCallFlowObjectId)","routingMethod$($cqCallFlowObjectId)","agentAlertTime$($cqCallFlowObjectId)","cqSettingsContainer$($cqCallFlowObjectId)","timeOut$($cqCallFlowObjectId)","agentListType$($cqCallFlowObjectId)","cqResult$($cqCallFlowObjectId)","cqEnd$($cqCallFlowObjectId)")
 
 if ($mermaidCode -notcontains $mdCallQueueCallFlow) {
 
