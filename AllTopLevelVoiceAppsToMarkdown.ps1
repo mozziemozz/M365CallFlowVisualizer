@@ -7,9 +7,10 @@
     single Markdown file so that all call flows can be rendered on one page.
 
     Author:             Martin Heusser
-    Version:            1.0.0
+    Version:            1.0.1
     Revision:
         05.01.2022      Creation
+        12.01.2022      Migrate from MSOnline to Microsoft.Graph
 
 #>
 
