@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.3.2
+    Version:            2.4.0
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -36,6 +36,8 @@
         09.01.2022      Add support for custom hex colors
         10.01.2022      fix bug where custom hex colors were not applied if auto attendant doesn't have business hours
         10.01.2022      sometimes Teams PS fails to read leading + from OnlineApplicationInstance, added code to add + if not present
+        12.01.2022      Migrate from MSOnline Cmdlets to Microsoft.Graph. Add support to export call flows to *.htm files for easier access and sharing.
+        12.01.2022      Optimize some error messages / warnings
 
     .PARAMETER Name
     -Identity
@@ -56,6 +58,12 @@
         Required:           false
         Type:               boolean
         Default value:      true
+
+    -ExportHtml
+        Specifies if, in addition to the Markdown or Mermaid file, also a *.htm file should be exported
+        Required:           false
+        Type:               boolean
+        Default value:      false
 
     -CustomFilePath
         Specifies the file path for the output file. The directory must already exist.
@@ -90,7 +98,7 @@
         Default value:      Markdown
 
     -Theme
-        Specifies the mermaid theme in Markdown. Custom will use the default hex color codes below if not specified otherwise.
+        Specifies the mermaid theme in Markdown. Custom will use the default hex color codes below if not specified otherwise. Themes are currently only supported for Markdown output.
         Required:           false
         Type:               string
         Accepted values:    default, dark, neutral, forest, custom
@@ -194,13 +202,14 @@
     
 #>
 
-#Requires -Modules MsOnline, MicrosoftTeams
+#Requires -Modules MicrosoftTeams, Microsoft.Graph.Users, Microsoft.Graph.Groups
 
 [CmdletBinding(DefaultParametersetName="None")]
 param(
     [Parameter(Mandatory=$false)][String]$Identity,
     [Parameter(Mandatory=$false)][Bool]$SetClipBoard = $true,
     [Parameter(Mandatory=$false)][Bool]$SaveToFile = $true,
+    [Parameter(Mandatory=$false)][Bool]$ExportHtml = $false,
     [Parameter(Mandatory=$false)][String]$CustomFilePath,
     [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
     [Parameter(Mandatory=$false)][Bool]$ShowCqAgentPhoneNumbers = $false,
@@ -216,11 +225,15 @@ param(
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$true)][ValidateSet("Auto Attendant","Call Queue")][String]$VoiceAppType
 )
 
-Write-Host "Warning: Some versions of the 'MicrosoftTeams' Module can take a very long time to load, especially in IDEs like VS Code. Give it a few minutes before cancelling." -ForegroundColor Yellow
+if ($DocType -eq "Mermaid" -and $Theme -ne "default") {
+
+    Write-Warning -Message "A custom theme is specified but the document type is Mermaid. Custom themes are currently only supported for Markdown files."
+
+}
 
 if ($SaveToFile -eq $false -and $CustomFilePath) {
 
-    Write-Host "Warning: Custom file path is specified but SaveToFile is set to false. The call flow won't be saved!" -ForegroundColor Yellow
+    Write-Warning -Message "Warning: Custom file path is specified but SaveToFile is set to false. The call flow won't be saved!"
 
 }
 
@@ -232,10 +245,10 @@ function Connect-M365CFV {
     )
 
     try {
-        Get-MsolDomain -ErrorAction Stop > $null
+        Get-MgUser -Top 1 -ErrorAction Stop > $null
     }
     catch {
-        Connect-MsolService
+        Connect-MgGraph -Scopes "User.Read.All","Group.Read.All"
     }
 
     try {
@@ -328,9 +341,9 @@ function Find-Holidays {
 
             User { 
                 $OperatorTypeFriendly = "User"
-                $OperatorUser = (Get-MsolUser -ObjectId $($Operator.Id))
+                $OperatorUser = (Get-MgUser -UserId $($Operator.Id))
                 $OperatorName = $OperatorUser.DisplayName
-                $OperatorIdentity = $OperatorUser.ObjectId
+                $OperatorIdentity = $OperatorUser.Id
             }
             ExternalPstn { 
                 $OperatorTypeFriendly = "External PSTN"
@@ -480,10 +493,10 @@ subgraph $holidaySubgraphName
                 # Switch through different transfer call to target types
                 switch ($holidayActionTargetType) {
                     User { $holidayActionTargetTypeFriendly = "User" 
-                    $holidayActionTargetName = (Get-MsolUser -ObjectId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
+                    $holidayActionTargetName = (Get-MgUser -UserId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
                 }
                     SharedVoicemail { $holidayActionTargetTypeFriendly = "Voicemail"
-                    $holidayActionTargetName = (Get-MsolGroup -ObjectId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
+                    $holidayActionTargetName = (Get-MgGroup -GroupId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
                 }
                     ExternalPstn { $holidayActionTargetTypeFriendly = "External Number" 
                     $holidayActionTargetName =  ($holidayCallFlow.Menu.MenuOptions.CallTarget.Id).Replace("tel:","")
@@ -1037,9 +1050,9 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                 switch ($defaultCallFlowTargetType) {
                     User { 
                         $defaultCallFlowTargetTypeFriendly = "User"
-                        $defaultCallFlowTargetUser = (Get-MsolUser -ObjectId $($MenuOption.CallTarget.Id))
+                        $defaultCallFlowTargetUser = (Get-MgUser -UserId $($MenuOption.CallTarget.Id))
                         $defaultCallFlowTargetName = $defaultCallFlowTargetUser.DisplayName
-                        $defaultCallFlowTargetIdentity = $defaultCallFlowTargetUser.ObjectId
+                        $defaultCallFlowTargetIdentity = $defaultCallFlowTargetUser.Id
                     }
                     ExternalPstn { 
                         $defaultCallFlowTargetTypeFriendly = "External PSTN"
@@ -1071,9 +1084,9 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                     SharedVoicemail {
 
                         $defaultCallFlowTargetTypeFriendly = "Voicemail"
-                        $defaultCallFlowTargetGroup = (Get-MsolGroup -ObjectId $MenuOption.CallTarget.Id)
+                        $defaultCallFlowTargetGroup = (Get-MgGroup -GroupId $MenuOption.CallTarget.Id)
                         $defaultCallFlowTargetName = $defaultCallFlowTargetGroup.DisplayName
-                        $defaultCallFlowTargetIdentity = $defaultCallFlowTargetGroup.ObjectId
+                        $defaultCallFlowTargetIdentity = $defaultCallFlowTargetGroup.Id
 
                     }
                 }
@@ -1248,9 +1261,9 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                 switch ($afterHoursCallFlowTargetType) {
                     User { 
                         $afterHoursCallFlowTargetTypeFriendly = "User"
-                        $afterHoursCallFlowTargetUser = (Get-MsolUser -ObjectId $($MenuOption.CallTarget.Id))
+                        $afterHoursCallFlowTargetUser = (Get-MgUser -UserId $($MenuOption.CallTarget.Id))
                         $afterHoursCallFlowTargetName = $afterHoursCallFlowTargetUser.DisplayName
-                        $afterHoursCallFlowTargetIdentity = $afterHoursCallFlowTargetUser.ObjectId
+                        $afterHoursCallFlowTargetIdentity = $afterHoursCallFlowTargetUser.Id
                     }
                     ExternalPstn { 
                         $afterHoursCallFlowTargetTypeFriendly = "External PSTN"
@@ -1282,9 +1295,9 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                     SharedVoicemail {
 
                         $afterHoursCallFlowTargetTypeFriendly = "Voicemail"
-                        $afterHoursCallFlowTargetGroup = (Get-MsolGroup -ObjectId $MenuOption.CallTarget.Id)
+                        $afterHoursCallFlowTargetGroup = (Get-MgGroup -GroupId $MenuOption.CallTarget.Id)
                         $afterHoursCallFlowTargetName = $afterHoursCallFlowTargetGroup.DisplayName
-                        $afterHoursCallFlowTargetIdentity = $afterHoursCallFlowTargetGroup.ObjectId
+                        $afterHoursCallFlowTargetIdentity = $afterHoursCallFlowTargetGroup.Id
 
                     }
                 }
@@ -1429,9 +1442,9 @@ function Get-CallQueueCallFlow {
 
             if ($MatchingCQ.OverflowActionTarget.Type -eq "User") {
 
-                $MatchingOverFlowUserProperties = (Get-MsolUser -ObjectId $MatchingCQ.OverflowActionTarget.Id)
+                $MatchingOverFlowUserProperties = (Get-MgUser -UserId $MatchingCQ.OverflowActionTarget.Id)
                 $MatchingOverFlowUser = $MatchingOverFlowUserProperties.DisplayName
-                $MatchingOverFlowIdentity = $MatchingOverFlowUserProperties.ObjectId
+                $MatchingOverFlowIdentity = $MatchingOverFlowUserProperties.Id
 
                 $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowIdentity)(User <br> $MatchingOverFlowUser)"
 
@@ -1488,9 +1501,9 @@ function Get-CallQueueCallFlow {
 
         }
         SharedVoicemail {
-            $MatchingOverFlowVoicemailProperties = (Get-MsolGroup -ObjectId $MatchingCQ.OverflowActionTarget.Id)
+            $MatchingOverFlowVoicemailProperties = (Get-MgGroup -GroupId $MatchingCQ.OverflowActionTarget.Id)
             $MatchingOverFlowVoicemail = $MatchingOverFlowVoicemailProperties.DisplayName
-            $MatchingOverFlowIdentity = $MatchingOverFlowVoicemailProperties.ObjectId
+            $MatchingOverFlowIdentity = $MatchingOverFlowVoicemailProperties.Id
 
             if ($MatchingCQ.OverflowSharedVoicemailTextToSpeechPrompt) {
 
@@ -1524,9 +1537,9 @@ function Get-CallQueueCallFlow {
     
             if ($MatchingCQ.TimeoutActionTarget.Type -eq "User") {
 
-                $MatchingTimeoutUserProperties = (Get-MsolUser -ObjectId $MatchingCQ.TimeoutActionTarget.Id)
+                $MatchingTimeoutUserProperties = (Get-MgUser -UserId $MatchingCQ.TimeoutActionTarget.Id)
                 $MatchingTimeoutUser = $MatchingTimeoutUserProperties.DisplayName
-                $MatchingTimeoutIdentity = $MatchingTimeoutUserProperties.ObjectId
+                $MatchingTimeoutIdentity = $MatchingTimeoutUserProperties.Id
     
                 $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingTimeoutIdentity)(User <br> $MatchingTimeoutUser)"
 
@@ -1582,9 +1595,9 @@ function Get-CallQueueCallFlow {
     
         }
         SharedVoicemail {
-            $MatchingTimeoutVoicemailProperties = (Get-MsolGroup -ObjectId $MatchingCQ.TimeoutActionTarget.Id)
+            $MatchingTimeoutVoicemailProperties = (Get-MgGroup -GroupId $MatchingCQ.TimeoutActionTarget.Id)
             $MatchingTimeoutVoicemail = $MatchingTimeoutVoicemailProperties.DisplayName
-            $MatchingTimeoutIdentity = $MatchingTimeoutVoicemailProperties.ObjectId
+            $MatchingTimeoutIdentity = $MatchingTimeoutVoicemailProperties.Id
     
             if ($MatchingCQ.TimeoutSharedVoicemailTextToSpeechPrompt) {
     
@@ -1615,7 +1628,7 @@ function Get-CallQueueCallFlow {
 
     # add each agent to the empty agents mermaid element
     foreach ($CqAgent in $CqAgents) {
-        $AgentDisplayName = (Get-MsolUser -ObjectId $CqAgent.ObjectId).DisplayName
+        $AgentDisplayName = (Get-MgUser -UserId $CqAgent.ObjectId).DisplayName
 
         if ($ShowCqAgentPhoneNumbers -eq $true) {
 
@@ -1993,7 +2006,7 @@ else {
     
     if ($nestedVoiceApps) {
 
-        Write-Host "Your call flow contains nested call queues or auto attendants. They won't be expanded because 'ShowNestedCallFlows' is set to false." -ForegroundColor Yellow
+        Write-Warning -Message "Your call flow contains nested call queues or auto attendants. They won't be expanded because 'ShowNestedCallFlows' is set to false."
         Write-Host "Nested Voice App Ids:" -ForegroundColor Yellow
         $nestedVoiceApps
 
@@ -2088,5 +2101,42 @@ if ($SetClipBoard -eq $true) {
     Write-Host "Mermaid code copied to clipboard. Paste it on https://mermaid.live" -ForegroundColor Cyan
 }
 
+if ($ExportHtml -eq $true) {
 
+    $HtmlOutput = Get-Content -Path .\HtmlTemplate.htm | Out-String
+
+    if ($DocType -eq "Markdown") {
+
+        if ($Theme -eq "custom") {
+
+            $MarkdownTheme = '<div class="mermaid">'
+            
+        }
+
+        else {
+
+            $MarkdownTheme = '<div class="mermaid">' + $MarkdownTheme 
+
+        }
+
+        $HtmlOutput -Replace "VoiceAppNamePlaceHolder","Call Flow $VoiceAppFileName" `
+        -Replace "VoiceAppNameHtmlIdPlaceHolder",($($VoiceAppFileName).Replace(" ","-")) `
+        -Replace '<div class="mermaid">ThemePlaceHolder',$MarkdownTheme `
+        -Replace "MermaidPlaceHolder",($mermaidCode | Out-String).Replace($MarkdownTheme,"") `
+        -Replace "# Call Flow $VoiceAppFileName","" `
+        -Replace('```mermaid','') `
+        -Replace('```','') | Set-Content -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.htm" -Encoding UTF8
+
+    }
+
+    else {
+
+        $HtmlOutput -Replace "VoiceAppNamePlaceHolder","Call Flow $VoiceAppFileName" `
+        -Replace "VoiceAppNameHtmlIdPlaceHolder",($($VoiceAppFileName).Replace(" ","-")) `
+        -Replace '<div class="mermaid">ThemePlaceHolder','<div class="mermaid">' `
+        -Replace "MermaidPlaceHolder",($mermaidCode | Out-String).Replace($MarkdownTheme,"") ` | Set-Content -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.htm" -Encoding UTF8
+
+    }
+
+}
 

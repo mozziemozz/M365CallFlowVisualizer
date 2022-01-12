@@ -9,19 +9,21 @@ Reads a config from Microsoft 365 Phone System and renders them visually into a 
 | --- | --- |
 | 07.01.2022 | V 2.2.0 now even supports reading and rendering of voice menus (IVRs) including forwardings to announcements and to the operator. |
 | 09.01.2022 | V 2.3.0 now supports specifying custom hex colors for Nodes, Borders, Fonts, Links and Text on Links |
+| 12.01.2022 | V 2.4 now uses Microsoft.Graph instead of MSOnline PowerShell Module. It's now possible to export call flows as *.htm for easier access and sharing. |
 
 # How to use it
 
 ## Prerequisites
 
-I suggest using Visual Studio Code and the official PowerShell Extension. This script needs the "MSOnline" and "MicrosoftTeams" PowerShell modules. It has been tested with MicrosoftTeams PowerShell version 3.0.0 and 3.0.1-preview.
+I suggest using Visual Studio Code and the official PowerShell Extension. This script needs the "Microsoft.Graph" and "MicrosoftTeams" PowerShell modules. At least "Microsoft.Graph.Users" and "Microsoft.Graph.Groups" are needed.
+It has been tested with MicrosoftTeams PowerShell version 3.0.0 and 3.0.1-preview.
 
 ### Install Modules
 
 Run these two commands in an elevated PowerShell window.
 
 ```PowerShell
-Install-Module MSOnline
+Install-Module Microsoft.Graph 
 ```
 
 ```PowerShell
@@ -165,7 +167,7 @@ If you want to implement Mermaid Diagrams into your markdown based documentation
 - Reflect if voicemail transcription or suppress system greeting is on
 - Display call queue and auto attendant language settings
 - Custom HEX color support for the mermaid diagram --> Implemented in V 2.3.0
-- Migrate from MSOnline to Microsoft Graph PowerShell
+- Migrate from MSOnline to Microsoft Graph PowerShell --> Implemented in V 2.4
 
 These are planned changes. There is no ETA nor is it guaranteed that these features will ever be added.
 

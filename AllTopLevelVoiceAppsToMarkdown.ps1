@@ -18,10 +18,10 @@ function Connect-M365CFV {
     )
 
     try {
-        Get-MsolDomain -ErrorAction Stop > $null
+        Get-MgUser -Top 1 -ErrorAction Stop > $null
     }
     catch {
-        Connect-MsolService
+        Connect-MgGraph -Scopes "User.Read.All","Group.Read.All"
     }
 
     try {
