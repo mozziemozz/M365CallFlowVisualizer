@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.4.2
+    Version:            2.4.3
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -40,6 +40,7 @@
         12.01.2022      Optimize some error messages / warnings.
         13.01.2022      Add support to display if MS System Message is being played back in holidays, CQ time out, overflow or AA default or after horus call flow
         13.01.2022      fixed a bug where operator AAs or CQs were added to nested voice apps even if not configured in call flows
+        13.01.2022      Add numbers on links to reflect agent list order in call queues with serial routing method.
 
     .PARAMETER Name
     -Identity
@@ -1735,7 +1736,19 @@ function Get-CallQueueCallFlow {
 
         }
 
-        $AgentDisplayNames = "agentListType$($cqCallFlowObjectId) --> agent$($cqCallFlowObjectId)$($AgentCounter)($AgentDisplayName) --> timeOut$($cqCallFlowObjectId)`n"
+        if ($CqRoutingMethod -eq "Serial") {
+
+            $serialAgentNumber = "|$AgentCounter|"
+
+        }
+
+        else {
+
+            $serialAgentNumber = $null
+
+        }
+
+        $AgentDisplayNames = "agentListType$($cqCallFlowObjectId) --> $serialAgentNumber agent$($cqCallFlowObjectId)$($AgentCounter)($AgentDisplayName) --> timeOut$($cqCallFlowObjectId)`n"
 
         $allMermaidNodes += @("agentListType$($cqCallFlowObjectId)","agent$($cqCallFlowObjectId)$($AgentCounter)","timeOut$($cqCallFlowObjectId)")
 
