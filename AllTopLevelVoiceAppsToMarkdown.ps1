@@ -19,18 +19,18 @@ function Connect-M365CFV {
     )
 
     try {
-        Get-MgUser -Top 1 -ErrorAction Stop > $null
-    }
-    catch {
-        Connect-MgGraph -Scopes "User.Read.All","Group.Read.All"
-    }
-
-    try {
         Get-CsOnlineSipDomain -ErrorAction Stop > $null
     }
     catch {
         Connect-MicrosoftTeams
-    }    
+    } 
+
+    try {
+        Get-MgUser -Top 1 -ErrorAction Stop > $null
+    }
+    catch {
+        Connect-MgGraph -Scopes "User.Read.All","Group.Read.All"
+    } 
     
 }
 
