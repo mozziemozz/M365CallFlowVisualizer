@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.4.3
+    Version:            2.4.4
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -41,6 +41,8 @@
         13.01.2022      Add support to display if MS System Message is being played back in holidays, CQ time out, overflow or AA default or after horus call flow
         13.01.2022      fixed a bug where operator AAs or CQs were added to nested voice apps even if not configured in call flows
         13.01.2022      Add numbers on links to reflect agent list order in call queues with serial routing method.
+        14.01.2022      Optimize presentation of call queue agents (list vertically) because queues with many agents made the diagram too wide
+        14.01.2022      Agent list type now lists group(s) name(s) or team name and channel name, prettify name of AA Holiday subgraphs
 
     .PARAMETER Name
     -Identity
@@ -435,7 +437,7 @@ function Get-AutoAttendantHolidaysAndAfterHours {
 
     $aaObjectId = $aa.Identity
 
-    $holidaySubgraphName = "Holiday-Table-$($aa.Name.Replace(" ","-"))"
+    $holidaySubgraphName = "subgraphHolidays$($aa.Identity)[Holidays $($aa.Name)]"
 
     if ($aaHasHolidays -eq $true) {
 
@@ -1466,7 +1468,7 @@ function Get-CallQueueCallFlow {
     $CqConferenceMode = $MatchingCQ.ConferenceMode
     $CqAgentAlertTime = $MatchingCQ.AgentAlertTime
     $CqPresenceBasedRouting = $MatchingCQ.PresenceBasedRouting
-    $CqDistributionList = $MatchingCQ.DistributionLists
+    $CqDistributionLists = $MatchingCQ.DistributionLists
     $CqDefaultMusicOnHold = $MatchingCQ.UseDefaultMusicOnHold
     $CqWelcomeMusicFileName = $MatchingCQ.WelcomeMusicFileName
     $CqLanguageId = $MatchingCQ.LanguageId
@@ -1491,7 +1493,7 @@ function Get-CallQueueCallFlow {
     }
 
     # Check if call queue useses users, group or teams channel as distribution list
-    if (!$CqDistributionList) {
+    if (!$CqDistributionLists) {
 
         $CqAgentListType = "Users"
 
@@ -1501,13 +1503,30 @@ function Get-CallQueueCallFlow {
 
         if (!$MatchingCQ.ChannelId) {
 
-            $CqAgentListType = "Group"
+            $CqAgentListType = "Groups"
+
+            foreach ($DistributionList in $MatchingCQ.DistributionLists.Guid) {
+
+                $DistributionListName = (Get-MgGroup -GroupId $DistributionList).DisplayName
+
+                $CqAgentListType += " <br> Group Name: $DistributionListName"
+
+            }
+
+            if ($MatchingCQ.DistributionLists.Count -lt 2) {
+
+                $CqAgentListType = $CqAgentListType.Replace("Groups","Group")
+
+            }
 
         }
 
         else {
 
-            $CqAgentListType = "Teams Channel"
+            $TeamName = (Get-Team -GroupId $MatchingCQ.DistributionLists.Guid).DisplayName
+            $ChannelName = (Get-TeamChannel -GroupId $MatchingCQ.DistributionLists.Guid | Where-Object {$_.Id -eq $MatchingCQ.ChannelId}).DisplayName
+
+            $CqAgentListType = "Teams Channel <br> Team Name: $TeamName <br> Channel Name: $ChannelName"
 
         }
 
@@ -1748,9 +1767,9 @@ function Get-CallQueueCallFlow {
 
         }
 
-        $AgentDisplayNames = "agentListType$($cqCallFlowObjectId) --> $serialAgentNumber agent$($cqCallFlowObjectId)$($AgentCounter)($AgentDisplayName) --> timeOut$($cqCallFlowObjectId)`n"
+        $AgentDisplayNames = "agentListType$($cqCallFlowObjectId) -.-> $serialAgentNumber agent$($cqCallFlowObjectId)$($AgentCounter)($AgentDisplayName)`n"
 
-        $allMermaidNodes += @("agentListType$($cqCallFlowObjectId)","agent$($cqCallFlowObjectId)$($AgentCounter)","timeOut$($cqCallFlowObjectId)")
+        $allMermaidNodes += @("agentListType$($cqCallFlowObjectId)","agent$($cqCallFlowObjectId)$($AgentCounter)")
 
         $mdCqAgentsDisplayNames += $AgentDisplayNames
 
@@ -1767,20 +1786,22 @@ function Get-CallQueueCallFlow {
 
 $mdCallQueueCallFlow =@"
 $lastCallFlowAction --> cqGreeting$($cqCallFlowObjectId)>Greeting <br> $CqGreeting] --> overFlow$($cqCallFlowObjectId){More than $CqOverFlowThreshold <br> Active Calls?}
-overFlow$($cqCallFlowObjectId) ---> |Yes| $CqOverFlowActionFriendly
-overFlow$($cqCallFlowObjectId) ---> |No| routingMethod$($cqCallFlowObjectId)
+overFlow$($cqCallFlowObjectId) --> |Yes| $CqOverFlowActionFriendly
+overFlow$($cqCallFlowObjectId) --> |No| routingMethod$($cqCallFlowObjectId)
 
-subgraph Call Distribution
-subgraph CQ Settings
+subgraph subgraphCallDistribution$($cqCallFlowObjectId)[Call Distribution]
+subgraph subgraphCqSettings$($cqCallFlowObjectId)[CQ Settings]
 routingMethod$($cqCallFlowObjectId)[(Routing Method: $CqRoutingMethod)] --> agentAlertTime$($cqCallFlowObjectId)
 agentAlertTime$($cqCallFlowObjectId)[(Agent Alert Time: $CqAgentAlertTime)] -.- cqSettingsContainer$($cqCallFlowObjectId)
 cqSettingsContainer$($cqCallFlowObjectId)[(Music On Hold: $CqMusicOnHold <br> Conference Mode Enabled: $CqConferenceMode <br> Agent Opt Out Allowed: $CqAgentOptOut <br> Presence Based Routing: $CqPresenceBasedRouting <br> TTS Greeting Language: $CqLanguageId)] -.- timeOut$($cqCallFlowObjectId)
 timeOut$($cqCallFlowObjectId)[(Timeout: $CqTimeOut Seconds)]
 end
-subgraph Agents $($MatchingCQ.Name)
-agentAlertTime$($cqCallFlowObjectId) --> agentListType$($cqCallFlowObjectId)[(Agent List Type: $CqAgentListType)]
+agentAlertTime$($cqCallFlowObjectId) --> subgraphAgents$($cqCallFlowObjectId)
+subgraph subgraphAgents$($cqCallFlowObjectId)[Agents $($MatchingCQ.Name)]
+agentListType$($cqCallFlowObjectId)[(Agent List Type: $CqAgentListType)]
 $mdCqAgentsDisplayNames
 end
+subgraphAgents$($cqCallFlowObjectId) --> timeOut$($cqCallFlowObjectId)
 end
 
 timeOut$($cqCallFlowObjectId) --> cqResult$($cqCallFlowObjectId){Call Connected?}

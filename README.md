@@ -11,6 +11,7 @@ Reads a config from Microsoft 365 Phone System and renders them visually into a 
 | 09.01.2022 | V 2.3.0 now supports specifying custom hex colors for Nodes, Borders, Fonts, Links and Text on Links |
 | 12.01.2022 | V 2.4.0 now uses Microsoft.Graph instead of MSOnline PowerShell Module. It's now possible to export call flows as *.htm for easier access and sharing. Some Cq settings were consolidated into a single node |
 | 13.01.2022 | V 2.4.2 now properly displays if the system message is being played back or not before the call is forwarded to another target. |
+| 14.01.2022 | V 2.4.4 now displays queue agents vertically (better for queues with many agents), displays names of Group(s), Teams and Channels if a queue uses them |
 
 # How to use it
 
@@ -166,7 +167,7 @@ If you want to implement Mermaid Diagrams into your markdown based documentation
 
 # Planned feature updates
 - Reflect if voicemail transcription or suppress system greeting is on --> Suppress system message was implemented in V 2.4.2
-- Display call queue and auto attendant language settings
+- Display call queue and auto attendant language settings --> Call Queue language implemented in V 2.4.4
 - Custom HEX color support for the mermaid diagram --> Implemented in V 2.3.0
 - Migrate from MSOnline to Microsoft Graph PowerShell --> Implemented in V 2.4.0
 
