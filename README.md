@@ -85,7 +85,7 @@ This will run the script, present a list of the available voice apps and save th
 ### Example 6
 
 ```PowerShell
-.\M365CallFlowVisualizerV2.ps1 -SafeToFile $false
+.\M365CallFlowVisualizerV2.ps1 -SaveToFile $false
 ```
 
 This will run the script without saving the call flow to a file. Make sure to not set SetClipBoard to $false as this would result in no output at all.

@@ -197,7 +197,7 @@
         .\M365CallFlowVisualizerV2.ps1 -DocType Markdown -SetClipBoard $false
 
     .EXAMPLE
-        .\M365CallFlowVisualizerV2.ps1 -SafeToFile $false
+        .\M365CallFlowVisualizerV2.ps1 -SaveToFile $false
 
     .EXAMPLE
         .\M365CallFlowVisualizerV2.ps1 -CustomFilePath "C:\Temp"
