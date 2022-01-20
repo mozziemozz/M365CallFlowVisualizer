@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.4.4
+    Version:            2.4.5
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -43,6 +43,8 @@
         13.01.2022      Add numbers on links to reflect agent list order in call queues with serial routing method.
         14.01.2022      Optimize presentation of call queue agents (list vertically) because queues with many agents made the diagram too wide
         14.01.2022      Agent list type now lists group(s) name(s) or team name and channel name, prettify name of AA Holiday subgraphs
+        20.01.2022      Change default value of ExportHtml to true
+        20.01.2022      Add support to include TTS greeting texts and audio file names used in auto attendant calls flows, IVR announcements, call queues and music on hold
 
     .PARAMETER Name
     -Identity
@@ -68,7 +70,7 @@
         Specifies if, in addition to the Markdown or Mermaid file, also a *.htm file should be exported
         Required:           false
         Type:               boolean
-        Default value:      false
+        Default value:      true
 
     -CustomFilePath
         Specifies the file path for the output file. The directory must already exist.
@@ -86,14 +88,32 @@
     -ShowCqAgentPhoneNumbers
         Specifies whether or not the agent subgraphs of call queues should include a users direct number.
         Required:           false
-        Type:               boolean
+        Type:               switch
         Default value:      false   
 
     -ShowCqAgentOptInStatus
         Specifies whether or not the current opt in status of agents should be displayed.
         Required:           false
-        Type:               boolean
+        Type:               switch
         Default value:      false   
+
+    -ShowTTSGreetingText
+        Specifies whether or not the text of TTS greetings should be included in greeting nodes. Note: this can create wide diagrams. Use parameter -TurncateGreetings to shorten the text.
+        Required:           false
+        Type:               switch
+        Default value:      false
+        
+    -ShowAudioFileName
+        Specifies whether or not the filename of audio file greetings should be included in greeting nodes. Note: this can create wide diagrams. Use parameter -TurncateGreetings to shorten the filename
+        Required:           false
+        Type:               switch
+        Default value:      false
+
+    -TurncateGreetings
+        Specifies how many characters of the file name or the greeting text should be included. The default value is 20. This will shorten all greetings and filenames to 20 characters, excluding the file name extension.
+        Required:           false
+        Type:               single
+        Default value:      20
 
     -DocType
         Specifies the document type.
@@ -214,11 +234,14 @@ param(
     [Parameter(Mandatory=$false)][String]$Identity,
     [Parameter(Mandatory=$false)][Bool]$SetClipBoard = $true,
     [Parameter(Mandatory=$false)][Bool]$SaveToFile = $true,
-    [Parameter(Mandatory=$false)][Bool]$ExportHtml = $false,
+    [Parameter(Mandatory=$false)][Bool]$ExportHtml = $true,
     [Parameter(Mandatory=$false)][String]$CustomFilePath,
     [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
-    [Parameter(Mandatory=$false)][Bool]$ShowCqAgentPhoneNumbers = $false,
-    [Parameter(Mandatory=$false)][Bool]$ShowCqAgentOptInStatus = $false,
+    [Parameter(Mandatory=$false)][Switch]$ShowCqAgentPhoneNumbers,
+    [Parameter(Mandatory=$false)][Switch]$ShowCqAgentOptInStatus,
+    [Parameter(Mandatory=$false)][Switch]$ShowTTSGreetingText,
+    [Parameter(Mandatory=$false)][Switch]$ShowAudioFileName,
+    [Parameter(Mandatory=$false)][Single]$turncateGreetings = 20,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral","custom")][String]$Theme = "default",
     [Parameter(Mandatory=$false)][String]$NodeColor = "#00A4EF", # Microsoft Blue
@@ -466,6 +489,41 @@ subgraph $holidaySubgraphName
             else {
 
                 $holidayGreeting = "Greeting <br> $($holidayCallFlow.Greetings.ActiveType.Value)"
+
+                if ($($holidayCallFlow.Greetings.ActiveType.Value) -eq "TextToSpeech" -and $ShowTTSGreetingText) {
+
+                    $audioFileName = $null
+
+                    $holidayTTSGreetingValue = $holidayCallFlow.Greetings.TextToSpeechPrompt
+
+                    if ($holidayTTSGreetingValue.Length -gt $turncateGreetings) {
+
+                        $holidayTTSGreetingValue = $holidayTTSGreetingValue.Remove($holidayTTSGreetingValue.Length - ($holidayTTSGreetingValue.Length -$turncateGreetings)) + "..."
+                    
+                    }
+
+                    $holidayGreeting += " <br> ''$holidayTTSGreetingValue''"
+                
+                }
+
+                elseif ($($holidayCallFlow.Greetings.ActiveType.Value) -eq "AudioFile" -and $ShowAudioFileName) {
+
+                    $holidayTTSGreetingValue = $null
+
+                    # Audio File Greeting Name
+                    $audioFileName = $holidayCallFlow.Greetings.AudioFilePrompt.FileName
+
+                    if ($audioFileName.Length -gt $turncateGreetings) {
+
+                        $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
+                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+
+                    }
+
+                    $holidayGreeting += " <br> $audioFileName"
+
+
+                }
 
             }
 
@@ -975,7 +1033,44 @@ function Get-AutoAttendantDefaultCallFlow {
     }
 
     else {
+
         $defaultCallFlowGreeting = "Greeting <br> $($defaultCallFlow.Greetings.ActiveType.Value)"
+
+        if ($($defaultCallFlow.Greetings.ActiveType.Value) -eq "TextToSpeech" -and $ShowTTSGreetingText) {
+
+            $audioFileName = $null
+
+            $defaultTTSGreetingValue = $defaultCallFlow.Greetings.TextToSpeechPrompt
+
+            if ($defaultTTSGreetingValue.Length -gt $turncateGreetings) {
+
+                $defaultTTSGreetingValue = $defaultTTSGreetingValue.Remove($defaultTTSGreetingValue.Length - ($defaultTTSGreetingValue.Length -$turncateGreetings)) + "..."
+            
+            }
+
+            $defaultCallFlowGreeting += " <br> ''$defaultTTSGreetingValue''"
+        
+        }
+
+        elseif ($($defaultCallFlow.Greetings.ActiveType.Value) -eq "AudioFile" -and $ShowAudioFileName) {
+
+            $defaultTTSGreetingValue = $null
+
+            # Audio File Greeting Name
+            $audioFileName = $defaultCallFlow.Greetings.AudioFilePrompt.FileName
+
+            if ($audioFileName.Length -gt $turncateGreetings) {
+
+                $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
+                $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+
+            }
+
+            $defaultCallFlowGreeting += " <br> $audioFileName"
+
+
+        }
+
     }
 
     # Check if default callflow action is disconnect call
@@ -1006,13 +1101,50 @@ function Get-AutoAttendantDefaultCallFlow {
 
         else {
 
+            $defaultCallFlowMenuOptionsGreeting = "IVR Greeting <br> $($defaultCallFlow.Menu.Prompts.ActiveType.Value)"
+
+            if ($($defaultCallFlow.Menu.Prompts.ActiveType.Value) -eq "TextToSpeech" -and $ShowTTSGreetingText) {
+
+                $audioFileName = $null
+    
+                $defaultCallFlowMenuOptionsTTSGreetingValue = $defaultCallFlow.Menu.Prompts.TextToSpeechPrompt
+    
+                if ($defaultCallFlowMenuOptionsTTSGreetingValue.Length -gt $turncateGreetings) {
+    
+                    $defaultCallFlowMenuOptionsTTSGreetingValue = $defaultCallFlowMenuOptionsTTSGreetingValue.Remove($defaultCallFlowMenuOptionsTTSGreetingValue.Length - ($defaultCallFlowMenuOptionsTTSGreetingValue.Length -$turncateGreetings)) + "..."
+                
+                }
+    
+                $defaultCallFlowMenuOptionsGreeting += " <br> ''$defaultCallFlowMenuOptionsTTSGreetingValue''"
+            
+            }
+    
+            elseif ($($defaultCallFlow.Menu.Prompts.ActiveType.Value) -eq "AudioFile" -and $ShowAudioFileName) {
+    
+                $defaultCallFlowMenuOptionsTTSGreetingValue = $null
+    
+                # Audio File Greeting Name
+                $audioFileName = $defaultCallFlow.Menu.Prompts.AudioFilePrompt.FileName
+    
+                if ($audioFileName.Length -gt $turncateGreetings) {
+    
+                    $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
+                    $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+    
+                }
+    
+                $defaultCallFlowMenuOptionsGreeting += " <br> $audioFileName"
+    
+    
+            }
+
             $defaultCallFlowMenuOptionsKeyPress = @"
 
 defaultCallFlowMenuOptions$($aaDefaultCallFlowAaObjectId){Key Press}
 "@
 
             $mdDefaultCallFlowGreeting =@"
-defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting] --> defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId)>IVR Greeting <br> $($aa.DefaultCallFlow.Menu.Prompts.ActiveType.Value)] --> $defaultCallFlowMenuOptionsKeyPress
+defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting] --> defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowMenuOptionsGreeting] --> $defaultCallFlowMenuOptionsKeyPress
 
 "@
 
@@ -1066,7 +1198,50 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                 
                 $voiceMenuOptionAnnouncementType = $MenuOption.Prompt.ActiveType.Value
 
-                $mdAutoAttendantdefaultCallFlow = "$mdDtmfLink defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction <br> $voiceMenuOptionAnnouncementType) ---> defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId)`n"
+                $defaultCallFlowMenuOptionsAnnouncement = "$voiceMenuOptionAnnouncementType"
+
+                if ($voiceMenuOptionAnnouncementType -eq "TextToSpeech" -and $ShowTTSGreetingText) {
+    
+                    $audioFileName = $null
+        
+                    $defaultCallFlowMenuOptionsTTSAnnouncementValue = $MenuOption.Prompt.TextToSpeechPrompt
+
+                    $defaultCallFlowMenuOptionsTTSAnnouncementValue
+        
+                    if ($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length -gt $turncateGreetings) {
+        
+                        Write-Host "Greeting has $($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length) chars." -ForegroundColor Yellow
+
+                        $defaultCallFlowMenuOptionsTTSAnnouncementValue = $defaultCallFlowMenuOptionsTTSAnnouncementValue.Remove($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length - ($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length -$turncateGreetings)) + "..."
+                    
+                    }
+        
+                    $defaultCallFlowMenuOptionsAnnouncement += " <br> ''$defaultCallFlowMenuOptionsTTSAnnouncementValue''"
+                
+                }
+        
+                elseif ($voiceMenuOptionAnnouncementType -eq "AudioFile" -and $ShowAudioFileName) {
+        
+                    $defaultCallFlowMenuOptionsTTSAnnouncementValue = $null
+        
+                    # Audio File Announcement Name
+                    $audioFileName = $MenuOption.Prompt.AudioFilePrompt.FileName
+
+                    $audioFileName
+        
+                    if ($audioFileName.Length -gt $turncateGreetings) {
+        
+                        $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
+                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+        
+                    }
+        
+                    $defaultCallFlowMenuOptionsAnnouncement += " <br> $audioFileName"
+        
+        
+                }
+
+                $mdAutoAttendantdefaultCallFlow = "$mdDtmfLink defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey>$defaultCallFlowAction <br> $defaultCallFlowMenuOptionsAnnouncement] ---> defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId)`n"
 
                 $allMermaidNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey","defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId)")
 
@@ -1219,6 +1394,42 @@ function Get-AutoAttendantAfterHoursCallFlow {
 
     else {
         $afterHoursCallFlowGreeting = "Greeting <br> $($afterHoursCallFlow.Greetings.ActiveType.Value)"
+
+        if ($($afterHoursCallFlow.Greetings.ActiveType.Value) -eq "TextToSpeech" -and $ShowTTSGreetingText) {
+
+            $audioFileName = $null
+
+            $afterHoursTTSGreetingValue = $afterHoursCallFlow.Greetings.TextToSpeechPrompt
+
+            if ($afterHoursTTSGreetingValue.Length -gt $turncateGreetings) {
+
+                $afterHoursTTSGreetingValue = $afterHoursTTSGreetingValue.Remove($afterHoursTTSGreetingValue.Length - ($afterHoursTTSGreetingValue.Length -$turncateGreetings)) + "..."
+            
+            }
+
+            $afterHoursCallFlowGreeting += " <br> ''$afterHoursTTSGreetingValue''"
+        
+        }
+
+        elseif ($($afterHoursCallFlow.Greetings.ActiveType.Value) -eq "AudioFile" -and $ShowAudioFileName) {
+
+            $afterHoursTTSGreetingValue = $null
+
+            # Audio File Greeting Name
+            $audioFileName = $afterHoursCallFlow.Greetings.AudioFilePrompt.FileName
+
+            if ($audioFileName.Length -gt $turncateGreetings) {
+
+                $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
+                $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+
+            }
+
+            $afterHoursCallFlowGreeting += " <br> $audioFileName"
+
+
+        }
+
     }
 
     # Check if the after hours callflow action is disconnect call
@@ -1250,13 +1461,50 @@ function Get-AutoAttendantAfterHoursCallFlow {
 
         else {
 
+            $afterHoursCallFlowMenuOptionsGreeting = "IVR Greeting <br> $($afterHoursCallFlow.Menu.Prompts.ActiveType.Value)"
+
+            if ($($afterHoursCallFlow.Menu.Prompts.ActiveType.Value) -eq "TextToSpeech" -and $ShowTTSGreetingText) {
+
+                $audioFileName = $null
+    
+                $afterHoursCallFlowMenuOptionsTTSGreetingValue = $afterHoursCallFlow.Menu.Prompts.TextToSpeechPrompt
+    
+                if ($afterHoursCallFlowMenuOptionsTTSGreetingValue.Length -gt $turncateGreetings) {
+    
+                    $afterHoursCallFlowMenuOptionsTTSGreetingValue = $afterHoursCallFlowMenuOptionsTTSGreetingValue.Remove($afterHoursCallFlowMenuOptionsTTSGreetingValue.Length - ($afterHoursCallFlowMenuOptionsTTSGreetingValue.Length -$turncateGreetings)) + "..."
+                
+                }
+    
+                $afterHoursCallFlowMenuOptionsGreeting += " <br> ''$afterHoursCallFlowMenuOptionsTTSGreetingValue''"
+            
+            }
+    
+            elseif ($($afterHoursCallFlow.Menu.Prompts.ActiveType.Value) -eq "AudioFile" -and $ShowAudioFileName) {
+    
+                $afterHoursCallFlowMenuOptionsTTSGreetingValue = $null
+    
+                # Audio File Greeting Name
+                $audioFileName = $afterHoursCallFlow.Menu.Prompts.AudioFilePrompt.FileName
+    
+                if ($audioFileName.Length -gt $turncateGreetings) {
+    
+                    $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
+                    $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+    
+                }
+    
+                $afterHoursCallFlowMenuOptionsGreeting += " <br> $audioFileName"
+    
+    
+            }
+    
             $afterHoursCallFlowMenuOptionsKeyPress = @"
 
 afterHoursCallFlowMenuOptions$($aaAfterHoursCallFlowAaObjectId){Key Press}
 "@
 
             $mdafterHoursCallFlowGreeting =@"
-afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlowGreeting] --> afterHoursCallFlowMenuOptionsGreeting$($aaAfterHoursCallFlowAaObjectId)>IVR Greeting <br> $($afterHoursCallFlow.Menu.Prompts.ActiveType.Value)] --> $afterHoursCallFlowMenuOptionsKeyPress
+afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlowGreeting] --> afterHoursCallFlowMenuOptionsGreeting$($aaAfterHoursCallFlowAaObjectId)>$afterHoursCallFlowMenuOptionsGreeting] --> $afterHoursCallFlowMenuOptionsKeyPress
 
 "@
 
@@ -1309,7 +1557,54 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                 
                 $voiceMenuOptionAnnouncementType = $MenuOption.Prompt.ActiveType.Value
 
-                $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction <br> $voiceMenuOptionAnnouncementType) ---> afterHoursCallFlowMenuOptionsGreeting$($aaafterHoursCallFlowAaObjectId)`n"
+                $afterHoursCallFlowMenuOptionsAnnouncement = "$voiceMenuOptionAnnouncementType"
+
+                if ($voiceMenuOptionAnnouncementType -eq "TextToSpeech" -and $ShowTTSGreetingText) {
+    
+                    $audioFileName = $null
+        
+                    $afterHoursCallFlowMenuOptionsTTSAnnouncementValue = $MenuOption.Prompt.TextToSpeechPrompt
+
+                    # Save greeting value for export
+                    #$exportGreetingValue = $afterHoursCallFlowMenuOptionsTTSAnnouncementValue
+
+                    $afterHoursCallFlowMenuOptionsTTSAnnouncementValue
+        
+                    if ($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length -gt $turncateGreetings) {
+        
+                        $afterHoursCallFlowMenuOptionsTTSAnnouncementValue = $afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Remove($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length - ($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length -$turncateGreetings)) + "..."
+                    
+                    }
+        
+                    $afterHoursCallFlowMenuOptionsAnnouncement += " <br> ''$afterHoursCallFlowMenuOptionsTTSAnnouncementValue''"
+                
+                }
+        
+                elseif ($voiceMenuOptionAnnouncementType -eq "AudioFile" -and $ShowAudioFileName) {
+        
+                    $afterHoursCallFlowMenuOptionsTTSAnnouncementValue = $null
+        
+                    # Audio File Announcement Name
+                    $audioFileName = $MenuOption.Prompt.AudioFilePrompt.FileName
+
+                    # Save filename for export
+                    #$exportFileName = $audioFileName
+
+                    $audioFileName
+        
+                    if ($audioFileName.Length -gt $turncateGreetings) {
+        
+                        $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
+                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+        
+                    }
+        
+                    $afterHoursCallFlowMenuOptionsAnnouncement += " <br> $audioFileName"
+        
+        
+                }
+
+                $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey>$afterHoursCallFlowAction <br> $afterHoursCallFlowMenuOptionsAnnouncement] ---> afterHoursCallFlowMenuOptionsGreeting$($aaafterHoursCallFlowAaObjectId)`n"
 
                 $allMermaidNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey","afterHoursCallFlowMenuOptionsGreeting$($aaafterHoursCallFlowAaObjectId)")
 
@@ -1480,6 +1775,22 @@ function Get-CallQueueCallFlow {
 
     else {
         $CqMusicOnHold = "Custom"
+
+        if ($ShowAudioFileName) {
+
+            $audioFileName = $MatchingCQ.MusicOnHoldFileName
+            
+            if ($audioFileName.Length -gt $turncateGreetings) {
+        
+                $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
+                $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+
+            }
+
+            $CqMusicOnHold += " <br> MoH File: $audioFileName"
+
+        }
+
     }
 
     # Check if call queue uses a greeting
@@ -1488,7 +1799,22 @@ function Get-CallQueueCallFlow {
     }
 
     else {
-        $CqGreeting = "Audio File"
+        $CqGreeting = "AudioFile"
+
+        if ($ShowAudioFileName) {
+
+            $audioFileName = $CqWelcomeMusicFileName
+            
+            if ($audioFileName.Length -gt $turncateGreetings) {
+        
+                $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
+                $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+
+            }
+
+            $CqGreeting += " <br> $audioFileName"
+
+        }
 
     }
 
@@ -1610,6 +1936,22 @@ function Get-CallQueueCallFlow {
             if ($MatchingCQ.OverflowSharedVoicemailTextToSpeechPrompt) {
 
                 $CqOverFlowVoicemailGreeting = "TextToSpeech"
+
+                if ($ShowTTSGreetingText) {
+
+                    $overFlowVoicemailTTSGreetingValue = $MatchingCQ.OverflowSharedVoicemailTextToSpeechPrompt
+
+                    if ($overFlowVoicemailTTSGreetingValue.Length -gt $turncateGreetings) {
+
+                        $overFlowVoicemailTTSGreetingValue = $overFlowVoicemailTTSGreetingValue.Remove($overFlowVoicemailTTSGreetingValue.Length - ($overFlowVoicemailTTSGreetingValue.Length -$turncateGreetings)) + "..."
+
+                    }
+
+                    $CqOverFlowVoicemailGreeting += " <br> ''$overFlowVoicemailTTSGreetingValue''"
+
+                }
+
+
                 $CQOverFlowVoicemailSystemGreeting = "cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
 
                 $allMermaidNodes += "cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)"
@@ -1619,6 +1961,22 @@ function Get-CallQueueCallFlow {
             else {
 
                 $CqOverFlowVoicemailGreeting = "AudioFile"
+
+                if ($ShowAudioFileName) {
+
+                    $audioFileName = $MatchingCQ.OverflowSharedVoicemailAudioFilePromptFileName
+                    
+                    if ($audioFileName.Length -gt $turncateGreetings) {
+                
+                        $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
+                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+        
+                    }
+        
+                    $CqOverFlowVoicemailGreeting += " <br> $audioFileName"
+        
+                }        
+
                 $CQOverFlowVoicemailSystemGreeting = $null
 
             }
@@ -1708,6 +2066,21 @@ function Get-CallQueueCallFlow {
             if ($MatchingCQ.TimeoutSharedVoicemailTextToSpeechPrompt) {
     
                 $CqTimeoutVoicemailGreeting = "TextToSpeech"
+                
+                if ($ShowTTSGreetingText) {
+
+                    $TimeOutVoicemailTTSGreetingValue = $MatchingCQ.TimeOutSharedVoicemailTextToSpeechPrompt
+
+                    if ($TimeOutVoicemailTTSGreetingValue.Length -gt $turncateGreetings) {
+
+                        $TimeOutVoicemailTTSGreetingValue = $TimeOutVoicemailTTSGreetingValue.Remove($TimeOutVoicemailTTSGreetingValue.Length - ($TimeOutVoicemailTTSGreetingValue.Length -$turncateGreetings)) + "..."
+
+                    }
+
+                    $CqTimeOutVoicemailGreeting += " <br> ''$TimeOutVoicemailTTSGreetingValue''"
+
+                }
+
                 $CQTimeoutVoicemailSystemGreeting = "cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
 
                 $allMermaidNodes += "cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)"
@@ -1717,6 +2090,22 @@ function Get-CallQueueCallFlow {
             else {
     
                 $CqTimeoutVoicemailGreeting = "AudioFile"
+
+                if ($ShowAudioFileName) {
+
+                    $audioFileName = $MatchingCQ.TimeoutSharedVoicemailAudioFilePromptFileName
+                    
+                    if ($audioFileName.Length -gt $turncateGreetings) {
+                
+                        $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
+                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+        
+                    }
+        
+                    $CqTimeOutVoicemailGreeting += " <br> $audioFileName"
+        
+                }
+
                 $CQTimeoutVoicemailSystemGreeting = $null
     
             }
