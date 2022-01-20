@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.4.5
+    Version:            2.4.6
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -45,6 +45,7 @@
         14.01.2022      Agent list type now lists group(s) name(s) or team name and channel name, prettify name of AA Holiday subgraphs
         20.01.2022      Change default value of ExportHtml to true
         20.01.2022      Add support to include TTS greeting texts and audio file names used in auto attendant calls flows, IVR announcements, call queues and music on hold
+        21.02.2022      Add support to export audio files from auto attendants and call queues and link them in html output (on node click)
 
     .PARAMETER Name
     -Identity
@@ -114,6 +115,12 @@
         Required:           false
         Type:               single
         Default value:      20
+
+    -ExportAudioFiles
+        Specifies if the audio files of greetins, announcements and music on hold should be exported to the specified directory. If this is enabled, Markdown and HTML output will have clickable links on the greeting nodes with audio files. This is an experimental feature.
+        Required:           false
+        Type:               switch
+        Default value:      false
 
     -DocType
         Specifies the document type.
@@ -242,6 +249,7 @@ param(
     [Parameter(Mandatory=$false)][Switch]$ShowTTSGreetingText,
     [Parameter(Mandatory=$false)][Switch]$ShowAudioFileName,
     [Parameter(Mandatory=$false)][Single]$turncateGreetings = 20,
+    [Parameter(Mandatory=$false)][Switch]$ExportAudioFiles, # experimental feature
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral","custom")][String]$Theme = "default",
     [Parameter(Mandatory=$false)][String]$NodeColor = "#00A4EF", # Microsoft Blue
@@ -269,6 +277,19 @@ if ($SaveToFile -eq $false -and $CustomFilePath) {
 $nestedVoiceApps = @()
 $processedVoiceApps = @()
 $allMermaidNodes = @()
+$audioFileNames = @()
+
+if ($CustomFilePath) {
+
+    $FilePath = $CustomFilePath
+
+}
+
+else {
+
+    $FilePath = "."
+
+}
 
 function Connect-M365CFV {
     param (
@@ -512,6 +533,16 @@ subgraph $holidaySubgraphName
 
                     # Audio File Greeting Name
                     $audioFileName = $holidayCallFlow.Greetings.AudioFilePrompt.FileName
+
+                    if ($ExportAudioFiles) {
+
+                        $content = Export-CsOnlineAudioFile -Identity $holidayCallFlow.Greetings.AudioFilePrompt.Id -ApplicationId OrgAutoAttendant
+                        [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+        
+                        $audioFileNames += ("click elementAAHolidayGreeting$($aaObjectId)-$($HolidayCounter) " + '"' + "$FilePath\$audioFileName" + '"')
+        
+                    }
+
 
                     if ($audioFileName.Length -gt $turncateGreetings) {
 
@@ -1059,6 +1090,16 @@ function Get-AutoAttendantDefaultCallFlow {
             # Audio File Greeting Name
             $audioFileName = $defaultCallFlow.Greetings.AudioFilePrompt.FileName
 
+            if ($ExportAudioFiles) {
+
+                $content = Export-CsOnlineAudioFile -Identity $defaultCallFlow.Greetings.AudioFilePrompt.Id -ApplicationId OrgAutoAttendant
+                [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+
+                $audioFileNames += ("click defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+
+            }
+
+
             if ($audioFileName.Length -gt $turncateGreetings) {
 
                 $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
@@ -1125,6 +1166,16 @@ function Get-AutoAttendantDefaultCallFlow {
     
                 # Audio File Greeting Name
                 $audioFileName = $defaultCallFlow.Menu.Prompts.AudioFilePrompt.FileName
+
+                if ($ExportAudioFiles) {
+
+                    $content = Export-CsOnlineAudioFile -Identity $defaultCallFlow.Menu.Prompts.AudioFilePrompt.Id -ApplicationId OrgAutoAttendant
+                    [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+    
+                    $audioFileNames += ("click defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+    
+                }
+
     
                 if ($audioFileName.Length -gt $turncateGreetings) {
     
@@ -1205,8 +1256,6 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                     $audioFileName = $null
         
                     $defaultCallFlowMenuOptionsTTSAnnouncementValue = $MenuOption.Prompt.TextToSpeechPrompt
-
-                    $defaultCallFlowMenuOptionsTTSAnnouncementValue
         
                     if ($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length -gt $turncateGreetings) {
         
@@ -1227,7 +1276,15 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                     # Audio File Announcement Name
                     $audioFileName = $MenuOption.Prompt.AudioFilePrompt.FileName
 
-                    $audioFileName
+                    if ($ExportAudioFiles) {
+
+                        $content = Export-CsOnlineAudioFile -Identity $MenuOption.Prompt.AudioFilePrompt.Id -ApplicationId OrgAutoAttendant
+                        [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+        
+                        $audioFileNames += ("click defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey " + '"' + "$FilePath\$audioFileName" + '"')
+        
+                    }
+    
         
                     if ($audioFileName.Length -gt $turncateGreetings) {
         
@@ -1418,6 +1475,16 @@ function Get-AutoAttendantAfterHoursCallFlow {
             # Audio File Greeting Name
             $audioFileName = $afterHoursCallFlow.Greetings.AudioFilePrompt.FileName
 
+            if ($ExportAudioFiles) {
+
+                $content = Export-CsOnlineAudioFile -Identity $afterHoursCallFlow.Greetings.AudioFilePrompt.Id -ApplicationId OrgAutoAttendant
+                [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+
+                $audioFileNames += ("click afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+
+            }
+
+
             if ($audioFileName.Length -gt $turncateGreetings) {
 
                 $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
@@ -1485,6 +1552,15 @@ function Get-AutoAttendantAfterHoursCallFlow {
     
                 # Audio File Greeting Name
                 $audioFileName = $afterHoursCallFlow.Menu.Prompts.AudioFilePrompt.FileName
+
+                if ($ExportAudioFiles) {
+
+                    $content = Export-CsOnlineAudioFile -Identity $afterHoursCallFlow.Menu.Prompts.AudioFilePrompt.Id -ApplicationId OrgAutoAttendant
+                    [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+    
+                    $audioFileNames += ("click afterHoursCallFlowMenuOptionsGreeting$($aaAfterHoursCallFlowAaObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+    
+                }
     
                 if ($audioFileName.Length -gt $turncateGreetings) {
     
@@ -1564,11 +1640,6 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                     $audioFileName = $null
         
                     $afterHoursCallFlowMenuOptionsTTSAnnouncementValue = $MenuOption.Prompt.TextToSpeechPrompt
-
-                    # Save greeting value for export
-                    #$exportGreetingValue = $afterHoursCallFlowMenuOptionsTTSAnnouncementValue
-
-                    $afterHoursCallFlowMenuOptionsTTSAnnouncementValue
         
                     if ($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length -gt $turncateGreetings) {
         
@@ -1587,11 +1658,16 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                     # Audio File Announcement Name
                     $audioFileName = $MenuOption.Prompt.AudioFilePrompt.FileName
 
-                    # Save filename for export
-                    #$exportFileName = $audioFileName
+                    if ($ExportAudioFiles) {
 
-                    $audioFileName
+                        $content = Export-CsOnlineAudioFile -Identity $MenuOption.Prompt.AudioFilePrompt.Id -ApplicationId OrgAutoAttendant
+                        [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
         
+                        $audioFileNames += ("click afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey " + '"' + "$FilePath\$audioFileName" + '"')
+        
+                    }
+
+                    
                     if ($audioFileName.Length -gt $turncateGreetings) {
         
                         $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
@@ -1779,6 +1855,14 @@ function Get-CallQueueCallFlow {
         if ($ShowAudioFileName) {
 
             $audioFileName = $MatchingCQ.MusicOnHoldFileName
+
+            if ($ExportAudioFiles) {
+
+                Invoke-WebRequest -Uri $MatchingCQ.MusicOnHoldFileDownloadUri -OutFile "$FilePath\$audioFileName"
+
+                $audioFileNames += ("click cqSettingsContainer$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+
+            }
             
             if ($audioFileName.Length -gt $turncateGreetings) {
         
@@ -1787,7 +1871,7 @@ function Get-CallQueueCallFlow {
 
             }
 
-            $CqMusicOnHold += " <br> MoH File: $audioFileName"
+            $CqMusicOnHold += " <br> MoH File: $audioFileName"    
 
         }
 
@@ -1804,6 +1888,14 @@ function Get-CallQueueCallFlow {
         if ($ShowAudioFileName) {
 
             $audioFileName = $CqWelcomeMusicFileName
+
+            if ($ExportAudioFiles) {
+
+                Invoke-WebRequest -Uri $MatchingCQ.WelcomeMusicFileDownloadUri -OutFile "$FilePath\$audioFileName"
+
+                $audioFileNames += ("click cqGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+
+            }
             
             if ($audioFileName.Length -gt $turncateGreetings) {
         
@@ -1965,6 +2057,16 @@ function Get-CallQueueCallFlow {
                 if ($ShowAudioFileName) {
 
                     $audioFileName = $MatchingCQ.OverflowSharedVoicemailAudioFilePromptFileName
+
+                    if ($ExportAudioFiles) {
+
+                        $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.OverflowSharedVoicemailAudioFilePrompt -ApplicationId HuntGroup
+                        [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+        
+                        $audioFileNames += ("click cqOverFlowVoicemailGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+        
+                    }
+        
                     
                     if ($audioFileName.Length -gt $turncateGreetings) {
                 
@@ -2094,6 +2196,15 @@ function Get-CallQueueCallFlow {
                 if ($ShowAudioFileName) {
 
                     $audioFileName = $MatchingCQ.TimeoutSharedVoicemailAudioFilePromptFileName
+
+                    if ($ExportAudioFiles) {
+
+                        $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.TimeoutSharedVoicemailAudioFilePrompt -ApplicationId HuntGroup
+                        [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+        
+                        $audioFileNames += ("click cqTimeoutVoicemailGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+        
+                    }
                     
                     if ($audioFileName.Length -gt $turncateGreetings) {
                 
@@ -2584,15 +2695,9 @@ if ($Theme -eq "custom") {
 
 if ($SaveToFile -eq $true) {
 
-    if ($CustomFilePath) {
-
-        $FilePath = $CustomFilePath
-
-    }
-
-    else {
-
-        $FilePath = "."
+    if ($ExportAudioFiles) {
+        
+        $mermaidCode += $audioFileNames
 
     }
 
