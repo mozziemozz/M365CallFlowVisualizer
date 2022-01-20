@@ -12,6 +12,7 @@ Reads a config from Microsoft 365 Phone System and renders them visually into a 
 | 12.01.2022 | V 2.4.0 now uses Microsoft.Graph instead of MSOnline PowerShell Module. It's now possible to export call flows as *.htm for easier access and sharing. Some Cq settings were consolidated into a single node |
 | 13.01.2022 | V 2.4.2 now properly displays if the system message is being played back or not before the call is forwarded to another target. |
 | 14.01.2022 | V 2.4.4 now displays queue agents vertically (better for queues with many agents), displays names of Group(s), Teams and Channels if a queue uses them |
+| 21.01.2022 | V 2.4.6 can now display TTS greetings and filenames. Audio files can be exported to the output directory and Markdown or HTML files have clickable links to the audio files on the greeting/announcements nodes. |
 
 # How to use it
 
