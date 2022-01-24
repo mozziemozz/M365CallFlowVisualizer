@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.4.6
+    Version:            2.4.7
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -46,6 +46,7 @@
         20.01.2022      Change default value of ExportHtml to true
         20.01.2022      Add support to include TTS greeting texts and audio file names used in auto attendant calls flows, IVR announcements, call queues and music on hold
         21.02.2022      Add support to export audio files from auto attendants and call queues and link them in html output (on node click)
+        24.01.2022      Add support to export TTS greeting values as txt files and link them on nodes
 
     .PARAMETER Name
     -Identity
@@ -117,7 +118,13 @@
         Default value:      20
 
     -ExportAudioFiles
-        Specifies if the audio files of greetins, announcements and music on hold should be exported to the specified directory. If this is enabled, Markdown and HTML output will have clickable links on the greeting nodes with audio files. This is an experimental feature.
+        Specifies if the audio files of greetings, announcements and music on hold should be exported to the specified directory. If this is enabled, Markdown and HTML output will have clickable links on the greeting nodes which open an audio file in the browser. This is an experimental feature.
+        Required:           false
+        Type:               switch
+        Default value:      false
+
+    -ExportTTSGreetings
+        Specifies if the value of TTS greetings and announcements should be exported to the specified directory. If this is enabled, Markdown and HTML output will have clickable links on the greeting nodes with which open a text file in the browser. This is an experimental feature.
         Required:           false
         Type:               switch
         Default value:      false
@@ -250,6 +257,7 @@ param(
     [Parameter(Mandatory=$false)][Switch]$ShowAudioFileName,
     [Parameter(Mandatory=$false)][Single]$turncateGreetings = 20,
     [Parameter(Mandatory=$false)][Switch]$ExportAudioFiles, # experimental feature
+    [Parameter(Mandatory=$false)][Switch]$ExportTTSGreetings, # experimental feature
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral","custom")][String]$Theme = "default",
     [Parameter(Mandatory=$false)][String]$NodeColor = "#00A4EF", # Microsoft Blue
@@ -278,6 +286,7 @@ $nestedVoiceApps = @()
 $processedVoiceApps = @()
 $allMermaidNodes = @()
 $audioFileNames = @()
+$ttsGreetings = @()
 
 if ($CustomFilePath) {
 
@@ -516,6 +525,14 @@ subgraph $holidaySubgraphName
                     $audioFileName = $null
 
                     $holidayTTSGreetingValue = $holidayCallFlow.Greetings.TextToSpeechPrompt
+
+                    if ($ExportTTSGreetings) {
+
+                        $holidayTTSGreetingValue | Out-File "$FilePath\$($holidayCallFlow.Name)_$($aaObjectId)-$($HolidayCounter)_HolidayGreeting.txt"
+
+                        $ttsGreetings += ("click elementAAHolidayGreeting$($aaObjectId)-$($HolidayCounter) " + '"' + "$FilePath\$($holidayCallFlow.Name)_$($aaObjectId)-$($HolidayCounter)_HolidayGreeting.txt" + '"')
+
+                    }
 
                     if ($holidayTTSGreetingValue.Length -gt $turncateGreetings) {
 
@@ -1073,6 +1090,14 @@ function Get-AutoAttendantDefaultCallFlow {
 
             $defaultTTSGreetingValue = $defaultCallFlow.Greetings.TextToSpeechPrompt
 
+            if ($ExportTTSGreetings) {
+
+                $defaultTTSGreetingValue | Out-File "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowGreeting.txt"
+
+                $ttsGreetings += ("click defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId) " + '"' + "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowGreeting.txt" + '"')
+
+            }
+
             if ($defaultTTSGreetingValue.Length -gt $turncateGreetings) {
 
                 $defaultTTSGreetingValue = $defaultTTSGreetingValue.Remove($defaultTTSGreetingValue.Length - ($defaultTTSGreetingValue.Length -$turncateGreetings)) + "..."
@@ -1149,6 +1174,14 @@ function Get-AutoAttendantDefaultCallFlow {
                 $audioFileName = $null
     
                 $defaultCallFlowMenuOptionsTTSGreetingValue = $defaultCallFlow.Menu.Prompts.TextToSpeechPrompt
+
+                if ($ExportTTSGreetings) {
+
+                    $defaultCallFlowMenuOptionsTTSGreetingValue | Out-File "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowMenuOptionsGreeting.txt"
+    
+                    $ttsGreetings += ("click defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId) " + '"' + "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowMenuOptionsGreeting.txt" + '"')
+    
+                }    
     
                 if ($defaultCallFlowMenuOptionsTTSGreetingValue.Length -gt $turncateGreetings) {
     
@@ -1256,11 +1289,17 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                     $audioFileName = $null
         
                     $defaultCallFlowMenuOptionsTTSAnnouncementValue = $MenuOption.Prompt.TextToSpeechPrompt
+
+                    if ($ExportTTSGreetings) {
+
+                        $defaultCallFlowMenuOptionsTTSAnnouncementValue | Out-File "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowMenuOptionsAnnouncement$DtmfKey.txt"
         
+                        $ttsGreetings += ("click defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey " + '"' + "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowMenuOptionsAnnouncement$DtmfKey.txt" + '"')
+        
+                    }    
+    
                     if ($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length -gt $turncateGreetings) {
         
-                        Write-Host "Greeting has $($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length) chars." -ForegroundColor Yellow
-
                         $defaultCallFlowMenuOptionsTTSAnnouncementValue = $defaultCallFlowMenuOptionsTTSAnnouncementValue.Remove($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length - ($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length -$turncateGreetings)) + "..."
                     
                     }
@@ -1458,6 +1497,15 @@ function Get-AutoAttendantAfterHoursCallFlow {
 
             $afterHoursTTSGreetingValue = $afterHoursCallFlow.Greetings.TextToSpeechPrompt
 
+            if ($ExportTTSGreetings) {
+
+                $afterHoursTTSGreetingValue | Out-File "$FilePath\$($aaDefaultCallFlowAaObjectId)_afterHoursCallFlowGreeting.txt"
+
+                $ttsGreetings += ("click afterHoursCallFlowGreeting$($aaDefaultCallFlowAaObjectId) " + '"' + "$FilePath\$($aaDefaultCallFlowAaObjectId)_afterHoursCallFlowGreeting.txt" + '"')
+
+            }
+
+
             if ($afterHoursTTSGreetingValue.Length -gt $turncateGreetings) {
 
                 $afterHoursTTSGreetingValue = $afterHoursTTSGreetingValue.Remove($afterHoursTTSGreetingValue.Length - ($afterHoursTTSGreetingValue.Length -$turncateGreetings)) + "..."
@@ -1535,6 +1583,15 @@ function Get-AutoAttendantAfterHoursCallFlow {
                 $audioFileName = $null
     
                 $afterHoursCallFlowMenuOptionsTTSGreetingValue = $afterHoursCallFlow.Menu.Prompts.TextToSpeechPrompt
+
+                if ($ExportTTSGreetings) {
+
+                    $afterHoursCallFlowMenuOptionsTTSGreetingValue | Out-File "$FilePath\$($aaafterHoursCallFlowAaObjectId)_afterHoursCallFlowMenuOptionsGreeting.txt"
+    
+                    $ttsGreetings += ("click afterHoursCallFlowMenuOptionsGreeting$($aaafterHoursCallFlowAaObjectId) " + '"' + "$FilePath\$($aaafterHoursCallFlowAaObjectId)_afterHoursCallFlowMenuOptionsGreeting.txt" + '"')
+    
+                }    
+
     
                 if ($afterHoursCallFlowMenuOptionsTTSGreetingValue.Length -gt $turncateGreetings) {
     
@@ -1640,6 +1697,15 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                     $audioFileName = $null
         
                     $afterHoursCallFlowMenuOptionsTTSAnnouncementValue = $MenuOption.Prompt.TextToSpeechPrompt
+
+                    if ($ExportTTSGreetings) {
+
+                        $afterHoursCallFlowMenuOptionsTTSAnnouncementValue | Out-File "$FilePath\$($aaafterHoursCallFlowAaObjectId)_afterHoursCallFlowMenuOptionsAnnouncement$DtmfKey.txt"
+        
+                        $ttsGreetings += ("click afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey " + '"' + "$FilePath\$($aaafterHoursCallFlowAaObjectId)_afterHoursCallFlowMenuOptionsAnnouncement$DtmfKey.txt" + '"')
+        
+                    }    
+
         
                     if ($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length -gt $turncateGreetings) {
         
@@ -2033,6 +2099,15 @@ function Get-CallQueueCallFlow {
 
                     $overFlowVoicemailTTSGreetingValue = $MatchingCQ.OverflowSharedVoicemailTextToSpeechPrompt
 
+                    if ($ExportTTSGreetings) {
+
+                        $overFlowVoicemailTTSGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqOverFlowVoicemailGreeting.txt"
+        
+                        $ttsGreetings += ("click cqOverFlowVoicemailGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqOverFlowVoicemailGreeting.txt" + '"')
+        
+                    }    
+    
+
                     if ($overFlowVoicemailTTSGreetingValue.Length -gt $turncateGreetings) {
 
                         $overFlowVoicemailTTSGreetingValue = $overFlowVoicemailTTSGreetingValue.Remove($overFlowVoicemailTTSGreetingValue.Length - ($overFlowVoicemailTTSGreetingValue.Length -$turncateGreetings)) + "..."
@@ -2172,6 +2247,15 @@ function Get-CallQueueCallFlow {
                 if ($ShowTTSGreetingText) {
 
                     $TimeOutVoicemailTTSGreetingValue = $MatchingCQ.TimeOutSharedVoicemailTextToSpeechPrompt
+
+                    if ($ExportTTSGreetings) {
+
+                        $TimeOutVoicemailTTSGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeOutVoicemailGreeting.txt"
+        
+                        $ttsGreetings += ("click cqTimeOutVoicemailGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqTimeOutVoicemailGreeting.txt" + '"')
+        
+                    }    
+
 
                     if ($TimeOutVoicemailTTSGreetingValue.Length -gt $turncateGreetings) {
 
@@ -2698,6 +2782,12 @@ if ($SaveToFile -eq $true) {
     if ($ExportAudioFiles) {
         
         $mermaidCode += $audioFileNames
+
+    }
+
+    if ($ExportTTSGreetings) {
+
+        $mermaidCode += $ttsGreetings
 
     }
 

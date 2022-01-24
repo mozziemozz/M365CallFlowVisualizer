@@ -13,6 +13,7 @@ Reads a config from Microsoft 365 Phone System and renders them visually into a 
 | 13.01.2022 | V 2.4.2 now properly displays if the system message is being played back or not before the call is forwarded to another target. |
 | 14.01.2022 | V 2.4.4 now displays queue agents vertically (better for queues with many agents), displays names of Group(s), Teams and Channels if a queue uses them |
 | 21.01.2022 | V 2.4.6 can now display TTS greetings and filenames. Audio files can be exported to the output directory and Markdown or HTML files have clickable links to the audio files on the greeting/announcements nodes. |
+| 24.01.2022 | V 2.4.7 can now also export values (Text) of TTS greetings into text files and link them on greeting and announcement nodes.
 
 # How to use it
 
