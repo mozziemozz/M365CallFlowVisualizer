@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.4.7
+    Version:            2.4.8
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -47,6 +47,7 @@
         20.01.2022      Add support to include TTS greeting texts and audio file names used in auto attendant calls flows, IVR announcements, call queues and music on hold
         21.02.2022      Add support to export audio files from auto attendants and call queues and link them in html output (on node click)
         24.01.2022      Add support to export TTS greeting values as txt files and link them on nodes
+        25.01.2022      Fixed a bug where users or external PSTN numbers were added to nested voice apps, if configured as operator which caused the script to stop
 
     .PARAMETER Name
     -Identity
@@ -404,11 +405,13 @@ function Find-Holidays {
                 $OperatorUser = (Get-MgUser -UserId $($Operator.Id))
                 $OperatorName = $OperatorUser.DisplayName
                 $OperatorIdentity = $OperatorUser.Id
+                $AddOperatorToNestedVoiceApps = $false
             }
             ExternalPstn { 
                 $OperatorTypeFriendly = "External PSTN"
                 $OperatorName = ($Operator.Id).Replace("tel:","")
                 $OperatorIdentity = $OperatorName
+                $AddOperatorToNestedVoiceApps = $false
             }
             ApplicationEndpoint {
 
@@ -433,11 +436,19 @@ function Find-Holidays {
 
                 }
 
+                $AddOperatorToNestedVoiceApps = $true
+
             }
 
         }
 
         
+
+    }
+
+    else {
+
+        $AddOperatorToNestedVoiceApps = $false
 
     }
     
@@ -1269,7 +1280,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                 $defaultCallFlowVoicemailSystemGreeting = $null
 
-                if ($nestedVoiceApps -notcontains $OperatorIdentity) {
+                if ($nestedVoiceApps -notcontains $OperatorIdentity -and $AddOperatorToNestedVoiceApps -eq $true) {
 
                     $nestedVoiceApps += $OperatorIdentity
 
@@ -1678,7 +1689,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                 $afterHoursCallFlowVoicemailSystemGreeting = $null
 
-                if ($nestedVoiceApps -notcontains $OperatorIdentity) {
+                if ($nestedVoiceApps -notcontains $OperatorIdentity -and $AddOperatorToNestedVoiceApps -eq $true) {
 
                     $nestedVoiceApps += $OperatorIdentity
 
