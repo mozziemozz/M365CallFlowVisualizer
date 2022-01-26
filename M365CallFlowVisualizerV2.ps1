@@ -48,6 +48,8 @@
         21.02.2022      Add support to export audio files from auto attendants and call queues and link them in html output (on node click)
         24.01.2022      Add support to export TTS greeting values as txt files and link them on nodes
         25.01.2022      Fixed a bug where users or external PSTN numbers were added to nested voice apps, if configured as operator which caused the script to stop
+        26.01.2022      Change SetClipboard default value to false, add parameter to start browser/open tab with exported html
+        26.01.2022      Fixed a bug where it was not possible to run the script for a voice app which doesn't have a number
 
     .PARAMETER Name
     -Identity
@@ -61,7 +63,7 @@
         Specifies if the mermaid code should be copied to the clipboard after the script has finished.
         Required:           false
         Type:               boolean
-        Default value:      true
+        Default value:      false
     
     -SaveToFile
         Specifies if the mermaid code should be saved into either a mermaid or markdown file.
@@ -74,6 +76,12 @@
         Required:           false
         Type:               boolean
         Default value:      true
+
+    -ExportHtml
+        Specifies if the exported html file should be opened in default / last active browser (only works on Windows systems)
+        Required:           false
+        Type:               switch
+        Default value:      false
 
     -CustomFilePath
         Specifies the file path for the output file. The directory must already exist.
@@ -247,9 +255,10 @@
 [CmdletBinding(DefaultParametersetName="None")]
 param(
     [Parameter(Mandatory=$false)][String]$Identity,
-    [Parameter(Mandatory=$false)][Bool]$SetClipBoard = $true,
+    [Parameter(Mandatory=$false)][Bool]$SetClipBoard = $false,
     [Parameter(Mandatory=$false)][Bool]$SaveToFile = $true,
     [Parameter(Mandatory=$false)][Bool]$ExportHtml = $true,
+    [Parameter(Mandatory=$false)][Switch]$PreviewHtml,
     [Parameter(Mandatory=$false)][String]$CustomFilePath,
     [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentPhoneNumbers,
@@ -2261,9 +2270,9 @@ function Get-CallQueueCallFlow {
 
                     if ($ExportTTSGreetings) {
 
-                        $TimeOutVoicemailTTSGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeOutVoicemailGreeting.txt"
+                        $TimeOutVoicemailTTSGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeoutVoicemailGreeting.txt"
         
-                        $ttsGreetings += ("click cqTimeOutVoicemailGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqTimeOutVoicemailGreeting.txt" + '"')
+                        $ttsGreetings += ("click cqTimeoutVoicemailGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqTimeoutVoicemailGreeting.txt" + '"')
         
                     }    
 
@@ -2623,6 +2632,7 @@ function Get-CallFlow {
 
         }
 
+        $mdNodePhoneNumbersCounter ++
 
     }
 
@@ -2851,6 +2861,12 @@ if ($ExportHtml -eq $true) {
         -Replace "VoiceAppNameHtmlIdPlaceHolder",($($VoiceAppFileName).Replace(" ","-")) `
         -Replace '<div class="mermaid">ThemePlaceHolder','<div class="mermaid">' `
         -Replace "MermaidPlaceHolder",($mermaidCode | Out-String).Replace($MarkdownTheme,"") ` | Set-Content -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.htm" -Encoding UTF8
+
+    }
+
+    if ($PreviewHtml) {
+
+        Start-Process "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.htm"
 
     }
 
