@@ -1,4 +1,7 @@
 **/dev
+**/backup
 *.mmd
 *.md
 *.htm
+*.mp3
+*.txt
