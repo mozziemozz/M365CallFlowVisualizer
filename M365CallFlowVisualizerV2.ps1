@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.5.0
+    Version:            2.5.1
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -51,6 +51,7 @@
         26.01.2022      Change SetClipboard default value to false, add parameter to start browser/open tab with exported html
         26.01.2022      Fixed a bug where it was not possible to run the script for a voice app which doesn't have a number
         02.02.2022      2.5.0: Add support to display if auto attendant is voice response enabled and show voice responses on IVR options, add support for custom hex color in subgraphs, optimize call queue structure, don't draw call queue greetings if none are set
+        03.02.2022      2.5.1: Don't draw greeting nodes if no greeting is configured in auto attendant default or after hours call flows
 
     .PARAMETER Name
     -Identity
@@ -1555,6 +1556,13 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
             $mdDefaultCallFlowGreeting += $mdAutoAttendantDefaultCallFlowMenuOptions
             $mdAutoAttendantDefaultCallFlow = $mdDefaultCallFlowGreeting
+
+            # Remove Greeting node, if none is configured
+            if ($defaultCallFlowGreeting -eq "Greeting <br> None") {
+
+                $mdAutoAttendantDefaultCallFlow = ($mdAutoAttendantDefaultCallFlow.Replace("defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting] --> ","")).TrimStart()
+
+            }
     
     }
     
@@ -2007,8 +2015,16 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
         # Greeting can only exist once. Add greeting before call flow and set mdAutoAttendantafterHoursCallFlow to the new variable.
 
-            $mdafterHoursCallFlowGreeting += $mdAutoAttendantafterHoursCallFlowMenuOptions
-            $mdAutoAttendantafterHoursCallFlow = $mdafterHoursCallFlowGreeting
+        $mdafterHoursCallFlowGreeting += $mdAutoAttendantafterHoursCallFlowMenuOptions
+        $mdAutoAttendantafterHoursCallFlow = $mdafterHoursCallFlowGreeting
+
+        # Remove Greeting node, if none is configured
+        if ($afterHoursCallFlowGreeting -eq "Greeting <br> None") {
+
+            $mdAutoAttendantafterHoursCallFlow = ($mdAutoAttendantafterHoursCallFlow.Replace("afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlowGreeting] --> ","")).TrimStart()
+
+        }
+        
     
     }
 
@@ -2903,16 +2919,25 @@ function Set-CustomMermaidTheme {
 
     $themedLinks = ($themedLinks += " stroke:$LinkColor,stroke-width:2px,color:$LinkTextColor").Replace(", stroke:"," stroke:")
 
-    $themedSubgraphs = "`nclassDef customSubgraphTheme fill:$SubgraphColor,color:$FontColor,stroke:$NodeBorderColor`n`nclass "
+    if ($allSubgraphs) {
 
-    foreach ($subgraph in $allSubgraphs) {
-        
-        $themedSubgraphs += "$subgraph,"
+        $themedSubgraphs = "`nclassDef customSubgraphTheme fill:$SubgraphColor,color:$FontColor,stroke:$NodeBorderColor`n`nclass "
 
+        foreach ($subgraph in $allSubgraphs) {
+            
+            $themedSubgraphs += "$subgraph,"
+
+        }
+
+        $themedSubgraphs = ($themedSubgraphs += " customSubgraphTheme").Replace(", customSubgraphTheme", " customSubgraphTheme")
+    
     }
 
-    $themedSubgraphs = ($themedSubgraphs += " customSubgraphTheme").Replace(", customSubgraphTheme", " customSubgraphTheme")
+    else {
 
+        $themedSubgraphs = $null
+
+    }
 
     $mermaidCode += @($themedNodes,$themedLinks,$themedSubgraphs)
 
