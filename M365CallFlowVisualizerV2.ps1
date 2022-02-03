@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.4.9
+    Version:            2.5.1
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -50,6 +50,8 @@
         25.01.2022      Fixed a bug where users or external PSTN numbers were added to nested voice apps, if configured as operator which caused the script to stop
         26.01.2022      Change SetClipboard default value to false, add parameter to start browser/open tab with exported html
         26.01.2022      Fixed a bug where it was not possible to run the script for a voice app which doesn't have a number
+        02.02.2022      2.5.0: Add support to display if auto attendant is voice response enabled and show voice responses on IVR options, add support for custom hex color in subgraphs, optimize call queue structure, don't draw call queue greetings if none are set
+        03.02.2022      2.5.1: Don't draw greeting nodes if no greeting is configured in auto attendant default or after hours call flows
 
     .PARAMETER Name
     -Identity
@@ -157,35 +159,42 @@
         Required:           false
         Type:               string
         Accepted values:    Hexadecimal color codes starting with # enclosed by ""
-        Default value:      "#00A4EF"
+        Default value:      "#505AC9"
 
     -NodeBorderColor
         Specifies a custom color for the node border
         Required:           false
         Type:               string
         Accepted values:    Hexadecimal color codes starting with # enclosed by ""
-        Default value:      "#7FBA00"
+        Default value:      "#464EB8"
 
     -FontColor
         Specifies a custom color for the node border
         Required:           false
         Type:               string
         Accepted values:    Hexadecimal color codes starting with # enclosed by ""
-        Default value:      "#737373"
+        Default value:      "#FFFFFF"
 
     -LinkColor
         Specifies a custom color for links
         Required:           false
         Type:               string
         Accepted values:    Hexadecimal color codes starting with # enclosed by ""
-        Default value:      "#FFB900"
+        Default value:      "#505AC9"
 
     -LinkTextColor
         Specifies a custom color for text on links
         Required:           false
         Type:               string
         Accepted values:    Hexadecimal color codes starting with # enclosed by ""
-        Default value:      "#F25022"
+        Default value:      "#000000"
+
+    -SubgraphColor
+        Specifies a custom color for subgraph backgrounds
+        Required:           false
+        Type:               string
+        Accepted values:    Hexadecimal color codes starting with # enclosed by ""
+        Default value:      "#7B83EB"
     
     -VoiceAppName
         If provided, you won't be provided with a selection of available voice apps. The script will search for a voice app with the specified name. This is the display name of a voice app, not a resource account. If you specify the VoiceAppName, VoiceAppType will become mandatory.
@@ -270,11 +279,12 @@ param(
     [Parameter(Mandatory=$false)][Switch]$ExportTTSGreetings, # experimental feature
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral","custom")][String]$Theme = "default",
-    [Parameter(Mandatory=$false)][String]$NodeColor = "#00A4EF", # Microsoft Blue
-    [Parameter(Mandatory=$false)][String]$NodeBorderColor = "#7FBA00", # Microsoft Green
-    [Parameter(Mandatory=$false)][String]$FontColor = "#737373", # Microsoft Gray
-    [Parameter(Mandatory=$false)][String]$LinkColor = "#FFB900", # Microsoft Yellow
-    [Parameter(Mandatory=$false)][String]$LinkTextColor = "#F25022", # Microsoft Orange
+    [Parameter(Mandatory=$false)][String]$NodeColor = "#505AC9",
+    [Parameter(Mandatory=$false)][String]$NodeBorderColor = "#464EB8",
+    [Parameter(Mandatory=$false)][String]$FontColor = "#FFFFFF",
+    [Parameter(Mandatory=$false)][String]$LinkColor = "#505AC9",
+    [Parameter(Mandatory=$false)][String]$LinkTextColor = "#000000",
+    [Parameter(Mandatory=$false)][String]$SubgraphColor = "#7B83EB",
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$false)][String]$VoiceAppName,
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$true)][ValidateSet("Auto Attendant","Call Queue")][String]$VoiceAppType
 )
@@ -295,6 +305,7 @@ if ($SaveToFile -eq $false -and $CustomFilePath) {
 $nestedVoiceApps = @()
 $processedVoiceApps = @()
 $allMermaidNodes = @()
+$allSubgraphs = @()
 $audioFileNames = @()
 $ttsGreetings = @()
 
@@ -400,6 +411,18 @@ function Find-Holidays {
 
     else {
         $aaHasHolidays = $false
+    }
+
+    if ($aa.VoiceResponseEnabled) {
+
+        $aaIsVoiceResponseEnabled = $true
+
+    }
+
+    else {
+        
+        $aaIsVoiceResponseEnabled = $false
+
     }
 
     # Check if auto attendant has an operator
@@ -510,9 +533,11 @@ function Get-AutoAttendantHolidaysAndAfterHours {
 
     $aaObjectId = $aa.Identity
 
-    $holidaySubgraphName = "subgraphHolidays$($aa.Identity)[Holidays $($aa.Name)]"
-
     if ($aaHasHolidays -eq $true) {
+
+        $holidaySubgraphName = "subgraphHolidays$($aa.Identity)[Holidays $($aa.Name)]"
+
+        $allSubgraphs += "subgraphHolidays$($aa.Identity)"
 
         # The counter is here so that each element is unique in Mermaid
         $HolidayCounter = 1
@@ -680,7 +705,7 @@ subgraph $holidaySubgraphName
             # Create subgraph per holiday call handling inside the Holidays subgraph
             $nodeElementHolidayDetails =@"
 
-subgraph $($holidayCallFlow.Name)
+subgraph subgraph$($HolidayCallHandling.CallFlowId)[$($holidayCallFlow.Name)]
 direction LR
 elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedule.FixedSchedule.DateTimeRanges.Start) <br> $($holidaySchedule.FixedSchedule.DateTimeRanges.End)) --> elementAAHolidayGreeting$($aaObjectId)-$($HolidayCounter)>$holidayGreeting] --> $holidayVoicemailSystemGreeting $nodeElementHolidayAction
     end
@@ -693,6 +718,8 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
             # Add holiday call handling subgraph to holiday subgraph
             $mdSubGraphHolidays += $nodeElementHolidayDetails
+
+            $allSubgraphs += "subgraph$($HolidayCallHandling.CallFlowId)"
 
         } # End of for-each loop
 
@@ -1242,9 +1269,22 @@ function Get-AutoAttendantDefaultCallFlow {
     
             }
 
+            if ($aaIsVoiceResponseEnabled) {
+
+                $defaultCallFlowVoiceResponse = " or <br> Voice Response <br> Language: $($aa.LanguageId)"
+
+
+            }
+
+            else {
+
+                $defaultCallFlowVoiceResponse = $null
+
+            }
+
             $defaultCallFlowMenuOptionsKeyPress = @"
 
-defaultCallFlowMenuOptions$($aaDefaultCallFlowAaObjectId){Key Press}
+defaultCallFlowMenuOptions$($aaDefaultCallFlowAaObjectId){Key Press$defaultCallFlowVoiceResponse}
 "@
 
             $mdDefaultCallFlowGreeting =@"
@@ -1266,14 +1306,31 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                 $mdDtmfLink = $null
                 $DtmfKey = $null
+                $voiceResponse = $null
 
             }
 
             else {
 
+                if ($aaIsVoiceResponseEnabled) {
+
+                    if ($MenuOption.VoiceResponses) {
+
+                        $voiceResponse = "/ Voice Response: ''$($MenuOption.VoiceResponses)''"
+
+                    }
+
+                    else {
+
+                        $voiceResponse = "/ No Voice Response Configured"
+
+                    }
+
+                }
+
                 $DtmfKey = ($MenuOption.DtmfResponse.Value).Replace("Tone","")
 
-                $mdDtmfLink = "$defaultCallFlowMenuOptionsKeyPress --> |$DtmfKey|"
+                $mdDtmfLink = "$defaultCallFlowMenuOptionsKeyPress --> |$DtmfKey $voiceResponse|"
 
             }
 
@@ -1282,6 +1339,20 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
             $defaultCallFlowAction = $MenuOption.Action.Value
 
             if ($defaultCallFlowAction -eq "TransferCallToOperator") {
+
+                if ($aaIsVoiceResponseEnabled) {
+
+                    $defaultCallFlowOperatorVoiceResponse = "/ Voice Response: ''Operator''"
+
+                    $mdDtmfLink = $mdDtmfLink.Replace($voiceResponse,$defaultCallFlowOperatorVoiceResponse)
+
+                }
+
+                else {
+
+                    $defaultCallFlowOperatorVoiceResponse = $null
+
+                }
 
                 $mdAutoAttendantdefaultCallFlow = "$mdDtmfLink defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction) --> $($OperatorIdentity)($OperatorTypeFriendly <br> $OperatorName)`n"
 
@@ -1485,6 +1556,13 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
             $mdDefaultCallFlowGreeting += $mdAutoAttendantDefaultCallFlowMenuOptions
             $mdAutoAttendantDefaultCallFlow = $mdDefaultCallFlowGreeting
+
+            # Remove Greeting node, if none is configured
+            if ($defaultCallFlowGreeting -eq "Greeting <br> None") {
+
+                $mdAutoAttendantDefaultCallFlow = ($mdAutoAttendantDefaultCallFlow.Replace("defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting] --> ","")).TrimStart()
+
+            }
     
     }
     
@@ -1650,10 +1728,24 @@ function Get-AutoAttendantAfterHoursCallFlow {
     
     
             }
+
+            if ($aaIsVoiceResponseEnabled) {
+
+                $afterHoursCallFlowVoiceResponse = " or <br> Voice Response <br> Language: $($aa.LanguageId)"
+
+
+            }
+
+            else {
+
+                $afterHoursCallFlowVoiceResponse = $null
+
+            }
+
     
             $afterHoursCallFlowMenuOptionsKeyPress = @"
 
-afterHoursCallFlowMenuOptions$($aaAfterHoursCallFlowAaObjectId){Key Press}
+afterHoursCallFlowMenuOptions$($aaAfterHoursCallFlowAaObjectId){Key Press$afterHoursCallFlowVoiceResponse}
 "@
 
             $mdafterHoursCallFlowGreeting =@"
@@ -1675,14 +1767,31 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                 $mdDtmfLink = $null
                 $DtmfKey = $null
+                $voiceResponse = $null
 
             }
 
             else {
 
+                if ($aaIsVoiceResponseEnabled) {
+
+                    if ($MenuOption.VoiceResponses) {
+
+                        $voiceResponse = "/ Voice Response: ''$($MenuOption.VoiceResponses)''"
+
+                    }
+
+                    else {
+
+                        $voiceResponse = "/ No Voice Response Configured"
+
+                    }
+
+                }
+
                 $DtmfKey = ($MenuOption.DtmfResponse.Value).Replace("Tone","")
 
-                $mdDtmfLink = "$afterHoursCallFlowMenuOptionsKeyPress --> |$DtmfKey|"
+                $mdDtmfLink = "$afterHoursCallFlowMenuOptionsKeyPress --> |$DtmfKey $voiceResponse|"
 
             }
 
@@ -1691,6 +1800,20 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
             $afterHoursCallFlowAction = $MenuOption.Action.Value
 
             if ($afterHoursCallFlowAction -eq "TransferCallToOperator") {
+
+                if ($aaIsVoiceResponseEnabled) {
+
+                    $afterHoursCallFlowOperatorVoiceResponse = "/ Voice Response: ''Operator''"
+
+                    $mdDtmfLink = $mdDtmfLink.Replace($voiceResponse,$afterHoursCallFlowOperatorVoiceResponse)
+
+                }
+
+                else {
+
+                    $afterHoursCallFlowOperatorVoiceResponse = $null
+
+                }
 
                 $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction) --> $($OperatorIdentity)($OperatorTypeFriendly <br> $OperatorName)`n"
 
@@ -1892,8 +2015,16 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
         # Greeting can only exist once. Add greeting before call flow and set mdAutoAttendantafterHoursCallFlow to the new variable.
 
-            $mdafterHoursCallFlowGreeting += $mdAutoAttendantafterHoursCallFlowMenuOptions
-            $mdAutoAttendantafterHoursCallFlow = $mdafterHoursCallFlowGreeting
+        $mdafterHoursCallFlowGreeting += $mdAutoAttendantafterHoursCallFlowMenuOptions
+        $mdAutoAttendantafterHoursCallFlow = $mdafterHoursCallFlowGreeting
+
+        # Remove Greeting node, if none is configured
+        if ($afterHoursCallFlowGreeting -eq "Greeting <br> None") {
+
+            $mdAutoAttendantafterHoursCallFlow = ($mdAutoAttendantafterHoursCallFlow.Replace("afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlowGreeting] --> ","")).TrimStart()
+
+        }
+        
     
     }
 
@@ -1966,6 +2097,8 @@ function Get-CallQueueCallFlow {
     # Check if call queue uses a greeting
     if (!$CqWelcomeMusicFileName) {
         $CqGreeting = "None"
+
+        $cqGreetingNode = $null
     }
 
     else {
@@ -1993,6 +2126,8 @@ function Get-CallQueueCallFlow {
             $CqGreeting += " <br> $audioFileName"
 
         }
+
+        $cqGreetingNode = " cqGreeting$($cqCallFlowObjectId)>Greeting <br> $CqGreeting] -->"
 
     }
 
@@ -2381,19 +2516,17 @@ function Get-CallQueueCallFlow {
 
     }
 
-    $lastCallFlowAction = "$($MatchingCQIdentity)([Call Queue <br> $($CqName)])"
-
     $allMermaidNodes += "$($MatchingCQIdentity)"
 
     
     # Create default callflow mermaid code
 
 $mdCallQueueCallFlow =@"
-$lastCallFlowAction --> cqGreeting$($cqCallFlowObjectId)>Greeting <br> $CqGreeting] --> overFlow$($cqCallFlowObjectId){More than $CqOverFlowThreshold <br> Active Calls?}
+$($MatchingCQIdentity)([Call Queue <br> $($CqName)]) -->$cqGreetingNode overFlow$($cqCallFlowObjectId){More than $CqOverFlowThreshold <br> Active Calls?}
 overFlow$($cqCallFlowObjectId) --> |Yes| $CqOverFlowActionFriendly
-overFlow$($cqCallFlowObjectId) --> |No| routingMethod$($cqCallFlowObjectId)
+overFlow$($cqCallFlowObjectId) ---> |No| routingMethod$($cqCallFlowObjectId)
 
-subgraph subgraphCallDistribution$($cqCallFlowObjectId)[Call Distribution]
+subgraph subgraphCallDistribution$($cqCallFlowObjectId)[Call Distribution $($MatchingCQ.Name)]
 subgraph subgraphCqSettings$($cqCallFlowObjectId)[CQ Settings]
 routingMethod$($cqCallFlowObjectId)[(Routing Method: $CqRoutingMethod)] --> agentAlertTime$($cqCallFlowObjectId)
 agentAlertTime$($cqCallFlowObjectId)[(Agent Alert Time: $CqAgentAlertTime)] -.- cqSettingsContainer$($cqCallFlowObjectId)
@@ -2401,20 +2534,20 @@ cqSettingsContainer$($cqCallFlowObjectId)[(Music On Hold: $CqMusicOnHold <br> Co
 timeOut$($cqCallFlowObjectId)[(Timeout: $CqTimeOut Seconds)]
 end
 agentAlertTime$($cqCallFlowObjectId) --> subgraphAgents$($cqCallFlowObjectId)
-subgraph subgraphAgents$($cqCallFlowObjectId)[Agents $($MatchingCQ.Name)]
+subgraph subgraphAgents$($cqCallFlowObjectId)[Agents List]
 agentListType$($cqCallFlowObjectId)[(Agent List Type: $CqAgentListType)]
 $mdCqAgentsDisplayNames
 end
-subgraphAgents$($cqCallFlowObjectId) --> timeOut$($cqCallFlowObjectId)
+subgraphAgents$($cqCallFlowObjectId) --> cqResult$($cqCallFlowObjectId){Call Connected?}
 end
 
-timeOut$($cqCallFlowObjectId) --> cqResult$($cqCallFlowObjectId){Call Connected?}
 cqResult$($cqCallFlowObjectId) --> |Yes| cqEnd$($cqCallFlowObjectId)((Call Connected))
-cqResult$($cqCallFlowObjectId) --> |No| $CqTimeoutActionFriendly
+cqResult$($cqCallFlowObjectId) --> |No| timeOut$($cqCallFlowObjectId) --> $CqTimeoutActionFriendly
 
 "@
 
 $allMermaidNodes += @("cqGreeting$($cqCallFlowObjectId)","overFlow$($cqCallFlowObjectId)","routingMethod$($cqCallFlowObjectId)","agentAlertTime$($cqCallFlowObjectId)","cqSettingsContainer$($cqCallFlowObjectId)","timeOut$($cqCallFlowObjectId)","agentListType$($cqCallFlowObjectId)","cqResult$($cqCallFlowObjectId)","cqEnd$($cqCallFlowObjectId)")
+$allSubgraphs += @("subgraphCallDistribution$($cqCallFlowObjectId)","subgraphCqSettings$($cqCallFlowObjectId)","subgraphAgents$($cqCallFlowObjectId)")
 
 if ($mermaidCode -notcontains $mdCallQueueCallFlow) {
 
@@ -2758,7 +2891,7 @@ function Set-CustomMermaidTheme {
     )
 
 
-    $themedNodes = "classDef customTheme fill:$NodeColor,stroke:$NodeBorderColor,stroke-width:3px,color:$FontColor`n`nclass "
+    $themedNodes = "classDef customTheme fill:$NodeColor,stroke:$NodeBorderColor,stroke-width:2px,color:$FontColor`n`nclass "
 
     $allMermaidNodes = $allMermaidNodes | Sort-Object -Unique
 
@@ -2786,8 +2919,28 @@ function Set-CustomMermaidTheme {
 
     $themedLinks = ($themedLinks += " stroke:$LinkColor,stroke-width:2px,color:$LinkTextColor").Replace(", stroke:"," stroke:")
 
-    $mermaidCode += @($themedNodes,$themedLinks)
+    if ($allSubgraphs) {
+
+        $themedSubgraphs = "`nclassDef customSubgraphTheme fill:$SubgraphColor,color:$FontColor,stroke:$NodeBorderColor`n`nclass "
+
+        foreach ($subgraph in $allSubgraphs) {
+            
+            $themedSubgraphs += "$subgraph,"
+
+        }
+
+        $themedSubgraphs = ($themedSubgraphs += " customSubgraphTheme").Replace(", customSubgraphTheme", " customSubgraphTheme")
     
+    }
+
+    else {
+
+        $themedSubgraphs = $null
+
+    }
+
+    $mermaidCode += @($themedNodes,$themedLinks,$themedSubgraphs)
+
 }
 
 if ($Theme -eq "custom") {
