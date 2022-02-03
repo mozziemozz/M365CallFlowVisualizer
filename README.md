@@ -15,13 +15,15 @@ Reads a config from Microsoft 365 Phone System and renders them visually into a 
 | 21.01.2022 | V 2.4.6 can now display TTS greetings and filenames. Audio files can be exported to the output directory and Markdown or HTML files have clickable links to the audio files on the greeting/announcements nodes. |
 | 28.01.2022 | V 2.4.9 can now also export values (Text) of TTS greetings into text files and link them on greeting and announcement nodes.
 | 03.02.2022 | V 2.5.1 displays voice commands of IVRs if an auto attendant is voice response enabled, optimized structure of call queue timeout, added support for custom subgraph fill, greeting nodes are only showed when a greeting is configured |
+| 03.02.2022 | V 2.5.3 MS made some changes to how business hours are stored inside the auto attendants which caused the script to always draw a business hour desicion even if none were configured. This is fixed. Also added support to not draw greeitng nodes for holiday actions if no greetings are configured. |
+
 
 # How to use it
 
 ## Prerequisites
 
 I suggest using Visual Studio Code and the official PowerShell Extension. This script needs the "Microsoft.Graph" and "MicrosoftTeams" PowerShell modules. At least "Microsoft.Graph.Users" and "Microsoft.Graph.Groups" are needed.
-It has been tested with MicrosoftTeams PowerShell version 3.0.0 and 3.0.1-preview and Microsoft.Graph 1.9.1.
+It has been tested with MicrosoftTeams PowerShell version 3.1.1 and Microsoft.Graph 1.9.1.
 
 ### Install Modules
 
