@@ -14,6 +14,7 @@ Reads a config from Microsoft 365 Phone System and renders them visually into a 
 | 14.01.2022 | V 2.4.4 now displays queue agents vertically (better for queues with many agents), displays names of Group(s), Teams and Channels if a queue uses them |
 | 21.01.2022 | V 2.4.6 can now display TTS greetings and filenames. Audio files can be exported to the output directory and Markdown or HTML files have clickable links to the audio files on the greeting/announcements nodes. |
 | 28.01.2022 | V 2.4.9 can now also export values (Text) of TTS greetings into text files and link them on greeting and announcement nodes.
+| 03.02.2022 | V 2.5.1 displays voice commands of IVRs if an auto attendant is voice response enabled, optimized structure of call queue timeout, added support for custom subgraph fill, greeting nodes are only showed when a greeting is configured |
 
 # How to use it
 
