@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.5.3
+    Version:            2.5.4
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -54,6 +54,7 @@
         03.02.2022      2.5.1: Don't draw greeting nodes if no greeting is configured in auto attendant default or after hours call flows
         03.02.2022      2.5.2: Microsoft has changed how time ranges in schedules are displayed which caused the script to always show business hours desicion nodes, even when none were set. this has been addressed with a fix in this version.
         03.02.2022      2.5.3: Holiday greeting nodes are now also only drawn if a greeting is configured
+        03.02.2022      2.5.4: Optimize login function to make sure that the tenants for Teams and Graph are always the same.
 
     .PARAMETER Name
     -Identity
@@ -328,17 +329,38 @@ function Connect-M365CFV {
     )
 
     try {
-        Get-CsOnlineSipDomain -ErrorAction Stop > $null
+        $msTeamsTenant = Get-CsTenant -ErrorAction Stop > $null
+        $msTeamsTenant = Get-CsTenant
     }
     catch {
         Connect-MicrosoftTeams
-    }    
+        $msTeamsTenant = Get-CsTenant
+    }
+    finally {
+        if ($msTeamsTenant -and $? -eq $true) {
+            Write-Host "Connected Teams Tenant: $($msTeamsTenant.DisplayName)" -ForegroundColor Green
+        }
+    }
 
     try {
         Get-MgUser -Top 1 -ErrorAction Stop > $null
+        $msGraphContext = (Get-MgContext).TenantId
+
+        if (!$msGraphContext -eq $msTeamsTenant.TenantId) {
+            Write-Warning -Message "Connected Graph TenantId does not match connected Teams TenantId... Signing out of Graph... "
+            Disconnect-MgGraph
+            Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsConnectionDetails.TenantId.Guid
+        }
+        
     }
     catch {
-        Connect-MgGraph -Scopes "User.Read.All","Group.Read.All"
+        Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsConnectionDetails.TenantId.Guid
+        $msGraphContext = (Get-MgContext).TenantId
+    }
+    finally {
+        if ($msGraphContext -and $? -eq $true) {
+            Write-Host "Connected Graph TenantId matches connected Teams TenantId." -ForegroundColor Green
+        }
     }
     
 }
