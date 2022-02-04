@@ -83,7 +83,7 @@
         Type:               boolean
         Default value:      true
 
-    -ExportHtml
+    -PreviewHtml
         Specifies if the exported html file should be opened in default / last active browser (only works on Windows systems)
         Required:           false
         Type:               switch
