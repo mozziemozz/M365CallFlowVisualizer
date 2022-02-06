@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.5.3
+    Version:            2.5.5
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -54,6 +54,8 @@
         03.02.2022      2.5.1: Don't draw greeting nodes if no greeting is configured in auto attendant default or after hours call flows
         03.02.2022      2.5.2: Microsoft has changed how time ranges in schedules are displayed which caused the script to always show business hours desicion nodes, even when none were set. this has been addressed with a fix in this version.
         03.02.2022      2.5.3: Holiday greeting nodes are now also only drawn if a greeting is configured
+        03.02.2022      2.5.4: Optimize login function to make sure that the tenants for Teams and Graph are always the same.
+        04.02.2022      2.5.5: Fix bug with html export and mermaid theme, add theme support for mermaid export
 
     .PARAMETER Name
     -Identity
@@ -81,7 +83,7 @@
         Type:               boolean
         Default value:      true
 
-    -ExportHtml
+    -PreviewHtml
         Specifies if the exported html file should be opened in default / last active browser (only works on Windows systems)
         Required:           false
         Type:               switch
@@ -291,12 +293,6 @@ param(
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$true)][ValidateSet("Auto Attendant","Call Queue")][String]$VoiceAppType
 )
 
-if ($DocType -eq "Mermaid" -and $Theme -ne "default") {
-
-    Write-Warning -Message "A custom theme is specified but the document type is Mermaid. Custom themes are currently only supported for Markdown files."
-
-}
-
 if ($SaveToFile -eq $false -and $CustomFilePath) {
 
     Write-Warning -Message "Warning: Custom file path is specified but SaveToFile is set to false. The call flow won't be saved!"
@@ -328,17 +324,38 @@ function Connect-M365CFV {
     )
 
     try {
-        Get-CsOnlineSipDomain -ErrorAction Stop > $null
+        $msTeamsTenant = Get-CsTenant -ErrorAction Stop > $null
+        $msTeamsTenant = Get-CsTenant
     }
     catch {
         Connect-MicrosoftTeams
-    }    
+        $msTeamsTenant = Get-CsTenant
+    }
+    finally {
+        if ($msTeamsTenant -and $? -eq $true) {
+            Write-Host "Connected Teams Tenant: $($msTeamsTenant.DisplayName)" -ForegroundColor Green
+        }
+    }
 
     try {
         Get-MgUser -Top 1 -ErrorAction Stop > $null
+        $msGraphContext = (Get-MgContext).TenantId
+
+        if (!$msGraphContext -eq $msTeamsTenant.TenantId) {
+            Write-Warning -Message "Connected Graph TenantId does not match connected Teams TenantId... Signing out of Graph... "
+            Disconnect-MgGraph
+            Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsConnectionDetails.TenantId.Guid
+        }
+        
     }
     catch {
-        Connect-MgGraph -Scopes "User.Read.All","Group.Read.All"
+        Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsConnectionDetails.TenantId.Guid
+        $msGraphContext = (Get-MgContext).TenantId
+    }
+    finally {
+        if ($msGraphContext -and $? -eq $true) {
+            Write-Host "Connected Graph TenantId matches connected Teams TenantId." -ForegroundColor Green
+        }
     }
     
 }
@@ -348,22 +365,23 @@ function Set-Mermaid {
         [Parameter(Mandatory=$true)][String]$DocType
         )
 
-    if ($DocType -eq "Markdown") {
+    if ($Theme -eq "custom") {
 
-        if ($Theme -eq "custom") {
+        $MarkdownTheme = ""
 
-            $MarkdownTheme = ""
+    }
 
-        }
+    else {
 
-        else {
-
-            $MarkdownTheme =@"
+        $MarkdownTheme =@"
 %%{init: {'theme': '$($Theme)', "flowchart" : { "curve" : "basis" } } }%%
 
 "@ 
 
-        }
+    }
+
+
+    if ($DocType -eq "Markdown") {
 
         $mdStart =@"
 ## CallFlowNamePlaceHolder
@@ -383,6 +401,7 @@ flowchart TB
 
     else {
         $mdStart =@"
+$MarkdownTheme
 flowchart TB
 "@
 
@@ -2535,7 +2554,7 @@ $($MatchingCQIdentity)([Call Queue <br> $($CqName)]) -->$cqGreetingNode overFlow
 overFlow$($cqCallFlowObjectId) --> |Yes| $CqOverFlowActionFriendly
 overFlow$($cqCallFlowObjectId) ---> |No| routingMethod$($cqCallFlowObjectId)
 
-subgraph subgraphCallDistribution$($cqCallFlowObjectId)[Call Distribution $($MatchingCQ.Name)]
+subgraph subgraphCallDistribution$($cqCallFlowObjectId)[Call Distribution: $($MatchingCQ.Name)]
 subgraph subgraphCqSettings$($cqCallFlowObjectId)[CQ Settings]
 routingMethod$($cqCallFlowObjectId)[(Routing Method: $CqRoutingMethod)] --> agentAlertTime$($cqCallFlowObjectId)
 agentAlertTime$($cqCallFlowObjectId)[(Agent Alert Time: $CqAgentAlertTime)] -.- cqSettingsContainer$($cqCallFlowObjectId)
@@ -2993,19 +3012,20 @@ if ($ExportHtml -eq $true) {
 
     $HtmlOutput = Get-Content -Path .\HtmlTemplate.html | Out-String
 
+    if ($Theme -eq "custom") {
+
+        $MarkdownTheme = '<div class="mermaid">'
+        
+    }
+
+    else {
+
+        $MarkdownTheme = '<div class="mermaid">' + $MarkdownTheme 
+
+    }
+
+
     if ($DocType -eq "Markdown") {
-
-        if ($Theme -eq "custom") {
-
-            $MarkdownTheme = '<div class="mermaid">'
-            
-        }
-
-        else {
-
-            $MarkdownTheme = '<div class="mermaid">' + $MarkdownTheme 
-
-        }
 
         $HtmlOutput -Replace "VoiceAppNamePlaceHolder","Call Flow $VoiceAppFileName" `
         -Replace "VoiceAppNameHtmlIdPlaceHolder",($($VoiceAppFileName).Replace(" ","-")) `
@@ -3021,8 +3041,8 @@ if ($ExportHtml -eq $true) {
 
         $HtmlOutput -Replace "VoiceAppNamePlaceHolder","Call Flow $VoiceAppFileName" `
         -Replace "VoiceAppNameHtmlIdPlaceHolder",($($VoiceAppFileName).Replace(" ","-")) `
-        -Replace '<div class="mermaid">ThemePlaceHolder','<div class="mermaid">' `
-        -Replace "MermaidPlaceHolder",($mermaidCode | Out-String).Replace($MarkdownTheme,"") ` | Set-Content -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.htm" -Encoding UTF8
+        -Replace '<div class="mermaid">ThemePlaceHolder',$MarkdownTheme `
+        -Replace "MermaidPlaceHolder",($mermaidCode | Out-String).Replace($MarkdownTheme,"") | Set-Content -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.htm" -Encoding UTF8
 
     }
 
