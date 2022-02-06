@@ -2557,7 +2557,7 @@ $($MatchingCQIdentity)([Call Queue <br> $($CqName)]) -->$cqGreetingNode overFlow
 overFlow$($cqCallFlowObjectId) --> |Yes| $CqOverFlowActionFriendly
 overFlow$($cqCallFlowObjectId) ---> |No| routingMethod$($cqCallFlowObjectId)
 
-subgraph subgraphCallDistribution$($cqCallFlowObjectId)[Call Distribution $($MatchingCQ.Name)]
+subgraph subgraphCallDistribution$($cqCallFlowObjectId)[Call Distribution: $($MatchingCQ.Name)]
 subgraph subgraphCqSettings$($cqCallFlowObjectId)[CQ Settings]
 routingMethod$($cqCallFlowObjectId)[(Routing Method: $CqRoutingMethod)] --> agentAlertTime$($cqCallFlowObjectId)
 agentAlertTime$($cqCallFlowObjectId)[(Agent Alert Time: $CqAgentAlertTime)] -.- cqSettingsContainer$($cqCallFlowObjectId)
