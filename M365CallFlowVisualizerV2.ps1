@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.5.6
+    Version:            2.5.7
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -57,6 +57,7 @@
         03.02.2022      2.5.4: Optimize login function to make sure that the tenants for Teams and Graph are always the same.
         04.02.2022      2.5.5: Fix bug with html export and mermaid theme, add theme support for mermaid export
         09.02.2022      2.5.6: Fix bug in Connect-CFV where the Teams and Graph TenantId check was not always working.
+        05.03.2022      2.5.7: Add Leading + Agents phone numbers
 
     .PARAMETER Name
     -Identity
@@ -2511,6 +2512,12 @@ function Get-CallQueueCallFlow {
         if ($ShowCqAgentPhoneNumbers -eq $true) {
 
             $CqAgentPhoneNumber = ((Get-CsOnlineUser -Identity $($CqAgent.ObjectId)).LineUri).Replace("tel:","")
+
+            if ($CqAgentPhoneNumber -notmatch "\+") {
+
+                $CqAgentPhoneNumber = "+" + $CqAgentPhoneNumber
+
+            }
 
             $AgentDisplayName = "$AgentDisplayName <br> $CqAgentPhoneNumber"
 
