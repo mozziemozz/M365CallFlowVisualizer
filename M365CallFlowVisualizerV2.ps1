@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.5.5
+    Version:            2.5.6
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -56,6 +56,7 @@
         03.02.2022      2.5.3: Holiday greeting nodes are now also only drawn if a greeting is configured
         03.02.2022      2.5.4: Optimize login function to make sure that the tenants for Teams and Graph are always the same.
         04.02.2022      2.5.5: Fix bug with html export and mermaid theme, add theme support for mermaid export
+        09.02.2022      2.5.6: Fix bug in Connect-CFV where the Teams and Graph TenantId check was not always working.
 
     .PARAMETER Name
     -Identity
@@ -341,7 +342,7 @@ function Connect-M365CFV {
         Get-MgUser -Top 1 -ErrorAction Stop > $null
         $msGraphContext = (Get-MgContext).TenantId
 
-        if (!$msGraphContext -eq $msTeamsTenant.TenantId) {
+        if ($msGraphContext -ne $msTeamsTenant.TenantId) {
             Write-Warning -Message "Connected Graph TenantId does not match connected Teams TenantId... Signing out of Graph... "
             Disconnect-MgGraph
             Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsConnectionDetails.TenantId.Guid
