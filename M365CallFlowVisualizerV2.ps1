@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.5.7
+    Version:            2.5.8
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -58,6 +58,7 @@
         04.02.2022      2.5.5: Fix bug with html export and mermaid theme, add theme support for mermaid export
         09.02.2022      2.5.6: Fix bug in Connect-CFV where the Teams and Graph TenantId check was not always working.
         05.03.2022      2.5.7: Add Leading + Agents phone numbers
+        14.03.2022      2.5.8: Fix Connect-M365CFV function (Sometimes the check if Teams and Graph tenant are the same failed when there was a cached graph session)
 
     .PARAMETER Name
     -Identity
@@ -340,18 +341,21 @@ function Connect-M365CFV {
     }
 
     try {
-        Get-MgUser -Top 1 -ErrorAction Stop > $null
         $msGraphContext = (Get-MgContext).TenantId
 
         if ($msGraphContext -ne $msTeamsTenant.TenantId) {
-            Write-Warning -Message "Connected Graph TenantId does not match connected Teams TenantId... Signing out of Graph... "
-            Disconnect-MgGraph
-            Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsConnectionDetails.TenantId.Guid
+
+            do {
+                Write-Warning -Message "Connected Graph TenantId does not match connected Teams TenantId... Signing out of Graph... "
+                Disconnect-MgGraph
+                Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsTenant.TenantId.Guid
+                $msGraphContext = (Get-MgContext).TenantId
+            } until ($msGraphContext -eq $msTeamsTenant.TenantId)
         }
         
     }
     catch {
-        Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsConnectionDetails.TenantId.Guid
+        Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsTenant.TenantId.Guid
         $msGraphContext = (Get-MgContext).TenantId
     }
     finally {
