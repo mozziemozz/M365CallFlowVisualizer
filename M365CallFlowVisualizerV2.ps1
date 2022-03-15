@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.5.8
+    Version:            2.5.9
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -59,6 +59,7 @@
         09.02.2022      2.5.6: Fix bug in Connect-CFV where the Teams and Graph TenantId check was not always working.
         05.03.2022      2.5.7: Add Leading + Agents phone numbers
         14.03.2022      2.5.8: Fix Connect-M365CFV function (Sometimes the check if Teams and Graph tenant are the same failed when there was a cached graph session)
+        15.03.2022      2.5.9: Improve order of node shapes for call queue timeout and overflow to voicemail, don't show CQ greeting if overflow threshold is set to 0
 
     .PARAMETER Name
     -Identity
@@ -2161,7 +2162,17 @@ function Get-CallQueueCallFlow {
 
         }
 
-        $cqGreetingNode = " cqGreeting$($cqCallFlowObjectId)>Greeting <br> $CqGreeting] -->"
+        if ($MatchingCQ.OverflowThreshold -ge 1) {
+
+            $cqGreetingNode = " cqGreeting$($cqCallFlowObjectId)>Greeting <br> $CqGreeting] -->"
+
+        }
+
+        else {
+
+            $cqGreetingNode = $null
+
+        }
 
     }
 
@@ -2347,7 +2358,7 @@ function Get-CallQueueCallFlow {
 
             }
 
-            $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqOverFlowVoicemailGreeting$($cqCallFlowObjectId)>Greeting <br> $CqOverFlowVoicemailGreeting] --> $CQOverFlowVoicemailSystemGreeting $($MatchingOverFlowIdentity)(Shared Voicemail <br> $MatchingOverFlowVoicemail)"
+            $CqOverFlowActionFriendly = "cqOverFlowVoicemailGreeting$($cqCallFlowObjectId)>Greeting <br> $CqOverFlowVoicemailGreeting] --> cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $CQOverFlowVoicemailSystemGreeting $($MatchingOverFlowIdentity)(Shared Voicemail <br> $MatchingOverFlowVoicemail)"
 
             $allMermaidNodes += @("cqOverFlowAction$($cqCallFlowObjectId)","cqOverFlowVoicemailGreeting$($cqCallFlowObjectId)","$($MatchingOverFlowIdentity)")
 
@@ -2494,7 +2505,7 @@ function Get-CallQueueCallFlow {
     
             }
     
-            $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqTimeoutVoicemailGreeting$($cqCallFlowObjectId)>Greeting <br> $CqTimeoutVoicemailGreeting] --> $CQTimeoutVoicemailSystemGreeting $($MatchingTimeoutIdentity)(Shared Voicemail <br> $MatchingTimeoutVoicemail)"
+            $CqTimeoutActionFriendly = "cqTimeoutVoicemailGreeting$($cqCallFlowObjectId)>Greeting <br> $CqTimeoutVoicemailGreeting] --> cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $CQTimeoutVoicemailSystemGreeting $($MatchingTimeoutIdentity)(Shared Voicemail <br> $MatchingTimeoutVoicemail)"
     
             $allMermaidNodes += @("cqTimeoutAction$($cqCallFlowObjectId)","cqTimeoutVoicemailGreeting$($cqCallFlowObjectId)","$($MatchingTimeoutIdentity)")
 
