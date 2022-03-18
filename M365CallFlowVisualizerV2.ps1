@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.5.9
+    Version:            2.6.0
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -60,6 +60,7 @@
         05.03.2022      2.5.7: Add Leading + Agents phone numbers
         14.03.2022      2.5.8: Fix Connect-M365CFV function (Sometimes the check if Teams and Graph tenant are the same failed when there was a cached graph session)
         15.03.2022      2.5.9: Improve order of node shapes for call queue timeout and overflow to voicemail, don't show CQ greeting if overflow threshold is set to 0
+        19.03.2022      2.6.0: Fix bug / optimzie error handling for finding after hours schedule (now looking for type instead of call flow name containing "after")
 
     .PARAMETER Name
     -Identity
@@ -541,7 +542,10 @@ function Find-AfterHours {
     $aaDefaultScheduleProperties = $aaDefaultScheduleProperties | Out-String
     
     # Get the current auto attendants after hours schedule and convert to string
-    $aaAfterHoursScheduleProperties = ($aa.Schedules | Where-Object {$_.name -match "after"}).WeeklyRecurrentSchedule | Select-Object *Display* | Out-String
+
+    $aaAfterHoursScheduleId = ($aa.CallHandlingAssociations | Where-Object {$_.Type.Value -eq "AfterHours"}).ScheduleId
+
+    $aaAfterHoursScheduleProperties = ($aa.Schedules | Where-Object {$_.Id -eq $aaAfterHoursScheduleId}).WeeklyRecurrentSchedule | Select-Object *Display* | Out-String
 
     # Check if the auto attendant has business hours by comparing the ps object to the actual config of the current auto attendant
     if ($aaDefaultScheduleProperties -eq $aaAfterHoursScheduleProperties) {
