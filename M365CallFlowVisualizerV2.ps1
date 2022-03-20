@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.6.0
+    Version:            2.6.0b
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -61,6 +61,7 @@
         14.03.2022      2.5.8: Fix Connect-M365CFV function (Sometimes the check if Teams and Graph tenant are the same failed when there was a cached graph session)
         15.03.2022      2.5.9: Improve order of node shapes for call queue timeout and overflow to voicemail, don't show CQ greeting if overflow threshold is set to 0
         19.03.2022      2.6.0: Fix bug / optimzie error handling for finding after hours schedule (now looking for type instead of call flow name containing "after")
+        20.03.2022      2.6.0b: Apply fix from 2.6.0 also to business hours
 
     .PARAMETER Name
     -Identity
@@ -780,7 +781,9 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
     if ($aaHasAfterHours) {
 
         # Get the business hours schedule and convert to csv for comparison with hard coded strings
-        $aaBusinessHours = ($aa.Schedules | Where-Object {$_.name -match "after"}).WeeklyRecurrentSchedule | ConvertTo-Csv
+        $aaBusinessHoursScheduleId = ($aa.CallHandlingAssociations | Where-Object {$_.Type.Value -eq "AfterHours"}).ScheduleId
+
+        $aaBusinessHours = ($aa.Schedules | Where-Object {$_.Id -eq $aaBusinessHoursScheduleId}).WeeklyRecurrentSchedule | ConvertTo-Csv
 
         # Convert from csv to read the business hours per day
         $aaBusinessHoursFriendly = $aaBusinessHours | ConvertFrom-Csv
