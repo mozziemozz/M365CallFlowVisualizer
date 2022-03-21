@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.6.0b
+    Version:            2.6.1
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -62,6 +62,7 @@
         15.03.2022      2.5.9: Improve order of node shapes for call queue timeout and overflow to voicemail, don't show CQ greeting if overflow threshold is set to 0
         19.03.2022      2.6.0: Fix bug / optimzie error handling for finding after hours schedule (now looking for type instead of call flow name containing "after")
         20.03.2022      2.6.0b: Apply fix from 2.6.0 also to business hours
+        21.03.2022      2.6.1: Fix detection of no business hours, don't draw call distribution for CQs which have overflow threshold 0 anymore
 
     .PARAMETER Name
     -Identity
@@ -549,12 +550,28 @@ function Find-AfterHours {
     $aaAfterHoursScheduleProperties = ($aa.Schedules | Where-Object {$_.Id -eq $aaAfterHoursScheduleId}).WeeklyRecurrentSchedule | Select-Object *Display* | Out-String
 
     # Check if the auto attendant has business hours by comparing the ps object to the actual config of the current auto attendant
-    if ($aaDefaultScheduleProperties -eq $aaAfterHoursScheduleProperties) {
-        $aaHasAfterHours = $false
+    # Additional check for auto attendants which somehow have no schedules at all
+    if ($aa.Schedules.Type.Value -contains "WeeklyRecurrence") {
+
+        $aaAfterHoursScheduleId = ($aa.CallHandlingAssociations | Where-Object {$_.Type.Value -eq "AfterHours"}).ScheduleId
+
+        $aaAfterHoursScheduleProperties = ($aa.Schedules | Where-Object {$_.Id -eq $aaAfterHoursScheduleId}).WeeklyRecurrentSchedule | Select-Object *Display* | Out-String
+
+        # Check if the auto attendant has business hours by comparing the ps object to the actual config of the current auto attendant
+        if ($aaDefaultScheduleProperties -eq $aaAfterHoursScheduleProperties) {
+            $aaHasAfterHours = $false
+        }
+
+        else {
+            $aaHasAfterHours = $true
+        }
+
     }
 
     else {
-        $aaHasAfterHours = $true
+
+        $aaHasAfterHours = $false
+
     }
     
 }
@@ -2226,7 +2243,7 @@ function Get-CallQueueCallFlow {
     # Switch through call queue overflow action target
     switch ($CqOverFlowAction) {
         DisconnectWithBusy {
-            $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)((Disconnect Call))"
+            $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)((DisconnectCall))"
 
             $allMermaidNodes += "cqOverFlowAction$($cqCallFlowObjectId)"
 
@@ -2376,7 +2393,7 @@ function Get-CallQueueCallFlow {
     # Switch through call queue timeout overflow action
     switch ($CqTimeoutAction) {
         Disconnect {
-            $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)((Disconnect Call))"
+            $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)((DisconnectCall))"
 
             $allMermaidNodes += "cqTimeoutAction$($cqCallFlowObjectId)"
 
@@ -2604,14 +2621,31 @@ cqResult$($cqCallFlowObjectId) --> |No| timeOut$($cqCallFlowObjectId) --> $CqTim
 
 "@
 
-$allMermaidNodes += @("cqGreeting$($cqCallFlowObjectId)","overFlow$($cqCallFlowObjectId)","routingMethod$($cqCallFlowObjectId)","agentAlertTime$($cqCallFlowObjectId)","cqSettingsContainer$($cqCallFlowObjectId)","timeOut$($cqCallFlowObjectId)","agentListType$($cqCallFlowObjectId)","cqResult$($cqCallFlowObjectId)","cqEnd$($cqCallFlowObjectId)")
-$allSubgraphs += @("subgraphCallDistribution$($cqCallFlowObjectId)","subgraphCqSettings$($cqCallFlowObjectId)","subgraphAgents$($cqCallFlowObjectId)")
 
-if ($mermaidCode -notcontains $mdCallQueueCallFlow) {
+    if ($mermaidCode -notcontains $mdCallQueueCallFlow) {
 
-    $mermaidCode += $mdCallQueueCallFlow
+        if ($MatchingCQ.OverflowThreshold -ge 1) {
 
-}
+            $mermaidCode += $mdCallQueueCallFlow
+
+        }
+
+        else {
+
+            $mdCallQueueCallFlow =@"
+$($MatchingCQIdentity)([Call Queue <br> $($CqName)]) -->$cqGreetingNode overFlow$($cqCallFlowObjectId)[(Overflow Threshold: $CqOverFlowThreshold <br> Immediate Forwarding <br> TTS Greeting Language: $CqLanguageId)]
+overFlow$($cqCallFlowObjectId) --> |Yes| $CqOverFlowActionFriendly
+
+"@
+
+            $mermaidCode += $mdCallQueueCallFlow
+
+        }
+
+        $allMermaidNodes += @("cqGreeting$($cqCallFlowObjectId)","overFlow$($cqCallFlowObjectId)","routingMethod$($cqCallFlowObjectId)","agentAlertTime$($cqCallFlowObjectId)","cqSettingsContainer$($cqCallFlowObjectId)","timeOut$($cqCallFlowObjectId)","agentListType$($cqCallFlowObjectId)","cqResult$($cqCallFlowObjectId)","cqEnd$($cqCallFlowObjectId)")
+        $allSubgraphs += @("subgraphCallDistribution$($cqCallFlowObjectId)","subgraphCqSettings$($cqCallFlowObjectId)","subgraphAgents$($cqCallFlowObjectId)")
+
+    }
   
 }
 
