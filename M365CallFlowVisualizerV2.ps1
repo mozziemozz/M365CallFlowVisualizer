@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.6.1
+    Version:            2.6.2
     Revision:
         20.10.2021:     Creation
         21.10.2021:     Add comments and streamline code, add longer arrow links for default call flow desicion node
@@ -63,6 +63,7 @@
         19.03.2022      2.6.0: Fix bug / optimzie error handling for finding after hours schedule (now looking for type instead of call flow name containing "after")
         20.03.2022      2.6.0b: Apply fix from 2.6.0 also to business hours
         21.03.2022      2.6.1: Fix detection of no business hours, don't draw call distribution for CQs which have overflow threshold 0 anymore
+        07.04.2022      2.6.2: Optimize Connect-M365CFV login checks
 
     .PARAMETER Name
     -Identity
@@ -342,29 +343,49 @@ function Connect-M365CFV {
         if ($msTeamsTenant -and $? -eq $true) {
             Write-Host "Connected Teams Tenant: $($msTeamsTenant.DisplayName)" -ForegroundColor Green
         }
+
+        if ($msTeamsTenant.TenantId -is [System.ValueType]) {
+
+            $msTeamsTenantId = $msTeamsTenant.TenantId.Guid
+
+        }
+
+        else {
+
+            $msTeamsTenantId = $msTeamsTenant.TenantId
+
+        }
     }
 
     try {
         $msGraphContext = (Get-MgContext).TenantId
 
-        if ($msGraphContext -ne $msTeamsTenant.TenantId) {
+        if ($msGraphContext -ne $msTeamsTenantId) {
 
             do {
-                Write-Warning -Message "Connected Graph TenantId does not match connected Teams TenantId... Signing out of Graph... "
-                Disconnect-MgGraph
-                Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsTenant.TenantId.Guid
+
+                if ($msGraphContext) {
+                    Write-Warning -Message "Connected Graph TenantId does not match connected Teams TenantId... Signing out of Graph... "
+                    Disconnect-MgGraph
+                }
+
+                Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsTenantId
+
                 $msGraphContext = (Get-MgContext).TenantId
-            } until ($msGraphContext -eq $msTeamsTenant.TenantId)
+
+            } until ($msGraphContext -eq $msTeamsTenantId)
+
         }
         
     }
     catch {
-        Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsTenant.TenantId.Guid
+        Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsTenantId
         $msGraphContext = (Get-MgContext).TenantId
     }
     finally {
-        if ($msGraphContext -and $? -eq $true) {
-            Write-Host "Connected Graph TenantId matches connected Teams TenantId." -ForegroundColor Green
+        if ($msGraphContext -eq $msTeamsTenantId) {
+            $msGraphTenantName = (Get-MgContext).Account.Split("@")[-1]
+            Write-Host "Connected Graph Tenant matches connected Teams Tenant: $msGraphTenantName" -ForegroundColor Green
         }
     }
     
