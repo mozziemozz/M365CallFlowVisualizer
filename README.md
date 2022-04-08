@@ -3,22 +3,9 @@
 # Synopsis
 Reads a config from Microsoft 365 Phone System and renders them visually into a mermaid-js flowchart.
 
-# Updates
+# Changelog
 
-| Date | Description |
-| --- | --- |
-| 07.01.2022 | V 2.2.0 now even supports reading and rendering of voice menus (IVRs) including forwardings to announcements and to the operator. |
-| 09.01.2022 | V 2.3.0 now supports specifying custom hex colors for Nodes, Borders, Fonts, Links and Text on Links |
-| 12.01.2022 | V 2.4.0 now uses Microsoft.Graph instead of MSOnline PowerShell Module. It's now possible to export call flows as *.htm for easier access and sharing. Some Cq settings were consolidated into a single node |
-| 13.01.2022 | V 2.4.2 now properly displays if the system message is being played back or not before the call is forwarded to another target. |
-| 14.01.2022 | V 2.4.4 now displays queue agents vertically (better for queues with many agents), displays names of Group(s), Teams and Channels if a queue uses them |
-| 21.01.2022 | V 2.4.6 can now display TTS greetings and filenames. Audio files can be exported to the output directory and Markdown or HTML files have clickable links to the audio files on the greeting/announcements nodes. |
-| 28.01.2022 | V 2.4.9 can now also export values (Text) of TTS greetings into text files and link them on greeting and announcement nodes.
-| 03.02.2022 | V 2.5.1 displays voice commands of IVRs if an auto attendant is voice response enabled, optimized structure of call queue timeout, added support for custom subgraph fill, greeting nodes are only showed when a greeting is configured |
-| 03.02.2022 | V 2.5.3 MS made some changes to how business hours are stored inside the auto attendants which caused the script to always draw a business hour desicion even if none were configured. This is fixed. Also added support to not draw greeitng nodes for holiday actions if no greetings are configured. |
-| 15.03.2022 | V 2.5.9 doesn't show CQ greeting node, if overflow threshold is set to 0. Adjusted order of greeting/transfer for CQ overflow and timeout when target is voicemail. Fixed login check for Teams and Graph Tenant. |
-| 21.03.2022 | V 2.6.1 fixes business hours detections of AAs which don't have any Schedules at all, doesn't draw CQ call distribution anymore if CQ overflow threshold is set to 0. |
-
+The changelog can be found [here](Changelog.md).
 
 # How to use it
 
