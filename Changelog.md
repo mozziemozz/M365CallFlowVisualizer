@@ -58,3 +58,4 @@
 |21.03.2022|2.6.1| Fix detection of no business hours, don't draw call distribution for CQs which have overflow threshold 0 anymore|
 |07.04.2022|2.6.2| Optimize Connect-M365CFV login checks|
 |08.04.2022|2.6.3| Fix breaking changes from MicrosoftTeams PowerShell 4.1.0. This version is now required. Move Connect-M365CFV out of Script into seperate file. Fix display of CQ Agents without phone number. Move Changelog out of script into repository. Fix output errors when exporting audio files or TTS greetings but none were present in the voice apps. Fix display of CQ Agents without phone number. Move Changelog out of script into repository. Fix output errors when exporting audio files or TTS greetings but none were present in the voice apps. |
+|08.04.2022|2.6.4|Remove '(' and ')' from audio file names because this caused a syntax error in mermaid. |

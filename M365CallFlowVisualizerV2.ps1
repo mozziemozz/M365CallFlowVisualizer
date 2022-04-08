@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.6.3
+    Version:            2.6.4
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -564,7 +564,7 @@ subgraph $holidaySubgraphName
                     $holidayTTSGreetingValue = $null
 
                     # Audio File Greeting Name
-                    $audioFileName = $holidayCallFlow.Greetings.AudioFilePrompt.FileName
+                    $audioFileName = ($holidayCallFlow.Greetings.AudioFilePrompt.FileName).Replace("(","").Replace(")","")
 
                     if ($ExportAudioFiles) {
 
@@ -1142,7 +1142,7 @@ function Get-AutoAttendantDefaultCallFlow {
             $defaultTTSGreetingValue = $null
 
             # Audio File Greeting Name
-            $audioFileName = $defaultCallFlow.Greetings.AudioFilePrompt.FileName
+            $audioFileName = ($defaultCallFlow.Greetings.AudioFilePrompt.FileName).Replace("(","").Replace(")","")
 
             if ($ExportAudioFiles) {
 
@@ -1227,7 +1227,7 @@ function Get-AutoAttendantDefaultCallFlow {
                 $defaultCallFlowMenuOptionsTTSGreetingValue = $null
     
                 # Audio File Greeting Name
-                $audioFileName = $defaultCallFlow.Menu.Prompts.AudioFilePrompt.FileName
+                $audioFileName = ($defaultCallFlow.Menu.Prompts.AudioFilePrompt.FileName).Replace("(","").Replace(")","")
 
                 if ($ExportAudioFiles) {
 
@@ -1386,7 +1386,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                     $defaultCallFlowMenuOptionsTTSAnnouncementValue = $null
         
                     # Audio File Announcement Name
-                    $audioFileName = $MenuOption.Prompt.AudioFilePrompt.FileName
+                    $audioFileName = ($MenuOption.Prompt.AudioFilePrompt.FileName).Replace("(","").Replace(")","")
 
                     if ($ExportAudioFiles) {
 
@@ -1604,7 +1604,7 @@ function Get-AutoAttendantAfterHoursCallFlow {
             $afterHoursTTSGreetingValue = $null
 
             # Audio File Greeting Name
-            $audioFileName = $afterHoursCallFlow.Greetings.AudioFilePrompt.FileName
+            $audioFileName = ($afterHoursCallFlow.Greetings.AudioFilePrompt.FileName).Replace("(","").Replace(")","")
 
             if ($ExportAudioFiles) {
 
@@ -1691,7 +1691,7 @@ function Get-AutoAttendantAfterHoursCallFlow {
                 $afterHoursCallFlowMenuOptionsTTSGreetingValue = $null
     
                 # Audio File Greeting Name
-                $audioFileName = $afterHoursCallFlow.Menu.Prompts.AudioFilePrompt.FileName
+                $audioFileName = ($afterHoursCallFlow.Menu.Prompts.AudioFilePrompt.FileName).Replace("(","").Replace(")","")
 
                 if ($ExportAudioFiles) {
 
@@ -1850,7 +1850,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                     $afterHoursCallFlowMenuOptionsTTSAnnouncementValue = $null
         
                     # Audio File Announcement Name
-                    $audioFileName = $MenuOption.Prompt.AudioFilePrompt.FileName
+                    $audioFileName = ($MenuOption.Prompt.AudioFilePrompt.FileName).Replace("(","").Replace(")","")
 
                     if ($ExportAudioFiles) {
 
@@ -2059,7 +2059,7 @@ function Get-CallQueueCallFlow {
 
         if ($ShowAudioFileName) {
 
-            $audioFileName = $MatchingCQ.MusicOnHoldFileName
+            $audioFileName = ($MatchingCQ.MusicOnHoldFileName)..Replace("(","").Replace(")","")
 
             if ($ExportAudioFiles) {
 
@@ -2094,7 +2094,7 @@ function Get-CallQueueCallFlow {
 
         if ($ShowAudioFileName) {
 
-            $audioFileName = $CqWelcomeMusicFileName
+            $audioFileName = ($CqWelcomeMusicFileName).Replace("(","").Replace(")","")
 
             if ($ExportAudioFiles) {
 
@@ -2286,7 +2286,7 @@ function Get-CallQueueCallFlow {
 
                 if ($ShowAudioFileName) {
 
-                    $audioFileName = $MatchingCQ.OverflowSharedVoicemailAudioFilePromptFileName
+                    $audioFileName = ($MatchingCQ.OverflowSharedVoicemailAudioFilePromptFileName).Replace("(","").Replace(")","")
 
                     if ($ExportAudioFiles) {
 
@@ -2436,7 +2436,7 @@ function Get-CallQueueCallFlow {
 
                 if ($ShowAudioFileName) {
 
-                    $audioFileName = $MatchingCQ.TimeoutSharedVoicemailAudioFilePromptFileName
+                    $audioFileName = ($MatchingCQ.TimeoutSharedVoicemailAudioFilePromptFileName).Replace("(","").Replace(")","")
 
                     if ($ExportAudioFiles) {
 
