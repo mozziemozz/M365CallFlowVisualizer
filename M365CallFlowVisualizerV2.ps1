@@ -269,7 +269,7 @@ $audioFileNames = @()
 $ttsGreetings = @()
 
 $allAutoAttendantIds = (Get-CsAutoAttendant).Identity
-$allCallQueueIds = (Get-CsCallQueue).Identity
+#$allCallQueueIds = (Get-CsCallQueue).Identity
 $allResourceAccounts = Get-CsOnlineApplicationInstance
 
 $applicationIdAa = "ce933385-9390-45d1-9512-c8d228074e07"
