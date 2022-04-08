@@ -216,7 +216,7 @@
     
 #>
 
-#Requires -Modules MicrosoftTeams, Microsoft.Graph.Users, Microsoft.Graph.Groups
+#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.1.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
 
 [CmdletBinding(DefaultParametersetName="None")]
 param(
@@ -251,6 +251,8 @@ $ErrorActionPreference = "Continue"
 # Load Functions
 
 . .\Functions\Connect-M365CFV.ps1
+
+. Connect-M365CFV
 
 if ($SaveToFile -eq $false -and $CustomFilePath) {
 
@@ -2597,8 +2599,6 @@ overFlow$($cqCallFlowObjectId) --> |Yes| $CqOverFlowActionFriendly
 
 . Set-Mermaid -DocType $DocType
 
-. Connect-M365CFV
-
 #This is needed to determine if the Get-CallFlow function is running for the first time or not.
 $mdNodePhoneNumbersCounter = 0
 
@@ -2862,8 +2862,6 @@ function Get-CallFlow {
 }
 
 # Get First Call Flow
-
-Write-Host "Reading top-level call flow." -ForegroundColor DarkMagenta
 
 if ($Identity) {
 
