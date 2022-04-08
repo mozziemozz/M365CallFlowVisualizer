@@ -1,7 +1,7 @@
 **/dev
 **/backup
+**/Output
 *.mmd
-*.md
 *.htm
 *.mp3
 *.txt

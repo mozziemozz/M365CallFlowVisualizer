@@ -14,25 +14,7 @@
 
 #>
 
-function Connect-M365CFV {
-    param (
-    )
-
-    try {
-        Get-CsOnlineSipDomain -ErrorAction Stop > $null
-    }
-    catch {
-        Connect-MicrosoftTeams
-    } 
-
-    try {
-        Get-MgUser -Top 1 -ErrorAction Stop > $null
-    }
-    catch {
-        Connect-MgGraph -Scopes "User.Read.All","Group.Read.All"
-    } 
-    
-}
+. .\Functions\Connect-M365CFV.ps1
 
 . Connect-M365CFV
 
@@ -78,14 +60,20 @@ foreach ($CallQueue in $AllCallQueues) {
     
 }
 
-Set-Content -Path ".\TopLevelVoiceApps.md" -Value "# Call Flow Diagrams"
+if (!(Test-Path -Path .\Output)) {
+
+    New-Item -Path .\Output -ItemType Directory
+
+}
+
+Set-Content -Path ".\Output\TopLevelVoiceApps.md" -Value "# Call Flow Diagrams"
 
 foreach ($VoiceAppIdentity in $VoiceApps) {
 
-    . .\M365CallFlowVisualizerV2.ps1 -Identity $VoiceAppIdentity -Theme dark
+    . .\M365CallFlowVisualizerV2.ps1 -Identity $VoiceAppIdentity -Theme dark -CustomFilePath ".\Output" -ShowCqAgentPhoneNumbers -ExportAudioFiles -ExportTTSGreetings -ShowAudioFileName -ShowTTSGreetingText
 
     $MarkdownInclude = "[!include[$($VoiceAppFileName)]($(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension)]"
 
-    Add-Content -Path ".\TopLevelVoiceApps.md" -Value $MarkdownInclude
+    Add-Content -Path ".\Output\TopLevelVoiceApps.md" -Value $MarkdownInclude
 
 }
