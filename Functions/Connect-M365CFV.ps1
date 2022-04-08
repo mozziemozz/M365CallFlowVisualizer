@@ -7,7 +7,7 @@ function Connect-M365CFV {
         $msTeamsTenant = Get-CsTenant
     }
     catch {
-        Connect-MicrosoftTeams
+        Connect-MicrosoftTeams -ErrorAction SilentlyContinue
         $msTeamsTenant = Get-CsTenant
     }
     finally {
@@ -56,10 +56,18 @@ function Connect-M365CFV {
         $msGraphContext = (Get-MgContext).TenantId
     }
     finally {
-        if ($msGraphContext -eq $msTeamsTenantId) {
+        if ($msGraphContext -eq $msTeamsTenantId -and $msTeamsTenant) {
 
             $msGraphTenantName = (Get-MgContext).Account.Split("@")[-1]
             Write-Host "Connected Graph Tenant matches connected Teams Tenant: $msGraphTenantName" -ForegroundColor Green
+
+        }
+
+        else {
+
+            Write-Host "Not connected to Microsoft Teams. Please try again. Exiting..." -ForegroundColor Red
+            Start-Sleep 3
+            exit
 
         }
     }
