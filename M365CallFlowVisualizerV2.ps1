@@ -2059,7 +2059,7 @@ function Get-CallQueueCallFlow {
 
         if ($ShowAudioFileName) {
 
-            $audioFileName = ($MatchingCQ.MusicOnHoldFileName)..Replace("(","").Replace(")","")
+            $audioFileName = ($MatchingCQ.MusicOnHoldFileName).Replace("(","").Replace(")","")
 
             if ($ExportAudioFiles) {
 

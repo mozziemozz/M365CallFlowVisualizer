@@ -7,12 +7,15 @@
     single Markdown file so that all call flows can be rendered on one page.
 
     Author:             Martin Heusser
-    Version:            1.0.1
+    Version:            1.0.2
     Revision:
-        05.01.2022      Creation
-        12.01.2022      Migrate from MSOnline to Microsoft.Graph
+        05.01.2022      1.0.0: Creation
+        12.01.2022      1.0.1: Migrate from MSOnline to Microsoft.Graph
+        08.04.2022      1.0.2: Move Connect-M365CFV function to sepearate file, default output folder set to .\Output
 
 #>
+
+#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.1.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
 
 . .\Functions\Connect-M365CFV.ps1
 
