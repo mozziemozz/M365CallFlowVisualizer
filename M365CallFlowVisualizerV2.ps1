@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.6.4
+    Version:            2.6.5
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -2035,10 +2035,28 @@ function Get-CallQueueCallFlow {
     # Store all neccessary call queue properties in variables
     $CqName = $MatchingCQ.Name
     $CqOverFlowThreshold = $MatchingCQ.OverflowThreshold
-    $CqOverFlowAction = $MatchingCQ.OverflowAction.Value
+
+    # It seems that Microsoft has made some changes and this value is sometimes returned in .Value and sometimes not. This is temporary until results are stable and reliable again.
+    $CqOverFlowAction = $MatchingCQ.OverflowAction
+
+    if ($null -eq $CqOverFlowAction) {
+        $CqOverFlowAction = $MatchingCQ.OverflowAction.Value
+    }
+
+    $CqTimeoutAction = $MatchingCQ.TimeoutAction
+
+    if ($null -eq $CqTimeoutAction) {
+        $CqTimeoutAction = $MatchingCQ.TimeoutAction.Value
+    }
+
+    $CqRoutingMethod = $MatchingCQ.RoutingMethod
+
+    if ($null -eq $CqRoutingMethod) {
+        $CqRoutingMethod = $MatchingCQ.RoutingMethod.Value
+    }
+
+
     $CqTimeOut = $MatchingCQ.TimeoutThreshold
-    $CqTimeoutAction = $MatchingCQ.TimeoutAction.Value
-    $CqRoutingMethod = $MatchingCQ.RoutingMethod.Value
     $CqAgents = $MatchingCQ.Agents
     $CqAgentOptOut = $MatchingCQ.AllowOptOut
     $CqConferenceMode = $MatchingCQ.ConferenceMode
@@ -2581,8 +2599,8 @@ cqResult$($cqCallFlowObjectId) --> |No| timeOut$($cqCallFlowObjectId) --> $CqTim
         else {
 
             $mdCallQueueCallFlow =@"
-$($MatchingCQIdentity)([Call Queue <br> $($CqName)]) -->$cqGreetingNode overFlow$($cqCallFlowObjectId)[(Overflow Threshold: $CqOverFlowThreshold <br> Immediate Forwarding <br> TTS Greeting Language: $CqLanguageId)]
-overFlow$($cqCallFlowObjectId) --> |Yes| $CqOverFlowActionFriendly
+$($MatchingCQIdentity)([Call Queue <br> $($CqName)]) -->$cqGreetingNode overFlow$($cqCallFlowObjectId)[(Overflow Threshold: $CqOverFlowThreshold <br> Immediate Overflow Action <br> TTS Greeting Language: $CqLanguageId)]
+overFlow$($cqCallFlowObjectId) --> $CqOverFlowActionFriendly
 
 "@
 
