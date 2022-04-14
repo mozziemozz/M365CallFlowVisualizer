@@ -636,13 +636,29 @@ function Get-TeamsUserCallFlow {
     
                     $mdUserCallingSettings = @"
     
-                    $userNode --> userForwarding$UserId(Immediate Forwarding)
+                    $userNode --> userForwarding$UserId(Also Ring)
+                    userForwarding$UserId -.-> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName)) ---> userForwardingResult$UserId
+                    userForwarding$UserId -.-> userForwardingTarget$UserId
+
     
                     subgraph subgraphSettings$UserId[ ]
-                    userForwarding$UserId --> userForwardingTarget$UserId($forwardingTargetType<br> $userForwardingTarget)
-                    end
+                    userForwardingTarget$UserId($forwardingTargetType<br> $userForwardingTarget)                    
     
 "@
+
+                    $mdUserCallingSettingsAddition = @"
+                        
+                    userForwardingTarget$UserId --> userForwardingResult$UserId{Call Answered?}    
+                    $subgraphUnansweredSettings
+                    userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
+                    end
+                    userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
+                    userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))    
+
+"@
+
+                    $mdUserCallingSettings += $mdUserCallingSettingsAddition
+
     
                 }
 
