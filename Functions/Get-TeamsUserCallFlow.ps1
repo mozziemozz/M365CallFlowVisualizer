@@ -183,7 +183,7 @@ function Get-TeamsUserCallFlow {
 
                 end
                 userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
-                subgraphDelegates$UserId --> userForwardingResult$UserId{Call Connected?}
+                subgraphDelegates$UserId --> userForwardingResult$UserId{Call Answered?}
                 $subgraphUnansweredSettings
                 end
                 userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
@@ -377,10 +377,66 @@ function Get-TeamsUserCallFlow {
 
                 Group {
 
-                    $subgraphUnansweredSettings = $null
+                    if ($userCallingSettings.ForwardingTargetType -eq "Group") {
 
-                    $mdUnansweredTarget = "--> subgraphCallGroups$UserId"
+                        $subgraphUnansweredSettings = $null
 
+                        $mdUnansweredTarget = "--> subgraphCallGroups$UserId"
+
+                    }
+
+                    else {
+
+                        switch ($userCallingSettings.CallGroupOrder) {
+                            InOrder {
+                                $ringOrder = "Serial"
+                            }
+                            Simultaneous {
+                                $ringOrder = "Simultaneous"
+                            }
+                            Default {}
+                        }
+                
+                        $subgraphUnansweredSettings = @"
+
+                        subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
+                        direction LR
+                        callGroupRingType$UserId[($ringOrder Ring)]
+        
+"@
+    
+                        $callGroupMemberCounter = 1
+    
+                        foreach ($callGroupMember in $userCallingSettings.CallGroupTargets) {
+    
+                            $callGroupUserObject = (Get-CsOnlineUser -Identity $callGroupMember)
+    
+                            if ($ringOrder -eq "Serial") {
+    
+                                $linkNumber = " |$callGroupMemberCounter|"
+    
+                            }
+    
+                            else {
+    
+                                $linkNumber = $null
+    
+                            }
+    
+                            $callGroupRing = "                       callGroupRingType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
+    
+                            $subgraphUnansweredSettings += $callGroupRing
+    
+                            $callGroupCounter ++
+                        }
+    
+                        $subgraphUnansweredSettings += "`n                end"
+    
+                        $mdUnansweredTarget = "--> subgraphCallGroups$UserId"
+    
+    
+                    }
+    
 
                 }
                 SingleTarget {
@@ -454,7 +510,7 @@ function Get-TeamsUserCallFlow {
     
                     end
                     userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
-                    subgraphDelegates$UserId --> userForwardingResult$UserId{Call Connected?}
+                    subgraphDelegates$UserId --> userForwardingResult$UserId{Call Answered?}
                     $subgraphUnansweredSettings
                     end
                     userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
@@ -494,7 +550,7 @@ function Get-TeamsUserCallFlow {
                     $mdUserCallingSettings = @"
     
                     $userNode --> userForwarding$UserId(Also Ring)
-                    userForwarding$UserId -.-> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName))
+                    userForwarding$UserId -.-> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName)) ---> userForwardingResult$UserId
                     userForwarding$UserId -.-> subgraphCallGroups$UserId
 
                     subgraph subgraphSettings$UserId[ ]
@@ -539,7 +595,7 @@ function Get-TeamsUserCallFlow {
                     $mdUserCallingSettingsAddition = @"
     
                     end
-                    subgraphCallGroups$UserId --> userForwardingResult$UserId{Call Connected?}    
+                    subgraphCallGroups$UserId --> userForwardingResult$UserId{Call Answered?}    
                     $subgraphUnansweredSettings
                     userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
                     end
@@ -717,6 +773,157 @@ function Get-TeamsUserCallFlow {
         elseif ($userCallingSettings.IsUnansweredEnabled -and !$userCallingSettings.IsForwardingEnabled) {
 
             Write-Host "user is unanswered enabled but not forwarding enabled"
+
+            switch ($userCallingSettings.UnansweredTargetType) {
+                MyDelegates {
+
+                    $ringOrder = "Simultaneous"
+
+                    $subgraphUnansweredSettings = @"
+
+                    subgraph subgraphdelegates$UserId[Delegates of $($teamsUser.DisplayName)]
+                    direction LR
+                    delegateRingType$UserId[($ringOrder Ring)]
+    
+"@
+
+                    $delegateCounter = 1
+
+                    foreach ($delegate in $userCallingSettings.Delegates) {
+
+                        $delegateUserObject = (Get-CsOnlineUser -Identity $delegate.Id)
+
+                        if ($ringOrder -eq "Serial") {
+
+                            $linkNumber = " |$delegateCounter|"
+
+                        }
+
+                        else {
+
+                            $linkNumber = $null
+
+                        }
+
+                        $delegateRing = "                       delegateRingType$UserId -.->$linkNumber delegateMember$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
+
+                        $subgraphUnansweredSettings += $delegateRing
+
+                        $delegateCounter ++
+                    }
+
+                    $subgraphUnansweredSettings += "`n                end"
+
+                    $mdUnansweredTarget = "--> subgraphdelegates$UserId"
+
+
+                }
+
+                Voicemail {
+                    $mdUnansweredTarget = "--> userVoicemail$UserId(Voicemail<br> $($teamsUser.DisplayName))"
+                    $subgraphUnansweredSettings = $null
+                }
+
+                Group {
+
+                    switch ($userCallingSettings.CallGroupOrder) {
+                        InOrder {
+                            $ringOrder = "Serial"
+                        }
+                        Simultaneous {
+                            $ringOrder = "Simultaneous"
+                        }
+                        Default {}
+                    }
+            
+                    $subgraphUnansweredSettings = @"
+
+                    subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
+                    direction LR
+                    callGroupRingType$UserId[($ringOrder Ring)]
+    
+"@
+
+                    $callGroupMemberCounter = 1
+
+                    foreach ($callGroupMember in $userCallingSettings.CallGroupTargets) {
+
+                        $callGroupUserObject = (Get-CsOnlineUser -Identity $callGroupMember)
+
+                        if ($ringOrder -eq "Serial") {
+
+                            $linkNumber = " |$callGroupMemberCounter|"
+
+                        }
+
+                        else {
+
+                            $linkNumber = $null
+
+                        }
+
+                        $callGroupRing = "                       callGroupRingType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
+
+                        $subgraphUnansweredSettings += $callGroupRing
+
+                        $callGroupCounter ++
+                    }
+
+                    $subgraphUnansweredSettings += "`n                end"
+
+                    $mdUnansweredTarget = "--> subgraphCallGroups$UserId"
+
+                }
+                SingleTarget {
+
+                    if ($userCallingSettings.UnansweredTarget -match "sip:" -or $userCallingSettings.UnansweredTarget -notmatch "\+") {
+
+                        $userForwardingTarget = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).DisplayName
+                        $forwardingTargetType = "Internal User"
+    
+                        if ($null -eq $userForwardingTarget) {
+    
+                            $userForwardingTarget = "External Tenant"
+                            $forwardingTargetType = "Federated User"
+    
+                        }
+    
+                    }
+    
+                    else {
+    
+                        $userForwardingTarget = $userCallingSettings.UnansweredTarget
+                        $forwardingTargetType = "External PSTN"
+    
+                    }
+
+                    $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
+                    $subgraphUnansweredSettings = $null       
+
+                }
+                Default {}
+            }
+
+            $mdUserCallingSettings = @"
+    
+            $userNode --> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName))
+            
+            subgraph subgraphSettings$UserId[ ]
+            userParallelRing$userId --> userForwardingResult$UserId{Call Answered?}
+"@
+
+            $mdUserCallingSettingsAddition = @"
+
+            userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
+            $subgraphUnansweredSettings
+            end
+            userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
+            userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
+
+"@
+
+            $mdUserCallingSettings += $mdUserCallingSettingsAddition
+
             
         }
 
