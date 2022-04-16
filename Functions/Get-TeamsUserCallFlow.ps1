@@ -1,10 +1,92 @@
+<#
+    .SYNOPSIS
+    Reads the user calling settings of a Teams user and visualizes the call flow using mermaid-js.
+
+    .DESCRIPTION
+    Reads the user calling settings of a Teams user and outputs them in an easy to understand SVG diagram. See the script "ExportAllUserCallFlowsToSVG.ps1" in the root of this repo for an example on how to generate a diagram for each user in a tenant.
+
+    Author:             Martin Heusser
+    Version:            1.0.0
+    Changelog:          Moved to repository at .\Changelog.md
+
+    .PARAMETER Name
+    -UserID
+        Specifies the identity of the user by an AAD Object Id
+        Required:           false
+        Type:               string
+        Accepted values:    any string
+        Default value:      none
+
+    -UserPrincipalName
+        Specifies the identity of the user by a upn
+        Required:           false
+        Type:               string
+        Accepted values:    any string
+        Default value:      none
+
+    -SetClipBoard
+        Specifies if the mermaid code should be copied to the clipboard after the function has been executed.
+        Required:           false
+        Type:               boolean
+        Default value:      false
+
+    -CustomFilePath
+        Specifies the file path for the output file. The directory must already exist.
+        Required:           false
+        Type:               string
+        Accepted values:    file paths e.g. "C:\Temp"
+        Default value:      ".\Output\UserCallingSettings"
+
+    -StandAlone
+        Specifies if the function is running in standalone mode. This means that the first node (user object ID) will be drawn including the users name. The value $false will only be used when this function is implemented to M365CallFlowVisualizerV2.ps1
+        Required:           false
+        Type:               bool
+        Accepted values:    true, false
+        Default value:      true
+
+    -ExportSvg
+        Specifies if the function should export the diagram as an SVG image leveraging the mermaid.ink service
+        Required:           false
+        Type:               bool
+        Accepted values:    true, false
+        Default value:      true
+
+    -PreviewSvg
+        Specifies if the generated diagram should open mermaid.ink in the default browser
+        Required:           false
+        Type:               bool
+        Accepted values:    true, false
+        Default value:      true
+
+    -ExportSvg
+        Specifies if the function should export the diagram as a markdown file (*.md) NOT YET IMPLEMENTED
+        Required:           false
+        Type:               bool
+        Accepted values:    true, false
+        Default value:      false
+
+    .INPUTS
+        None.
+
+    .OUTPUTS
+        Files:
+            - *.svg
+            
+    .EXAMPLE
+        .\Functions\Get-TeamsUserCallFlow.ps1 -UserPrincipalName user@domain.com
+
+    .LINK
+    https://github.com/mozziemozz/M365CallFlowVisualizer
+    
+#>
+
 function Get-TeamsUserCallFlow {
     param (
         [Parameter(Mandatory=$false)][String]$UserId,
         [Parameter(Mandatory=$false)][String]$UserPrincipalName,
-        [Parameter(Mandatory=$false)][bool]$StandAlone = $true,
         [Parameter(Mandatory=$false)][string]$CustomFilePath = ".\Output\UserCallingSettings",
-        [Parameter(Mandatory=$false)][bool]$ExportMarkdown = $true,
+        [Parameter(Mandatory=$false)][bool]$StandAlone = $true,
+        [Parameter(Mandatory=$false)][bool]$ExportMarkdown = $false,
         [Parameter(Mandatory=$false)][bool]$PreviewSvg = $true,
         [Parameter(Mandatory=$false)][bool]$SetClipBoard = $true,
         [Parameter(Mandatory=$false)][bool]$ExportSvg = $true
@@ -91,19 +173,16 @@ function Get-TeamsUserCallFlow {
             MyDelegates {
 
                 $mdUserCallingSettings = @"
-
-                $userNode --> userForwarding$UserId(Immediate Forwarding)
-
-                subgraph subgraphSettings$UserId[ ]
-                userForwarding$UserId --> subgraphDelegates$UserId
+$userNode --> userForwarding$UserId(Immediate Forwarding)
+subgraph subgraphSettings$UserId[ ]
+userForwarding$UserId --> subgraphDelegates$UserId
 
 "@
 
                 $mdSubgraphDelegates = @"
-
-                subgraph subgraphDelegates$UserId[Delegates of $($teamsUser.DisplayName)]
-                direction LR
-                ringType$UserId[(Simultaneous Ring)]
+subgraph subgraphDelegates$UserId[Delegates of $($teamsUser.DisplayName)]
+direction LR
+ringType$UserId[(Simultaneous Ring)]
 
 "@
 
@@ -140,11 +219,10 @@ function Get-TeamsUserCallFlow {
                         }
 
                         $subgraphUnansweredSettings = @"
+subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
+direction LR
+callGroupRingType$UserId[($ringOrder Ring)]
 
-                        subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
-                        direction LR
-                        callGroupRingType$UserId[($ringOrder Ring)]
-        
 "@
 
                         $callGroupMemberCounter = 1
@@ -165,14 +243,14 @@ function Get-TeamsUserCallFlow {
 
                             }
 
-                            $callGroupRing = "                       callGroupRingType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
+                            $callGroupRing = "callGroupRingType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
 
                             $subgraphUnansweredSettings += $callGroupRing
 
                             $callGroupMemberCounter ++
                         }
 
-                        $subgraphUnansweredSettings += "`n                end"
+                        $subgraphUnansweredSettings += "`nend"
 
                         $mdUnansweredTarget = "--> subgraphCallGroups$UserId"
 
@@ -209,14 +287,13 @@ function Get-TeamsUserCallFlow {
                 }
 
                 $mdUserCallingSettingsAddition = @"
-
-                end
-                userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
-                subgraphDelegates$UserId --> userForwardingResult$UserId{Call Answered?}
-                $subgraphUnansweredSettings
-                end
-                userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
-                userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
+end
+userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
+subgraphDelegates$UserId --> userForwardingResult$UserId{Call Answered?}
+$subgraphUnansweredSettings
+end
+userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
+userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
 
 "@
 
@@ -226,12 +303,10 @@ function Get-TeamsUserCallFlow {
             Voicemail {
 
                 $mdUserCallingSettings = @"
-
-                $userNode --> userForwarding$UserId(Immediate Forwarding)
-
-                subgraph subgraphSettings$UserId[ ]
-                userForwarding$UserId --> voicemail$UserId(Voicemail<br> $($teamsUser.DisplayName))
-                end
+$userNode --> userForwarding$UserId(Immediate Forwarding)
+subgraph subgraphSettings$UserId[ ]
+userForwarding$UserId --> voicemail$UserId(Voicemail<br> $($teamsUser.DisplayName))
+end
 
 "@
 
@@ -250,19 +325,16 @@ function Get-TeamsUserCallFlow {
                 }
 
                 $mdUserCallingSettings = @"
-
-                $userNode --> userForwarding$UserId(Immediate Forwarding)
-
-                subgraph subgraphSettings$UserId[ ]
-                userForwarding$UserId --> subgraphCallGroups$UserId
+$userNode --> userForwarding$UserId(Immediate Forwarding)
+subgraph subgraphSettings$UserId[ ]
+userForwarding$UserId --> subgraphCallGroups$UserId
 
 "@
 
                 $mdSubgraphcallGroups = @"
-
-                subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
-                direction LR
-                ringType$UserId[($ringOrder Ring)]
+subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
+direction LR
+ringType$UserId[($ringOrder Ring)]
 
 "@
 
@@ -284,7 +356,7 @@ function Get-TeamsUserCallFlow {
 
                     }
 
-                    $callGroupRing = "                ringType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
+                    $callGroupRing = "ringType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
 
                     $mdSubgraphcallGroups += $callGroupRing
 
@@ -294,9 +366,8 @@ function Get-TeamsUserCallFlow {
                 $mdUserCallingSettings += $mdSubgraphcallGroups
 
                 $mdUserCallingSettingsAddition = @"
-
-                end
-                end
+end
+end
 
 "@
 
@@ -331,12 +402,10 @@ function Get-TeamsUserCallFlow {
 
 
                 $mdUserCallingSettings = @"
-
-                $userNode --> userForwarding$UserId(Immediate Forwarding)
-
-                subgraph subgraphSettings$UserId[ ]
-                userForwarding$UserId --> userForwardingTarget$UserId($forwardingTargetType<br> $userForwardingTarget)
-                end
+$userNode --> userForwarding$UserId(Immediate Forwarding)
+subgraph subgraphSettings$UserId[ ]
+userForwarding$UserId --> userForwardingTarget$UserId($forwardingTargetType<br> $userForwardingTarget)
+end
 
 "@
 
@@ -360,11 +429,10 @@ function Get-TeamsUserCallFlow {
                     $ringOrder = "Simultaneous"
 
                     $subgraphUnansweredSettings = @"
+subgraph subgraphdelegates$UserId[Delegates of $($teamsUser.DisplayName)]
+direction LR
+delegateRingType$UserId[($ringOrder Ring)]
 
-                    subgraph subgraphdelegates$UserId[Delegates of $($teamsUser.DisplayName)]
-                    direction LR
-                    delegateRingType$UserId[($ringOrder Ring)]
-    
 "@
 
                     $delegateCounter = 1
@@ -385,14 +453,14 @@ function Get-TeamsUserCallFlow {
 
                         }
 
-                        $delegateRing = "                       delegateRingType$UserId -.->$linkNumber delegateMember$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
+                        $delegateRing = "delegateRingType$UserId -.->$linkNumber delegateMember$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
 
                         $subgraphUnansweredSettings += $delegateRing
 
                         $delegateCounter ++
                     }
 
-                    $subgraphUnansweredSettings += "`n                end"
+                    $subgraphUnansweredSettings += "`nend"
 
                     $mdUnansweredTarget = "--> subgraphdelegates$UserId"
 
@@ -427,11 +495,10 @@ function Get-TeamsUserCallFlow {
                         }
                 
                         $subgraphUnansweredSettings = @"
+subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
+direction LR
+callGroupRingType$UserId[($ringOrder Ring)]
 
-                        subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
-                        direction LR
-                        callGroupRingType$UserId[($ringOrder Ring)]
-        
 "@
     
                         $callGroupMemberCounter = 1
@@ -452,14 +519,14 @@ function Get-TeamsUserCallFlow {
     
                             }
     
-                            $callGroupRing = "                       callGroupRingType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
+                            $callGroupRing = "callGroupRingType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
     
                             $subgraphUnansweredSettings += $callGroupRing
     
                             $callGroupCounter ++
                         }
     
-                        $subgraphUnansweredSettings += "`n                end"
+                        $subgraphUnansweredSettings += "`nend"
     
                         $mdUnansweredTarget = "--> subgraphCallGroups$UserId"
     
@@ -503,21 +570,18 @@ function Get-TeamsUserCallFlow {
                 MyDelegates {
     
                     $mdUserCallingSettings = @"
-    
-                    $userNode --> userForwarding$UserId(Also Ring)
-                    userForwarding$UserId -.-> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName)) ---> userForwardingResult$UserId
-                    userForwarding$UserId -.-> subgraphDelegates$UserId
-    
-                    subgraph subgraphSettings$UserId[ ]
-    
+$userNode --> userForwarding$UserId(Also Ring)
+userForwarding$UserId -.-> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName)) ---> userForwardingResult$UserId
+userForwarding$UserId -.-> subgraphDelegates$UserId
+subgraph subgraphSettings$UserId[ ]
+
 "@
     
                     $mdSubgraphDelegates = @"
-    
-                    subgraph subgraphDelegates$UserId[Delegates of $($teamsUser.DisplayName)]
-                    direction LR
-                    ringType$UserId[(Simultaneous Ring)]
-    
+subgraph subgraphDelegates$UserId[Delegates of $($teamsUser.DisplayName)]
+direction LR
+ringType$UserId[(Simultaneous Ring)]
+
 "@
     
                     $delegateCounter = 1
@@ -536,15 +600,14 @@ function Get-TeamsUserCallFlow {
                     $mdUserCallingSettings += $mdSubgraphDelegates
         
                     $mdUserCallingSettingsAddition = @"
-    
-                    end
-                    userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
-                    subgraphDelegates$UserId --> userForwardingResult$UserId{Call Answered?}
-                    $subgraphUnansweredSettings
-                    end
-                    userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
-                    userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
-    
+end
+userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
+subgraphDelegates$UserId --> userForwardingResult$UserId{Call Answered?}
+$subgraphUnansweredSettings
+end
+userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
+userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
+
 "@
     
                     $mdUserCallingSettings += $mdUserCallingSettingsAddition
@@ -553,13 +616,11 @@ function Get-TeamsUserCallFlow {
                 Voicemail {
     
                     $mdUserCallingSettings = @"
-    
-                    $userNode --> userForwarding$UserId(Immediate Forwarding)
-    
-                    subgraph subgraphSettings$UserId[ ]
-                    userForwarding$UserId --> voicemail$UserId(Voicemail<br> $($teamsUser.DisplayName))
-                    end
-    
+$userNode --> userForwarding$UserId(Immediate Forwarding)
+subgraph subgraphSettings$UserId[ ]
+userForwarding$UserId --> voicemail$UserId(Voicemail<br> $($teamsUser.DisplayName))
+end
+
 "@
     
     
@@ -577,21 +638,18 @@ function Get-TeamsUserCallFlow {
                     }
     
                     $mdUserCallingSettings = @"
-    
-                    $userNode --> userForwarding$UserId(Also Ring)
-                    userForwarding$UserId -.-> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName)) ---> userForwardingResult$UserId
-                    userForwarding$UserId -.-> subgraphCallGroups$UserId
+$userNode --> userForwarding$UserId(Also Ring)
+userForwarding$UserId -.-> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName)) ---> userForwardingResult$UserId
+userForwarding$UserId -.-> subgraphCallGroups$UserId
+subgraph subgraphSettings$UserId[ ]
 
-                    subgraph subgraphSettings$UserId[ ]
-    
 "@
     
                     $mdSubgraphcallGroups = @"
-    
-                    subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
-                    direction LR
-                    ringType$UserId[($ringOrder Ring)]
-    
+subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
+direction LR
+ringType$UserId[($ringOrder Ring)]
+
 "@
     
                     $callGroupMemberCounter = 1
@@ -612,7 +670,7 @@ function Get-TeamsUserCallFlow {
     
                         }
     
-                        $callGroupRing = "                ringType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
+                        $callGroupRing = "ringType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
     
                         $mdSubgraphcallGroups += $callGroupRing
     
@@ -622,14 +680,13 @@ function Get-TeamsUserCallFlow {
                     $mdUserCallingSettings += $mdSubgraphcallGroups
     
                     $mdUserCallingSettingsAddition = @"
-    
-                    end
-                    subgraphCallGroups$UserId --> userForwardingResult$UserId{Call Answered?}    
-                    $subgraphUnansweredSettings
-                    userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
-                    end
-                    userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
-                    userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))    
+end
+subgraphCallGroups$UserId --> userForwardingResult$UserId{Call Answered?}
+$subgraphUnansweredSettings
+userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
+end
+userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
+userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
 
 "@
     
@@ -664,25 +721,21 @@ function Get-TeamsUserCallFlow {
     
     
                     $mdUserCallingSettings = @"
-    
-                    $userNode --> userForwarding$UserId(Also Ring)
-                    userForwarding$UserId -.-> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName)) ---> userForwardingResult$UserId
-                    userForwarding$UserId -.-> userForwardingTarget$UserId
+$userNode --> userForwarding$UserId(Also Ring)
+userForwarding$UserId -.-> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName)) ---> userForwardingResult$UserId
+userForwarding$UserId -.-> userForwardingTarget$UserId
+subgraph subgraphSettings$UserId[ ]
+userForwardingTarget$UserId($forwardingTargetType<br> $userForwardingTarget)                    
 
-    
-                    subgraph subgraphSettings$UserId[ ]
-                    userForwardingTarget$UserId($forwardingTargetType<br> $userForwardingTarget)                    
-    
 "@
 
                     $mdUserCallingSettingsAddition = @"
-                        
-                    userForwardingTarget$UserId --> userForwardingResult$UserId{Call Answered?}    
-                    $subgraphUnansweredSettings
-                    userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
-                    end
-                    userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
-                    userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))    
+userForwardingTarget$UserId --> userForwardingResult$UserId{Call Answered?}    
+$subgraphUnansweredSettings
+userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
+end
+userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
+userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
 
 "@
 
@@ -714,21 +767,18 @@ function Get-TeamsUserCallFlow {
                     }
     
                     $mdUserCallingSettings = @"
-    
-                    $userNode --> userForwarding$UserId(Also Ring)
-                    userForwarding$UserId -.-> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName))
-                    userForwarding$UserId -.-> subgraphCallGroups$UserId
+$userNode --> userForwarding$UserId(Also Ring)
+userForwarding$UserId -.-> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName))
+userForwarding$UserId -.-> subgraphCallGroups$UserId
+subgraph subgraphSettings$UserId[ ]
 
-                    subgraph subgraphSettings$UserId[ ]
-    
 "@
     
                     $mdSubgraphcallGroups = @"
-    
-                    subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
-                    direction LR
-                    ringType$UserId[($ringOrder Ring)]
-    
+subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
+direction LR
+ringType$UserId[($ringOrder Ring)]
+ 
 "@
     
                     $callGroupMemberCounter = 1
@@ -749,7 +799,7 @@ function Get-TeamsUserCallFlow {
     
                         }
     
-                        $callGroupRing = "                ringType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
+                        $callGroupRing = "ringType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
     
                         $mdSubgraphcallGroups += $callGroupRing
     
@@ -759,10 +809,9 @@ function Get-TeamsUserCallFlow {
                     $mdUserCallingSettings += $mdSubgraphcallGroups
     
                     $mdUserCallingSettingsAddition = @"
-    
-                    end
-                    end
-    
+    end
+    end
+
 "@
     
                     $mdUserCallingSettings += $mdUserCallingSettingsAddition
@@ -796,16 +845,13 @@ function Get-TeamsUserCallFlow {
     
     
                     $mdUserCallingSettings = @"
-    
-                    $userNode --> userForwarding$UserId(Also Ring)
-                    userForwarding$UserId -.-> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName))
-                    userForwarding$UserId -.-> userForwardingTarget$UserId
+$userNode --> userForwarding$UserId(Also Ring)
+userForwarding$UserId -.-> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName))
+userForwarding$UserId -.-> userForwardingTarget$UserId
+subgraph subgraphSettings$UserId[ ]
+userForwardingTarget$UserId($forwardingTargetType<br> $userForwardingTarget)
+end
 
-    
-                    subgraph subgraphSettings$UserId[ ]
-                    userForwardingTarget$UserId($forwardingTargetType<br> $userForwardingTarget)
-                    end
-    
 "@
     
                 }
@@ -825,10 +871,9 @@ function Get-TeamsUserCallFlow {
                     $ringOrder = "Simultaneous"
 
                     $subgraphUnansweredSettings = @"
-
-                    subgraph subgraphdelegates$UserId[Delegates of $($teamsUser.DisplayName)]
-                    direction LR
-                    delegateRingType$UserId[($ringOrder Ring)]
+subgraph subgraphdelegates$UserId[Delegates of $($teamsUser.DisplayName)]
+direction LR
+delegateRingType$UserId[($ringOrder Ring)]
     
 "@
 
@@ -850,14 +895,14 @@ function Get-TeamsUserCallFlow {
 
                         }
 
-                        $delegateRing = "                       delegateRingType$UserId -.->$linkNumber delegateMember$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
+                        $delegateRing = "delegateRingType$UserId -.->$linkNumber delegateMember$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
 
                         $subgraphUnansweredSettings += $delegateRing
 
                         $delegateCounter ++
                     }
 
-                    $subgraphUnansweredSettings += "`n                end"
+                    $subgraphUnansweredSettings += "`nend"
 
                     $mdUnansweredTarget = "--> subgraphdelegates$UserId"
 
@@ -882,10 +927,9 @@ function Get-TeamsUserCallFlow {
                     }
             
                     $subgraphUnansweredSettings = @"
-
-                    subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
-                    direction LR
-                    callGroupRingType$UserId[($ringOrder Ring)]
+subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
+direction LR
+callGroupRingType$UserId[($ringOrder Ring)]
     
 "@
 
@@ -907,14 +951,14 @@ function Get-TeamsUserCallFlow {
 
                         }
 
-                        $callGroupRing = "                       callGroupRingType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
+                        $callGroupRing = "callGroupRingType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
 
                         $subgraphUnansweredSettings += $callGroupRing
 
                         $callGroupCounter ++
                     }
 
-                    $subgraphUnansweredSettings += "`n                end"
+                    $subgraphUnansweredSettings += "`nend"
 
                     $mdUnansweredTarget = "--> subgraphCallGroups$UserId"
 
@@ -951,19 +995,18 @@ function Get-TeamsUserCallFlow {
 
             $mdUserCallingSettings = @"
     
-            $userNode --> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName))
-            
-            subgraph subgraphSettings$UserId[ ]
-            userParallelRing$userId --> userForwardingResult$UserId{Call Answered?}
+$userNode --> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName))
+subgraph subgraphSettings$UserId[ ]
+userParallelRing$userId --> userForwardingResult$UserId{Call Answered?}
+
 "@
 
             $mdUserCallingSettingsAddition = @"
-
-            userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
-            $subgraphUnansweredSettings
-            end
-            userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
-            userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
+userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
+$subgraphUnansweredSettings
+end
+userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
+userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
 
 "@
 
@@ -984,10 +1027,11 @@ function Get-TeamsUserCallFlow {
 
     if ($ExportSvg -or $PreviewSvg) {
 
-        $base64FriendlyFlowChart = @"
+        $mdFlowChart = $mdFlowChart.Trim()
 
+        $base64FriendlyFlowChart = @"
 $mdFlowChart
-        
+
 "@
 
         $flowChartBytes = [System.Text.Encoding]::ASCII.GetBytes($base64FriendlyFlowChart)
@@ -1010,7 +1054,4 @@ $mdFlowChart
     }
 
 }
-
-. Get-TeamsUserCallFlow -UserPrincipalName "wendy@mozzism.ch"
-
 
