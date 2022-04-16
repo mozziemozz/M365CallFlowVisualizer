@@ -11,7 +11,7 @@
 |01.11.2021|M365CallFlowVisualizerV2.ps1||Add support to display call queues for an after hours call flow of an auto attendant|
 |01.11.2021|M365CallFlowVisualizerV2.ps1||Fix issue where additional entry point numbers were not shown on after hours call flow call queues|
 |02.11.2021|M365CallFlowVisualizerV2.ps1||Add support for nested Auto Attendants|
-|03.01.2022|M365CallFlowVisualizerV2.ps1|M365CallFlowVisualizerV2.ps1|2.1.0|V2.1 more or less a complete rewrite of the script logic to make it really dynamic and support indefinite chaning/nesting of voice apps|
+|03.01.2022|M365CallFlowVisualizerV2.ps1|2.1.0|V2.1 more or less a complete rewrite of the script logic to make it really dynamic and support indefinite chaning/nesting of voice apps|
 |        |M365CallFlowVisualizerV2.ps1|| Add support to disable rendering of nested voice apps|
 |        |M365CallFlowVisualizerV2.ps1|| Add support for voice app name and type parameters|
 |        |M365CallFlowVisualizerV2.ps1|| Fixed a bug where some phone numbers which contained extensions including a ";" were not rendered in mermaid. (replace ";" with ",")|
