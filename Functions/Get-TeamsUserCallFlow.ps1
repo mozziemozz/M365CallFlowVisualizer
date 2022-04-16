@@ -2,19 +2,35 @@ function Get-TeamsUserCallFlow {
     param (
         [Parameter(Mandatory=$false)][String]$UserId,
         [Parameter(Mandatory=$false)][String]$UserPrincipalName,
-        [Parameter(Mandatory=$false)][bool]$standAlone = $true
-
+        [Parameter(Mandatory=$false)][bool]$StandAlone = $true,
+        [Parameter(Mandatory=$false)][string]$CustomFilePath = ".\Output\UserCallingSettings",
+        [Parameter(Mandatory=$false)][bool]$ExportMarkdown = $true,
+        [Parameter(Mandatory=$false)][bool]$PreviewSvg = $true,
+        [Parameter(Mandatory=$false)][bool]$SetClipBoard = $true,
+        [Parameter(Mandatory=$false)][bool]$ExportSvg = $true
     )
+
+    . .\Functions\Connect-M365CFV.ps1
+
+    . Connect-M365CFV
+
+    if ($CustomFilePath) {
+
+        $filePath = $CustomFilePath
+
+    }
+
+    else {
+
+        $filePath = ".\"
+
+    }
 
     if ($UserPrincipalName) {
 
         $UserId = (Get-CsOnlineUser -Identity $UserPrincipalName).Identity
         $UserId
     }
-
-    . .\Functions\Connect-M365CFV.ps1
-
-    . Connect-M365CFV
 
     $teamsUser = Get-CsOnlineUser -Identity $UserId
 
@@ -25,7 +41,7 @@ function Get-TeamsUserCallFlow {
     [int]$userUnansweredTimeoutMinutes = ($userCallingSettings.UnansweredDelay).Split(":")[1]
     [int]$userUnansweredTimeoutSeconds = ($userCallingSettings.UnansweredDelay).Split(":")[-1]
 
-    if ($standAlone) {
+    if ($StandAlone) {
 
         $mdFlowChart = "flowchart TB`n"
 
@@ -960,20 +976,41 @@ function Get-TeamsUserCallFlow {
 
     $mdFlowChart += $mdUserCallingSettings
 
+    if ($SetClipBoard) {
+
+        $mdFlowChart | Set-Clipboard
+
+    }
+
+    if ($ExportSvg -or $PreviewSvg) {
+
+        $base64FriendlyFlowChart = @"
+
+$mdFlowChart
+        
+"@
+
+        $flowChartBytes = [System.Text.Encoding]::ASCII.GetBytes($base64FriendlyFlowChart)
+        $encodedUrl =[Convert]::ToBase64String($flowChartBytes)
+
+        $url = "https://mermaid.ink/svg/$encodedUrl"
+
+    }
+
+    if ($ExportSvg) {
+
+        (Invoke-WebRequest -Uri $url).Content > "$filePath\UserCallingSettings_$($teamsUser.DisplayName).svg"
+
+    }
+
+    if ($PreviewSvg) {
+
+        Start-Process $url
+
+    }
+
 }
 
 . Get-TeamsUserCallFlow -UserPrincipalName "wendy@mozzism.ch"
 
-$mdFlowChart | Set-Clipboard
 
-$flowChartBytes = [System.Text.Encoding]::ASCII.GetBytes($mdFlowChart)
-$encodedUrl =[Convert]::ToBase64String($flowChartBytes)
-
-$imgType = "svg"
-
-$url = "https://mermaid.ink/$imgType/$encodedUrl"
-
-start $url
-
-<# $pythonScript = python .\Functions\EncodeMermaid.py --filename $mdFlowChart
-$pythonScript #>
