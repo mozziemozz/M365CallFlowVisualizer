@@ -1,9 +1,20 @@
 function Get-TeamsUserCallFlow {
     param (
         [Parameter(Mandatory=$false)][String]$UserId,
+        [Parameter(Mandatory=$false)][String]$UserPrincipalName,
         [Parameter(Mandatory=$false)][bool]$standAlone = $true
 
     )
+
+    if ($UserPrincipalName) {
+
+        $UserId = (Get-CsOnlineUser -Identity $UserPrincipalName).Identity
+        $UserId
+    }
+
+    . .\Functions\Connect-M365CFV.ps1
+
+    . Connect-M365CFV
 
     $teamsUser = Get-CsOnlineUser -Identity $UserId
 
@@ -14,15 +25,17 @@ function Get-TeamsUserCallFlow {
     [int]$userUnansweredTimeoutMinutes = ($userCallingSettings.UnansweredDelay).Split(":")[1]
     [int]$userUnansweredTimeoutSeconds = ($userCallingSettings.UnansweredDelay).Split(":")[-1]
 
-    $mdFlowChart = "flowchart TB`n"
-
     if ($standAlone) {
+
+        $mdFlowChart = "flowchart TB`n"
 
         $userNode = "$UserId(User<br> $($teamsUser.DisplayName))"
 
     }
 
     else {
+
+        $mdFlowChart = ""
 
         $userNode = $UserId
 
@@ -949,6 +962,18 @@ function Get-TeamsUserCallFlow {
 
 }
 
-. Get-TeamsUserCallFlow -UserId "fa19b242-8bae-419d-a4eb-12796577c81f"
+. Get-TeamsUserCallFlow -UserPrincipalName "wendy@mozzism.ch"
 
 $mdFlowChart | Set-Clipboard
+
+$flowChartBytes = [System.Text.Encoding]::ASCII.GetBytes($mdFlowChart)
+$encodedUrl =[Convert]::ToBase64String($flowChartBytes)
+
+$imgType = "svg"
+
+$url = "https://mermaid.ink/$imgType/$encodedUrl"
+
+start $url
+
+<# $pythonScript = python .\Functions\EncodeMermaid.py --filename $mdFlowChart
+$pythonScript #>

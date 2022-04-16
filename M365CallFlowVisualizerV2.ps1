@@ -178,39 +178,6 @@
     .EXAMPLE
         .\M365CallFlowVisualizerV2.ps1
 
-    .EXAMPLE
-        .\M365CallFlowVisualizerV2.ps1 -DocType Mermaid
-
-    .EXAMPLE
-        .\M365CallFlowVisualizerV2.ps1 -Theme dark
-
-    .EXAMPLE
-        .\M365CallFlowVisualizerV2.ps1 -Theme custom -NodeColor "#00A4EF" -NodeBorderColor "#7FBA00" -FontColor "#737373" -LinkColor "#FFB900" -LinkTextColor "#F25022"
-
-    .EXAMPLE
-        .\M365CallFlowVisualizerV2.ps1 -Identity "6fb84b40-f045-45e8-8c1a-8fc18188exxx"
-
-    .EXAMPLE
-        .\M365CallFlowVisualizerV2.ps1 -VoiceAppName "PS Test AA" -VoiceAppType "Auto Attendant"
-
-    .EXAMPLE
-        .\M365CallFlowVisualizerV2.ps1 -VoiceAppName "PS Test AA" -VoiceAppType "Auto Attendant" -ShowNestedCallFlows $false
-
-    .EXAMPLE
-        .\M365CallFlowVisualizerV2.ps1 -VoiceAppName "PS Test CQ" -VoiceAppType "Call Queue"
-
-    .EXAMPLE
-        .\M365CallFlowVisualizerV2.ps1 -VoiceAppName "PS Test CQ" -VoiceAppType "Call Queue" -ShowCqAgentPhoneNumbers $true -ShowCqAgentOptInStatus $true
-
-    .EXAMPLE
-        .\M365CallFlowVisualizerV2.ps1 -DocType Markdown -SetClipBoard $false
-
-    .EXAMPLE
-        .\M365CallFlowVisualizerV2.ps1 -SaveToFile $false
-
-    .EXAMPLE
-        .\M365CallFlowVisualizerV2.ps1 -CustomFilePath "C:\Temp"
-
     .LINK
     https://github.com/mozziemozz/M365CallFlowVisualizer
     
