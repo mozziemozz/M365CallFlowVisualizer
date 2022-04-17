@@ -6,7 +6,7 @@
     Reads the user calling settings of a Teams user and outputs them in an easy to understand SVG diagram. See the script "ExportAllUserCallFlowsToSVG.ps1" in the root of this repo for an example on how to generate a diagram for each user in a tenant.
 
     Author:             Martin Heusser
-    Version:            1.0.0
+    Version:            1.0.1
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -31,7 +31,7 @@
         Default value:      false
 
     -CustomFilePath
-        Specifies the file path for the output file. The directory must already exist.
+        Specifies the file path for the output file.
         Required:           false
         Type:               string
         Accepted values:    file paths e.g. "C:\Temp"
@@ -1042,6 +1042,12 @@ $mdFlowChart
     }
 
     if ($ExportSvg) {
+
+        if (!(Test-Path -Path "$filePath")) {
+
+            New-Item -Path $filePath -ItemType Directory
+
+        }
 
         (Invoke-WebRequest -Uri $url).Content > "$filePath\UserCallingSettings_$($teamsUser.DisplayName).svg"
 
