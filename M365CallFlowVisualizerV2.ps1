@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.6.5
+    Version:            2.6.6
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -192,7 +192,7 @@ param(
     [Parameter(Mandatory=$false)][Bool]$SaveToFile = $true,
     [Parameter(Mandatory=$false)][Bool]$ExportHtml = $true,
     [Parameter(Mandatory=$false)][Switch]$PreviewHtml,
-    [Parameter(Mandatory=$false)][String]$CustomFilePath,
+    [Parameter(Mandatory=$false)][String]$CustomFilePath = ".\Output",
     [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentPhoneNumbers,
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentOptInStatus,
@@ -2981,6 +2981,12 @@ if ($Theme -eq "custom") {
 
 
 if ($SaveToFile -eq $true) {
+
+    if (!(Test-Path -Path $FilePath)) {
+
+        New-Item -Path $FilePath -ItemType Directory
+
+    }
 
     if ($ExportAudioFiles -and $audioFileNames) {
         

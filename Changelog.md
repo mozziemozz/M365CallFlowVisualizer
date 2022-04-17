@@ -62,3 +62,4 @@
 |12.04.2022|M365CallFlowVisualizerV2.ps1|2.6.5|Sometimes CQ properties are returned in .Value and sometimes not. This version implements changes to handle these kind of differences. Optimize diagram when CQ Overflow threshold is 0. |
 |16.04.2022|Get-TeamsUserCallFlow.ps1|1.0.0|Finalize first version of function for standalone use. Create example script to run the function for each enabled user of a tenant.|
 |17.04.2022|Get-TeamsUserCallFlow.ps1|1.0.1|Create ouptut directory if it doesn't exist.|
+|17.04.2022|M365CallFlowVisualizerV2.ps1|2.6.6|Create ouptut directory if it doesn't exist. Set default value of CustomFilePath to .\Output|
