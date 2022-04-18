@@ -227,6 +227,14 @@ if ($SaveToFile -eq $false -and $CustomFilePath) {
 
 }
 
+
+function FixDisplayName {
+    param (
+        $String
+    )
+    return $String = $String -replace "[()]",""
+}
+
 # Common arrays and variables
 $nestedVoiceApps = @()
 $processedVoiceApps = @()
@@ -350,7 +358,7 @@ function Find-Holidays {
             User { 
                 $OperatorTypeFriendly = "User"
                 $OperatorUser = (Get-MgUser -UserId $($Operator.Id))
-                $OperatorName = $OperatorUser.DisplayName
+                $OperatorName = FixDisplayName -String $OperatorUser.DisplayName
                 $OperatorIdentity = $OperatorUser.Id
                 $AddOperatorToNestedVoiceApps = $false
             }
@@ -577,13 +585,13 @@ subgraph $holidaySubgraphName
                 # Switch through different transfer call to target types
                 switch ($holidayActionTargetType) {
                     User { $holidayActionTargetTypeFriendly = "User" 
-                    $holidayActionTargetName = (Get-MgUser -UserId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
+                    $holidayActionTargetName = FixDisplayName -String (Get-MgUser -UserId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
 
                     $holidayVoicemailSystemGreeting = $null
 
                 }
                     SharedVoicemail { $holidayActionTargetTypeFriendly = "Voicemail"
-                    $holidayActionTargetName = (Get-MgGroup -GroupId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
+                    $holidayActionTargetName = FixDisplayName -String (Get-MgGroup -GroupId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
 
                     if ($holidayCallFlow.Menu.MenuOptions.CallTarget.EnableSharedVoicemailSystemPromptSuppression -eq $false) {
 
@@ -1392,7 +1400,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                     User { 
                         $defaultCallFlowTargetTypeFriendly = "User"
                         $defaultCallFlowTargetUser = (Get-MgUser -UserId $($MenuOption.CallTarget.Id))
-                        $defaultCallFlowTargetName = $defaultCallFlowTargetUser.DisplayName
+                        $defaultCallFlowTargetName = FixDisplayName -String $defaultCallFlowTargetUser.DisplayName
                         $defaultCallFlowTargetIdentity = $defaultCallFlowTargetUser.Id
 
                         $defaultCallFlowVoicemailSystemGreeting = $null
@@ -1437,7 +1445,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                         $defaultCallFlowTargetTypeFriendly = "Voicemail"
                         $defaultCallFlowTargetGroup = (Get-MgGroup -GroupId $MenuOption.CallTarget.Id)
-                        $defaultCallFlowTargetName = $defaultCallFlowTargetGroup.DisplayName
+                        $defaultCallFlowTargetName = FixDisplayName -String $defaultCallFlowTargetGroup.DisplayName
                         $defaultCallFlowTargetIdentity = $defaultCallFlowTargetGroup.Id
 
                         if ($MenuOption.CallTarget.EnableSharedVoicemailSystemPromptSuppression -eq $false) {
@@ -1856,7 +1864,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                     User { 
                         $afterHoursCallFlowTargetTypeFriendly = "User"
                         $afterHoursCallFlowTargetUser = (Get-MgUser -UserId $($MenuOption.CallTarget.Id))
-                        $afterHoursCallFlowTargetName = $afterHoursCallFlowTargetUser.DisplayName
+                        $afterHoursCallFlowTargetName = FixDisplayName -String $afterHoursCallFlowTargetUser.DisplayName
                         $afterHoursCallFlowTargetIdentity = $afterHoursCallFlowTargetUser.Id
 
                         $afterHoursCallFlowVoicemailSystemGreeting = $null
@@ -1901,7 +1909,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                         $afterHoursCallFlowTargetTypeFriendly = "Voicemail"
                         $afterHoursCallFlowTargetGroup = (Get-MgGroup -GroupId $MenuOption.CallTarget.Id)
-                        $afterHoursCallFlowTargetName = $afterHoursCallFlowTargetGroup.DisplayName
+                        $afterHoursCallFlowTargetName = FixDisplayName -String $afterHoursCallFlowTargetGroup.DisplayName
                         $afterHoursCallFlowTargetIdentity = $afterHoursCallFlowTargetGroup.Id
 
                         if ($MenuOption.CallTarget.EnableSharedVoicemailSystemPromptSuppression -eq $false) {
@@ -2129,7 +2137,7 @@ function Get-CallQueueCallFlow {
 
             foreach ($DistributionList in $MatchingCQ.DistributionLists.Guid) {
 
-                $DistributionListName = (Get-MgGroup -GroupId $DistributionList).DisplayName
+                $DistributionListName = FixDisplayName -String (Get-MgGroup -GroupId $DistributionList).DisplayName
 
                 $CqAgentListType += " <br> Group Name: $DistributionListName"
 
@@ -2146,7 +2154,7 @@ function Get-CallQueueCallFlow {
         else {
 
             $TeamName = (Get-Team -GroupId $MatchingCQ.DistributionLists.Guid).DisplayName
-            $ChannelName = (Get-TeamChannel -GroupId $MatchingCQ.DistributionLists.Guid | Where-Object {$_.Id -eq $MatchingCQ.ChannelId}).DisplayName
+            $ChannelName = FixDisplayName -String (Get-TeamChannel -GroupId $MatchingCQ.DistributionLists.Guid | Where-Object {$_.Id -eq $MatchingCQ.ChannelId}).DisplayName
 
             $CqAgentListType = "Teams Channel <br> Team Name: $TeamName <br> Channel Name: $ChannelName"
 
@@ -2167,7 +2175,7 @@ function Get-CallQueueCallFlow {
             if ($MatchingCQ.OverflowActionTarget.Type -eq "User") {
 
                 $MatchingOverFlowUserProperties = (Get-MgUser -UserId $MatchingCQ.OverflowActionTarget.Id)
-                $MatchingOverFlowUser = $MatchingOverFlowUserProperties.DisplayName
+                $MatchingOverFlowUser = FixDisplayName -String $MatchingOverFlowUserProperties.DisplayName
                 $MatchingOverFlowIdentity = $MatchingOverFlowUserProperties.Id
 
                 $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowIdentity)(User <br> $MatchingOverFlowUser)"
@@ -2228,7 +2236,7 @@ function Get-CallQueueCallFlow {
         }
         SharedVoicemail {
             $MatchingOverFlowVoicemailProperties = (Get-MgGroup -GroupId $MatchingCQ.OverflowActionTarget.Id)
-            $MatchingOverFlowVoicemail = $MatchingOverFlowVoicemailProperties.DisplayName
+            $MatchingOverFlowVoicemail = FixDisplayName -String $MatchingOverFlowVoicemailProperties.DisplayName
             $MatchingOverFlowIdentity = $MatchingOverFlowVoicemailProperties.Id
 
             if ($MatchingCQ.OverflowSharedVoicemailTextToSpeechPrompt) {
@@ -2319,7 +2327,7 @@ function Get-CallQueueCallFlow {
             if ($MatchingCQ.TimeoutActionTarget.Type -eq "User") {
 
                 $MatchingTimeoutUserProperties = (Get-MgUser -UserId $MatchingCQ.TimeoutActionTarget.Id)
-                $MatchingTimeoutUser = $MatchingTimeoutUserProperties.DisplayName
+                $MatchingTimeoutUser = FixDisplayName -String $MatchingTimeoutUserProperties.DisplayName
                 $MatchingTimeoutIdentity = $MatchingTimeoutUserProperties.Id
     
                 $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingTimeoutIdentity)(User <br> $MatchingTimeoutUser)"
@@ -2379,7 +2387,7 @@ function Get-CallQueueCallFlow {
         }
         SharedVoicemail {
             $MatchingTimeoutVoicemailProperties = (Get-MgGroup -GroupId $MatchingCQ.TimeoutActionTarget.Id)
-            $MatchingTimeoutVoicemail = $MatchingTimeoutVoicemailProperties.DisplayName
+            $MatchingTimeoutVoicemail = FixDisplayName -String $MatchingTimeoutVoicemailProperties.DisplayName
             $MatchingTimeoutIdentity = $MatchingTimeoutVoicemailProperties.Id
     
             if ($MatchingCQ.TimeoutSharedVoicemailTextToSpeechPrompt) {
@@ -2464,7 +2472,7 @@ function Get-CallQueueCallFlow {
 
     # add each agent to the empty agents mermaid element
     foreach ($CqAgent in $CqAgents) {
-        $AgentDisplayName = (Get-MgUser -UserId $CqAgent.ObjectId).DisplayName
+        $AgentDisplayName = FixDisplayName -String (Get-MgUser -UserId $CqAgent.ObjectId).DisplayName
 
         if ($ShowCqAgentPhoneNumbers -eq $true) {
 
