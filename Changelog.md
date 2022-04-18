@@ -63,3 +63,4 @@
 |16.04.2022|Get-TeamsUserCallFlow.ps1|1.0.0|Finalize first version of function for standalone use. Create example script to run the function for each enabled user of a tenant.|
 |17.04.2022|Get-TeamsUserCallFlow.ps1|1.0.1|Create ouptut directory if it doesn't exist.|
 |17.04.2022|M365CallFlowVisualizerV2.ps1|2.6.6|Create ouptut directory if it doesn't exist. Set default value of CustomFilePath to .\Output|
+|18.04.2022|M365CallFlowVisualizerV2.ps1|2.6.6| add FixDisplayName function to fix DisplayNames with (), it affects the mermaid render|
