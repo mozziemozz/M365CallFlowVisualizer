@@ -320,7 +320,7 @@ function Find-Holidays {
 
     $aa = Get-CsAutoAttendant -Identity $VoiceAppId
 
-    if ($aa.CallHandlingAssociations.Type.Value -contains "Holiday") {
+    if ($aa.CallHandlingAssociations.Type -contains "Holiday") {
         $aaHasHolidays = $true    
     }
 
@@ -345,7 +345,7 @@ function Find-Holidays {
 
     if ($Operator) {
 
-        switch ($Operator.Type.Value) {
+        switch ($Operator.Type) {
 
             User { 
                 $OperatorTypeFriendly = "User"
@@ -418,6 +418,7 @@ function Find-AfterHours {
     # Create ps object which has no business hours, needed to check if it matches an auto attendants after hours schedule
     $aaDefaultScheduleProperties = New-Object -TypeName psobject
 
+    $aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "ComplementEnabled" -Value $true
     $aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayMondayHours" -Value "00:00:00-1.00:00:00"
     $aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayTuesdayHours" -Value "00:00:00-1.00:00:00"
     $aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayWednesdayHours" -Value "00:00:00-1.00:00:00"
@@ -425,25 +426,59 @@ function Find-AfterHours {
     $aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayFridayHours" -Value "00:00:00-1.00:00:00"
     $aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplaySaturdayHours" -Value "00:00:00-1.00:00:00"
     $aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplaySundayHours" -Value "00:00:00-1.00:00:00"
-    #$aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "ComplementEnabled" -Value $true
 
     # Convert to string for comparison
     $aaDefaultScheduleProperties = $aaDefaultScheduleProperties | Out-String
     
     # Get the current auto attendants after hours schedule and convert to string
 
-    $aaAfterHoursScheduleId = ($aa.CallHandlingAssociations | Where-Object {$_.Type.Value -eq "AfterHours"}).ScheduleId
-
-    $aaAfterHoursScheduleProperties = ($aa.Schedules | Where-Object {$_.Id -eq $aaAfterHoursScheduleId}).WeeklyRecurrentSchedule | Select-Object *Display* | Out-String
-
     # Check if the auto attendant has business hours by comparing the ps object to the actual config of the current auto attendant
     # Additional check for auto attendants which somehow have no schedules at all
-    if ($aa.Schedules.Type.Value -contains "WeeklyRecurrence") {
+    if ($aa.Schedules.Type -contains "WeeklyRecurrence") {
 
-        $aaAfterHoursScheduleId = ($aa.CallHandlingAssociations | Where-Object {$_.Type.Value -eq "AfterHours"}).ScheduleId
+        $aaAfterHoursScheduleId = ($aa.CallHandlingAssociations | Where-Object {$_.Type -eq "AfterHours"}).ScheduleId
+        $aaAfterHoursScheduleProperties = ($aa.Schedules | Where-Object {$_.Id -eq $aaAfterHoursScheduleId}).WeeklyRecurrentSchedule
 
-        $aaAfterHoursScheduleProperties = ($aa.Schedules | Where-Object {$_.Id -eq $aaAfterHoursScheduleId}).WeeklyRecurrentSchedule | Select-Object *Display* | Out-String
+        $aaEffectiveScheduleProperties = New-Object -TypeName psobject
 
+        [string]$mondayHoursFriendly = ""
+
+        $mondayHoursEntryCount = $aaAfterHoursScheduleProperties.MondayHours.Count
+
+        foreach ($entry in $aaAfterHoursScheduleProperties.MondayHours) {
+
+            $start = $entry.Start
+            $end = $entry.End
+
+            if ($mondayHoursEntryCount -le 1) {
+                $comma = $null
+            }
+
+            else {
+                $comma = ", "
+            }
+
+            $mondayHoursFriendly += "$start-$end$comma"
+
+            Write-Host $start
+            Write-Host $end
+
+            $mondayHoursEntryCount --
+
+        }
+
+        if ($aaEffectiveMondayHoursStart.Length -eq 1) {
+            $aaEffectiveMondayHoursStart = "0$aaEffectiveMondayHoursStart"
+        }
+
+        $aaEffectiveScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayMondayHours" -Value "00:00:00-1.00:00:00"
+        $aaEffectiveScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayTuesdayHours" -Value "00:00:00-1.00:00:00"
+        $aaEffectiveScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayWednesdayHours" -Value "00:00:00-1.00:00:00"
+        $aaEffectiveScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayThursdayHours" -Value "00:00:00-1.00:00:00"
+        $aaEffectiveScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayFridayHours" -Value "00:00:00-1.00:00:00"
+        $aaEffectiveScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplaySaturdayHours" -Value "00:00:00-1.00:00:00"
+        $aaEffectiveScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplaySundayHours" -Value "00:00:00-1.00:00:00"
+    
         # Check if the auto attendant has business hours by comparing the ps object to the actual config of the current auto attendant
         if ($aaDefaultScheduleProperties -eq $aaAfterHoursScheduleProperties) {
             $aaHasAfterHours = $false
@@ -500,9 +535,9 @@ subgraph $holidaySubgraphName
 
             else {
 
-                $holidayGreeting = "Greeting <br> $($holidayCallFlow.Greetings.ActiveType.Value)"
+                $holidayGreeting = "Greeting <br> $($holidayCallFlow.Greetings.ActiveType)"
 
-                if ($($holidayCallFlow.Greetings.ActiveType.Value) -eq "TextToSpeech" -and $ShowTTSGreetingText) {
+                if ($($holidayCallFlow.Greetings.ActiveType) -eq "TextToSpeech" -and $ShowTTSGreetingText) {
 
                     $audioFileName = $null
 
@@ -526,7 +561,7 @@ subgraph $holidaySubgraphName
                 
                 }
 
-                elseif ($($holidayCallFlow.Greetings.ActiveType.Value) -eq "AudioFile" -and $ShowAudioFileName) {
+                elseif ($($holidayCallFlow.Greetings.ActiveType) -eq "AudioFile" -and $ShowAudioFileName) {
 
                     $holidayTTSGreetingValue = $null
 
@@ -557,7 +592,7 @@ subgraph $holidaySubgraphName
 
             }
 
-            $holidayAction = $holidayCallFlow.Menu.MenuOptions.Action.Value
+            $holidayAction = $holidayCallFlow.Menu.MenuOptions.Action
 
             # Check if holiday call handling is disconnect call
             if ($holidayAction -eq "DisconnectCall") {
@@ -572,7 +607,7 @@ subgraph $holidaySubgraphName
 
             else {
 
-                $holidayActionTargetType = $holidayCallFlow.Menu.MenuOptions.CallTarget.Type.Value
+                $holidayActionTargetType = $holidayCallFlow.Menu.MenuOptions.CallTarget.Type
 
                 # Switch through different transfer call to target types
                 switch ($holidayActionTargetType) {
@@ -688,7 +723,7 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
     if ($aaHasAfterHours) {
 
         # Get the business hours schedule and convert to csv for comparison with hard coded strings
-        $aaBusinessHoursScheduleId = ($aa.CallHandlingAssociations | Where-Object {$_.Type.Value -eq "AfterHours"}).ScheduleId
+        $aaBusinessHoursScheduleId = ($aa.CallHandlingAssociations | Where-Object {$_.Type -eq "AfterHours"}).ScheduleId
 
         $aaBusinessHours = ($aa.Schedules | Where-Object {$_.Id -eq $aaBusinessHoursScheduleId}).WeeklyRecurrentSchedule | ConvertTo-Csv
 
@@ -1069,18 +1104,18 @@ function Get-AutoAttendantDefaultCallFlow {
 
     # Get the current auto attendants default call flow and default call flow action
     $defaultCallFlow = $aa.DefaultCallFlow
-    $defaultCallFlowAction = $aa.DefaultCallFlow.Menu.MenuOptions.Action.Value
+    $defaultCallFlowAction = $aa.DefaultCallFlow.Menu.MenuOptions.Action
 
     # Get the current auto attentans default call flow greeting
-    if (!$defaultCallFlow.Greetings.ActiveType.Value){
+    if (!$defaultCallFlow.Greetings.ActiveType){
         $defaultCallFlowGreeting = "Greeting <br> None"
     }
 
     else {
 
-        $defaultCallFlowGreeting = "Greeting <br> $($defaultCallFlow.Greetings.ActiveType.Value)"
+        $defaultCallFlowGreeting = "Greeting <br> $($defaultCallFlow.Greetings.ActiveType)"
 
-        if ($($defaultCallFlow.Greetings.ActiveType.Value) -eq "TextToSpeech" -and $ShowTTSGreetingText) {
+        if ($($defaultCallFlow.Greetings.ActiveType) -eq "TextToSpeech" -and $ShowTTSGreetingText) {
 
             $audioFileName = $null
 
@@ -1104,7 +1139,7 @@ function Get-AutoAttendantDefaultCallFlow {
         
         }
 
-        elseif ($($defaultCallFlow.Greetings.ActiveType.Value) -eq "AudioFile" -and $ShowAudioFileName) {
+        elseif ($($defaultCallFlow.Greetings.ActiveType) -eq "AudioFile" -and $ShowAudioFileName) {
 
             $defaultTTSGreetingValue = $null
 
@@ -1149,7 +1184,7 @@ function Get-AutoAttendantDefaultCallFlow {
 
         $defaultCallFlowMenuOptions = $aa.DefaultCallFlow.Menu.MenuOptions
 
-        if ($defaultCallFlowMenuOptions.Count -lt 2 -and !$defaultCallFlow.Menu.Prompts.ActiveType.Value) {
+        if ($defaultCallFlowMenuOptions.Count -lt 2 -and !$defaultCallFlow.Menu.Prompts.ActiveType) {
 
             $mdDefaultCallFlowGreeting = "defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting] --> "
 
@@ -1163,9 +1198,9 @@ function Get-AutoAttendantDefaultCallFlow {
 
         else {
 
-            $defaultCallFlowMenuOptionsGreeting = "IVR Greeting <br> $($defaultCallFlow.Menu.Prompts.ActiveType.Value)"
+            $defaultCallFlowMenuOptionsGreeting = "IVR Greeting <br> $($defaultCallFlow.Menu.Prompts.ActiveType)"
 
-            if ($($defaultCallFlow.Menu.Prompts.ActiveType.Value) -eq "TextToSpeech" -and $ShowTTSGreetingText) {
+            if ($($defaultCallFlow.Menu.Prompts.ActiveType) -eq "TextToSpeech" -and $ShowTTSGreetingText) {
 
                 $audioFileName = $null
     
@@ -1189,7 +1224,7 @@ function Get-AutoAttendantDefaultCallFlow {
             
             }
     
-            elseif ($($defaultCallFlow.Menu.Prompts.ActiveType.Value) -eq "AudioFile" -and $ShowAudioFileName) {
+            elseif ($($defaultCallFlow.Menu.Prompts.ActiveType) -eq "AudioFile" -and $ShowAudioFileName) {
     
                 $defaultCallFlowMenuOptionsTTSGreetingValue = $null
     
@@ -1251,7 +1286,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
         foreach ($MenuOption in $defaultCallFlowMenuOptions) {
 
-            if ($defaultCallFlowMenuOptions.Count -lt 2 -and !$defaultCallFlow.Menu.Prompts.ActiveType.Value) {
+            if ($defaultCallFlowMenuOptions.Count -lt 2 -and !$defaultCallFlow.Menu.Prompts.ActiveType) {
 
                 $mdDtmfLink = $null
                 $DtmfKey = $null
@@ -1277,15 +1312,17 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                 }
 
-                $DtmfKey = ($MenuOption.DtmfResponse.Value).Replace("Tone","")
+                [String]$DtmfKey = ($MenuOption.DtmfResponse)
+
+                $DtmfKey = $DtmfKey.Replace("Tone","")
 
                 $mdDtmfLink = "$defaultCallFlowMenuOptionsKeyPress --> |$DtmfKey $voiceResponse|"
 
             }
 
             # Get transfer target type
-            $defaultCallFlowTargetType = $MenuOption.CallTarget.Type.Value
-            $defaultCallFlowAction = $MenuOption.Action.Value
+            $defaultCallFlowTargetType = $MenuOption.CallTarget.Type
+            $defaultCallFlowAction = $MenuOption.Action
 
             if ($defaultCallFlowAction -eq "TransferCallToOperator") {
 
@@ -1320,7 +1357,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
             elseif ($defaultCallFlowAction -eq "Announcement") {
                 
-                $voiceMenuOptionAnnouncementType = $MenuOption.Prompt.ActiveType.Value
+                $voiceMenuOptionAnnouncementType = $MenuOption.Prompt.ActiveType
 
                 $defaultCallFlowMenuOptionsAnnouncement = "$voiceMenuOptionAnnouncementType"
 
@@ -1529,19 +1566,19 @@ function Get-AutoAttendantAfterHoursCallFlow {
     $aaAfterHoursCallFlowAaObjectId = $aa.Identity
 
     # Get after hours call flow
-    $afterHoursAssociatedCallFlowId = ($aa.CallHandlingAssociations | Where-Object {$_.Type.Value -eq "AfterHours"}).CallFlowId
+    $afterHoursAssociatedCallFlowId = ($aa.CallHandlingAssociations | Where-Object {$_.Type -eq "AfterHours"}).CallFlowId
     $afterHoursCallFlow = ($aa.CallFlows | Where-Object {$_.Id -eq $afterHoursAssociatedCallFlowId})
-    $afterHoursCallFlowAction = ($aa.CallFlows | Where-Object {$_.Id -eq $afterHoursAssociatedCallFlowId}).Menu.MenuOptions.Action.Value
+    $afterHoursCallFlowAction = ($aa.CallFlows | Where-Object {$_.Id -eq $afterHoursAssociatedCallFlowId}).Menu.MenuOptions.Action
 
     # Get after hours greeting
-    if (!$afterHoursCallFlow.Greetings.ActiveType.Value){
+    if (!$afterHoursCallFlow.Greetings.ActiveType){
         $afterHoursCallFlowGreeting = "Greeting <br> None"
     }
 
     else {
-        $afterHoursCallFlowGreeting = "Greeting <br> $($afterHoursCallFlow.Greetings.ActiveType.Value)"
+        $afterHoursCallFlowGreeting = "Greeting <br> $($afterHoursCallFlow.Greetings.ActiveType)"
 
-        if ($($afterHoursCallFlow.Greetings.ActiveType.Value) -eq "TextToSpeech" -and $ShowTTSGreetingText) {
+        if ($($afterHoursCallFlow.Greetings.ActiveType) -eq "TextToSpeech" -and $ShowTTSGreetingText) {
 
             $audioFileName = $null
 
@@ -1566,7 +1603,7 @@ function Get-AutoAttendantAfterHoursCallFlow {
         
         }
 
-        elseif ($($afterHoursCallFlow.Greetings.ActiveType.Value) -eq "AudioFile" -and $ShowAudioFileName) {
+        elseif ($($afterHoursCallFlow.Greetings.ActiveType) -eq "AudioFile" -and $ShowAudioFileName) {
 
             $afterHoursTTSGreetingValue = $null
 
@@ -1612,7 +1649,7 @@ function Get-AutoAttendantAfterHoursCallFlow {
         $afterHoursCallFlowMenuOptions = $afterHoursCallFlow.Menu.MenuOptions
 
         # Check if IVR is disabled
-        if ($afterHoursCallFlowMenuOptions.Count -lt 2 -and !$afterHoursCallFlow.Menu.Prompts.ActiveType.Value) {
+        if ($afterHoursCallFlowMenuOptions.Count -lt 2 -and !$afterHoursCallFlow.Menu.Prompts.ActiveType) {
 
             $mdafterHoursCallFlowGreeting = "afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlowGreeting] --> "
 
@@ -1626,9 +1663,9 @@ function Get-AutoAttendantAfterHoursCallFlow {
 
         else {
 
-            $afterHoursCallFlowMenuOptionsGreeting = "IVR Greeting <br> $($afterHoursCallFlow.Menu.Prompts.ActiveType.Value)"
+            $afterHoursCallFlowMenuOptionsGreeting = "IVR Greeting <br> $($afterHoursCallFlow.Menu.Prompts.ActiveType)"
 
-            if ($($afterHoursCallFlow.Menu.Prompts.ActiveType.Value) -eq "TextToSpeech" -and $ShowTTSGreetingText) {
+            if ($($afterHoursCallFlow.Menu.Prompts.ActiveType) -eq "TextToSpeech" -and $ShowTTSGreetingText) {
 
                 $audioFileName = $null
     
@@ -1653,7 +1690,7 @@ function Get-AutoAttendantAfterHoursCallFlow {
             
             }
     
-            elseif ($($afterHoursCallFlow.Menu.Prompts.ActiveType.Value) -eq "AudioFile" -and $ShowAudioFileName) {
+            elseif ($($afterHoursCallFlow.Menu.Prompts.ActiveType) -eq "AudioFile" -and $ShowAudioFileName) {
     
                 $afterHoursCallFlowMenuOptionsTTSGreetingValue = $null
     
@@ -1715,7 +1752,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
         foreach ($MenuOption in $afterHoursCallFlowMenuOptions) {
 
-            if ($afterHoursCallFlowMenuOptions.Count -lt 2 -and !$afterHoursCallFlow.Menu.Prompts.ActiveType.Value) {
+            if ($afterHoursCallFlowMenuOptions.Count -lt 2 -and !$afterHoursCallFlow.Menu.Prompts.ActiveType) {
 
                 $mdDtmfLink = $null
                 $DtmfKey = $null
@@ -1741,15 +1778,17 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                 }
 
-                $DtmfKey = ($MenuOption.DtmfResponse.Value).Replace("Tone","")
+                [String]$DtmfKey = ($MenuOption.DtmfResponse)
+
+                $DtmfKey = $DtmfKey.Replace("Tone","")
 
                 $mdDtmfLink = "$afterHoursCallFlowMenuOptionsKeyPress --> |$DtmfKey $voiceResponse|"
 
             }
 
             # Get transfer target type
-            $afterHoursCallFlowTargetType = $MenuOption.CallTarget.Type.Value
-            $afterHoursCallFlowAction = $MenuOption.Action.Value
+            $afterHoursCallFlowTargetType = $MenuOption.CallTarget.Type
+            $afterHoursCallFlowAction = $MenuOption.Action
 
             if ($afterHoursCallFlowAction -eq "TransferCallToOperator") {
 
@@ -1783,7 +1822,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
             elseif ($afterHoursCallFlowAction -eq "Announcement") {
                 
-                $voiceMenuOptionAnnouncementType = $MenuOption.Prompt.ActiveType.Value
+                $voiceMenuOptionAnnouncementType = $MenuOption.Prompt.ActiveType
 
                 $afterHoursCallFlowMenuOptionsAnnouncement = "$voiceMenuOptionAnnouncementType"
 
@@ -2003,24 +2042,11 @@ function Get-CallQueueCallFlow {
     $CqName = $MatchingCQ.Name
     $CqOverFlowThreshold = $MatchingCQ.OverflowThreshold
 
-    # It seems that Microsoft has made some changes and this value is sometimes returned in .Value and sometimes not. This is temporary until results are stable and reliable again.
     $CqOverFlowAction = $MatchingCQ.OverflowAction
-
-    if ($null -eq $CqOverFlowAction) {
-        $CqOverFlowAction = $MatchingCQ.OverflowAction.Value
-    }
 
     $CqTimeoutAction = $MatchingCQ.TimeoutAction
 
-    if ($null -eq $CqTimeoutAction) {
-        $CqTimeoutAction = $MatchingCQ.TimeoutAction.Value
-    }
-
     $CqRoutingMethod = $MatchingCQ.RoutingMethod
-
-    if ($null -eq $CqRoutingMethod) {
-        $CqRoutingMethod = $MatchingCQ.RoutingMethod.Value
-    }
 
 
     $CqTimeOut = $MatchingCQ.TimeoutThreshold
