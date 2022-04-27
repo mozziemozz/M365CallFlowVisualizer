@@ -219,6 +219,7 @@ $ErrorActionPreference = "Continue"
 
 . .\Functions\Connect-M365CFV.ps1
 . .\Functions\Read-BusinessHours.ps1
+. .\Functions\FixDisplayName.ps1
 
 . Connect-M365CFV
 
@@ -229,13 +230,6 @@ if ($SaveToFile -eq $false -and $CustomFilePath) {
 
 }
 
-
-function FixDisplayName {
-    param (
-        $String
-    )
-    return $String = $String -replace "[()]",""
-}
 
 # Common arrays and variables
 $nestedVoiceApps = @()

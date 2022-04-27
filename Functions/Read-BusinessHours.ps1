@@ -3,6 +3,7 @@
     Reads Business Hours from an auto Attendant in a human readable format.
     
     .DESCRIPTION
+    Author:             Martin Heusser
     Version:            1.0.0
     Changelog:          .\Changelog.md
 
