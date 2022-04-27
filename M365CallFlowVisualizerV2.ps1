@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.6.6
+    Version:            2.6.7
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -218,8 +218,10 @@ $ErrorActionPreference = "Continue"
 # Load Functions
 
 . .\Functions\Connect-M365CFV.ps1
+. .\Functions\Read-BusinessHours.ps1
 
 . Connect-M365CFV
+
 
 if ($SaveToFile -eq $false -and $CustomFilePath) {
 
@@ -418,7 +420,7 @@ function Find-AfterHours {
     # Create ps object which has no business hours, needed to check if it matches an auto attendants after hours schedule
     $aaDefaultScheduleProperties = New-Object -TypeName psobject
 
-    $aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "ComplementEnabled" -Value $true
+    #$aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "ComplementEnabled" -Value $true
     $aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayMondayHours" -Value "00:00:00-1.00:00:00"
     $aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayTuesdayHours" -Value "00:00:00-1.00:00:00"
     $aaDefaultScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayWednesdayHours" -Value "00:00:00-1.00:00:00"
@@ -439,48 +441,10 @@ function Find-AfterHours {
         $aaAfterHoursScheduleId = ($aa.CallHandlingAssociations | Where-Object {$_.Type -eq "AfterHours"}).ScheduleId
         $aaAfterHoursScheduleProperties = ($aa.Schedules | Where-Object {$_.Id -eq $aaAfterHoursScheduleId}).WeeklyRecurrentSchedule
 
-        $aaEffectiveScheduleProperties = New-Object -TypeName psobject
-
-        [string]$mondayHoursFriendly = ""
-
-        $mondayHoursEntryCount = $aaAfterHoursScheduleProperties.MondayHours.Count
-
-        foreach ($entry in $aaAfterHoursScheduleProperties.MondayHours) {
-
-            $start = $entry.Start
-            $end = $entry.End
-
-            if ($mondayHoursEntryCount -le 1) {
-                $comma = $null
-            }
-
-            else {
-                $comma = ", "
-            }
-
-            $mondayHoursFriendly += "$start-$end$comma"
-
-            Write-Host $start
-            Write-Host $end
-
-            $mondayHoursEntryCount --
-
-        }
-
-        if ($aaEffectiveMondayHoursStart.Length -eq 1) {
-            $aaEffectiveMondayHoursStart = "0$aaEffectiveMondayHoursStart"
-        }
-
-        $aaEffectiveScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayMondayHours" -Value "00:00:00-1.00:00:00"
-        $aaEffectiveScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayTuesdayHours" -Value "00:00:00-1.00:00:00"
-        $aaEffectiveScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayWednesdayHours" -Value "00:00:00-1.00:00:00"
-        $aaEffectiveScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayThursdayHours" -Value "00:00:00-1.00:00:00"
-        $aaEffectiveScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplayFridayHours" -Value "00:00:00-1.00:00:00"
-        $aaEffectiveScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplaySaturdayHours" -Value "00:00:00-1.00:00:00"
-        $aaEffectiveScheduleProperties | Add-Member -MemberType NoteProperty -Name "DisplaySundayHours" -Value "00:00:00-1.00:00:00"
+        . Read-BusinessHours
     
         # Check if the auto attendant has business hours by comparing the ps object to the actual config of the current auto attendant
-        if ($aaDefaultScheduleProperties -eq $aaAfterHoursScheduleProperties) {
+        if ($aaDefaultScheduleProperties -eq ($aaEffectiveScheduleProperties | Out-String)) {
             $aaHasAfterHours = $false
         }
 
@@ -722,24 +686,18 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
     # Check if auto attendant has after hours and holidays
     if ($aaHasAfterHours) {
 
-        # Get the business hours schedule and convert to csv for comparison with hard coded strings
-        $aaBusinessHoursScheduleId = ($aa.CallHandlingAssociations | Where-Object {$_.Type -eq "AfterHours"}).ScheduleId
-
-        $aaBusinessHours = ($aa.Schedules | Where-Object {$_.Id -eq $aaBusinessHoursScheduleId}).WeeklyRecurrentSchedule | ConvertTo-Csv
-
-        # Convert from csv to read the business hours per day
-        $aaBusinessHoursFriendly = $aaBusinessHours | ConvertFrom-Csv
-
         $aaTimeZone = $aa.TimeZoneId
+
+        $aaBusinessHoursFriendly = $aaEffectiveScheduleProperties
 
         # Monday
         # Check if Monday has business hours which are open 24 Hours per day
         if ($aaBusinessHoursFriendly.DisplayMondayHours -eq "00:00:00-1.00:00:00") {
-            $mondayHours = "Monday Hours: Open 24 Hours"
+            $mondayHours = "Monday: Open 24 Hours"
         }
         # Check if Monday has business hours set different than 24 Hours open per day
         elseif ($aaBusinessHoursFriendly.DisplayMondayHours) {
-            $mondayHours = "Monday Hours: $($aaBusinessHoursFriendly.DisplayMondayHours)"
+            $mondayHours = "Monday: $($aaBusinessHoursFriendly.DisplayMondayHours)"
 
             if ($mondayHours -match ",") {
 
@@ -753,7 +711,7 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
                 foreach ($TimeRange in $mondayHoursTimeRanges | Where-Object {$_ -notcontains $mondayHoursTimeRanges[0]} ) {
 
-                    $MondayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Monday Hours: ","")
+                    $MondayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Monday: ","")
                     $MondayHoursEnd = ($TimeRange.Split("-")[1].Remove(($TimeRange.Split("-")[1]).Length -3))
 
                     $mondayHours += (", $MondayHoursStart - $MondayHoursEnd")
@@ -772,15 +730,15 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
         }
         # Check if Monday has no business hours at all / is closed 24 Hours per day
         else {
-            $mondayHours = "Monday Hours: Closed"
+            $mondayHours = "Monday: Closed"
         }
 
         # Tuesday
         if ($aaBusinessHoursFriendly.DisplayTuesdayHours -eq "00:00:00-1.00:00:00") {
-            $TuesdayHours = "Tuesday Hours: Open 24 Hours"
+            $TuesdayHours = "Tuesday: Open 24 Hours"
         }
         elseif ($aaBusinessHoursFriendly.DisplayTuesdayHours) {
-            $TuesdayHours = "Tuesday Hours: $($aaBusinessHoursFriendly.DisplayTuesdayHours)"
+            $TuesdayHours = "Tuesday: $($aaBusinessHoursFriendly.DisplayTuesdayHours)"
 
             if ($TuesdayHours -match ",") {
 
@@ -794,7 +752,7 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
                 foreach ($TimeRange in $TuesdayHoursTimeRanges | Where-Object {$_ -notcontains $TuesdayHoursTimeRanges[0]} ) {
 
-                    $TuesdayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Tuesday Hours: ","")
+                    $TuesdayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Tuesday: ","")
                     $TuesdayHoursEnd = ($TimeRange.Split("-")[1].Remove(($TimeRange.Split("-")[1]).Length -3))
 
                     $TuesdayHours += (", $TuesdayHoursStart - $TuesdayHoursEnd")
@@ -812,15 +770,15 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
         } 
         else {
-            $TuesdayHours = "Tuesday Hours: Closed"
+            $TuesdayHours = "Tuesday: Closed"
         }
 
         # Wednesday
         if ($aaBusinessHoursFriendly.DisplayWednesdayHours -eq "00:00:00-1.00:00:00") {
-            $WednesdayHours = "Wednesday Hours: Open 24 Hours"
+            $WednesdayHours = "Wednesday: Open 24 Hours"
         } 
         elseif ($aaBusinessHoursFriendly.DisplayWednesdayHours) {
-            $WednesdayHours = "Wednesday Hours: $($aaBusinessHoursFriendly.DisplayWednesdayHours)"
+            $WednesdayHours = "Wednesday: $($aaBusinessHoursFriendly.DisplayWednesdayHours)"
 
             if ($WednesdayHours -match ",") {
 
@@ -834,7 +792,7 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
                 foreach ($TimeRange in $WednesdayHoursTimeRanges | Where-Object {$_ -notcontains $WednesdayHoursTimeRanges[0]} ) {
 
-                    $WednesdayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Wednesday Hours: ","")
+                    $WednesdayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Wednesday: ","")
                     $WednesdayHoursEnd = ($TimeRange.Split("-")[1].Remove(($TimeRange.Split("-")[1]).Length -3))
 
                     $WednesdayHours += (", $WednesdayHoursStart - $WednesdayHoursEnd")
@@ -852,15 +810,15 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
         }
         else {
-            $WednesdayHours = "Wednesday Hours: Closed"
+            $WednesdayHours = "Wednesday: Closed"
         }
 
         # Thursday
         if ($aaBusinessHoursFriendly.DisplayThursdayHours -eq "00:00:00-1.00:00:00") {
-            $ThursdayHours = "Thursday Hours: Open 24 Hours"
+            $ThursdayHours = "Thursday: Open 24 Hours"
         } 
         elseif ($aaBusinessHoursFriendly.DisplayThursdayHours) {
-            $ThursdayHours = "Thursday Hours: $($aaBusinessHoursFriendly.DisplayThursdayHours)"
+            $ThursdayHours = "Thursday: $($aaBusinessHoursFriendly.DisplayThursdayHours)"
 
             if ($ThursdayHours -match ",") {
 
@@ -874,7 +832,7 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
                 foreach ($TimeRange in $ThursdayHoursTimeRanges | Where-Object {$_ -notcontains $ThursdayHoursTimeRanges[0]} ) {
 
-                    $ThursdayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Thursday Hours: ","")
+                    $ThursdayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Thursday: ","")
                     $ThursdayHoursEnd = ($TimeRange.Split("-")[1].Remove(($TimeRange.Split("-")[1]).Length -3))
 
                     $ThursdayHours += (", $ThursdayHoursStart - $ThursdayHoursEnd")
@@ -892,15 +850,15 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
         }
         else {
-            $ThursdayHours = "Thursday Hours: Closed"
+            $ThursdayHours = "Thursday: Closed"
         }
 
         # Friday
         if ($aaBusinessHoursFriendly.DisplayFridayHours -eq "00:00:00-1.00:00:00") {
-            $FridayHours = "Friday Hours: Open 24 Hours"
+            $FridayHours = "Friday: Open 24 Hours"
         } 
         elseif ($aaBusinessHoursFriendly.DisplayFridayHours) {
-            $FridayHours = "Friday Hours: $($aaBusinessHoursFriendly.DisplayFridayHours)"
+            $FridayHours = "Friday: $($aaBusinessHoursFriendly.DisplayFridayHours)"
 
             if ($FridayHours -match ",") {
 
@@ -914,7 +872,7 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
                 foreach ($TimeRange in $FridayHoursTimeRanges | Where-Object {$_ -notcontains $FridayHoursTimeRanges[0]} ) {
 
-                    $FridayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Friday Hours: ","")
+                    $FridayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Friday: ","")
                     $FridayHoursEnd = ($TimeRange.Split("-")[1].Remove(($TimeRange.Split("-")[1]).Length -3))
 
                     $FridayHours += (", $FridayHoursStart - $FridayHoursEnd")
@@ -932,16 +890,16 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
         }
         else {
-            $FridayHours = "Friday Hours: Closed"
+            $FridayHours = "Friday: Closed"
         }
 
         # Saturday
         if ($aaBusinessHoursFriendly.DisplaySaturdayHours -eq "00:00:00-1.00:00:00") {
-            $SaturdayHours = "Saturday Hours: Open 24 Hours"
+            $SaturdayHours = "Saturday: Open 24 Hours"
         } 
 
         elseif ($aaBusinessHoursFriendly.DisplaySaturdayHours) {
-            $SaturdayHours = "Saturday Hours: $($aaBusinessHoursFriendly.DisplaySaturdayHours)"
+            $SaturdayHours = "Saturday: $($aaBusinessHoursFriendly.DisplaySaturdayHours)"
 
             if ($SaturdayHours -match ",") {
 
@@ -955,7 +913,7 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
                 foreach ($TimeRange in $SaturdayHoursTimeRanges | Where-Object {$_ -notcontains $SaturdayHoursTimeRanges[0]} ) {
 
-                    $SaturdayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Saturday Hours: ","")
+                    $SaturdayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Saturday: ","")
                     $SaturdayHoursEnd = ($TimeRange.Split("-")[1].Remove(($TimeRange.Split("-")[1]).Length -3))
 
                     $SaturdayHours += (", $SaturdayHoursStart - $SaturdayHoursEnd")
@@ -974,15 +932,15 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
         }
 
         else {
-            $SaturdayHours = "Saturday Hours: Closed"
+            $SaturdayHours = "Saturday: Closed"
         }
 
         # Sunday
         if ($aaBusinessHoursFriendly.DisplaySundayHours -eq "00:00:00-1.00:00:00") {
-            $SundayHours = "Sunday Hours: Open 24 Hours"
+            $SundayHours = "Sunday: Open 24 Hours"
         }
         elseif ($aaBusinessHoursFriendly.DisplaySundayHours) {
-            $SundayHours = "Sunday Hours: $($aaBusinessHoursFriendly.DisplaySundayHours)"
+            $SundayHours = "Sunday: $($aaBusinessHoursFriendly.DisplaySundayHours)"
 
             if ($SundayHours -match ",") {
 
@@ -996,7 +954,7 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
 
                 foreach ($TimeRange in $SundayHoursTimeRanges | Where-Object {$_ -notcontains $SundayHoursTimeRanges[0]} ) {
 
-                    $SundayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Sunday Hours: ","")
+                    $SundayHoursStart = ($TimeRange.Split("-")[0].Remove(($TimeRange.Split("-")[0]).Length -3)).Replace("Sunday: ","")
                     $SundayHoursEnd = ($TimeRange.Split("-")[1].Remove(($TimeRange.Split("-")[1]).Length -3))
 
                     $SundayHours += (", $SundayHoursStart - $SundayHoursEnd")
@@ -1015,7 +973,7 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
         }
 
         else {
-            $SundayHours = "Sunday Hours: Closed"
+            $SundayHours = "Sunday: Closed"
         }
 
         # Create the mermaid node for business hours check including the actual business hours
@@ -2832,8 +2790,16 @@ function Get-CallFlow {
     if ($voiceAppType -eq "Auto Attendant") {
         . Find-Holidays -VoiceAppId $VoiceApp.Identity
         . Find-AfterHours -VoiceAppId $VoiceApp.Identity
+
+        if ($aaHasHolidays -eq $true -and $aaHasAfterHours -eq $false) {
     
-        if ($aaHasHolidays -eq $true -or $aaHasAfterHours -eq $true) {
+            . Get-AutoAttendantDefaultCallFlow -VoiceAppId $VoiceApp.Identity
+        
+            . Get-AutoAttendantHolidaysAndAfterHours -VoiceAppId $VoiceApp.Identity
+    
+        }
+    
+        elseif ($aaHasHolidays -eq $true -or $aaHasAfterHours -eq $true) {
     
             . Get-AutoAttendantDefaultCallFlow -VoiceAppId $VoiceApp.Identity
     
@@ -2842,7 +2808,7 @@ function Get-CallFlow {
             . Get-AutoAttendantHolidaysAndAfterHours -VoiceAppId $VoiceApp.Identity
     
         }
-    
+
         else {
     
             . Get-AutoAttendantDefaultCallFlow -VoiceAppId $VoiceApp.Identity
