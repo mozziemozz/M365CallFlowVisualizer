@@ -65,4 +65,5 @@
 |17.04.2022|M365CallFlowVisualizerV2.ps1|2.6.6|Create ouptut directory if it doesn't exist. Set default value of CustomFilePath to .\Output|
 |27.04.2022|M365CallFlowVisualizerV2.ps1|2.6.7|Microsoft changed some stuff again how values are returned. Many attributes were behind a ".Value" which has been removed by MS. Also Business Hours don't include "DisplayHours" anymore, a Function was added to properly read Business Hours|
 |27.04.2022|Read-BusinessHours|1.0.0|Function created to read business hours properly|
-|18.04.2022|M365CallFlowVisualizerV2.ps1|2.6.6| add FixDisplayName function to fix DisplayNames with (), it affects the mermaid render|
+|18.04.2022|M365CallFlowVisualizerV2.ps1|2.6.6|add FixDisplayName function to fix DisplayNames with (), it affects the mermaid render|
+|17.05.2022|M365CallFlowVisualizerV2.ps1|2.6.8|Fix audio file or TTS greeting paths in HTML when using a custom file path|

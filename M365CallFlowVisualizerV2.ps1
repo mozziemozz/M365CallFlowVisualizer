@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.6.7
+    Version:            2.6.8
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -2983,12 +2983,25 @@ if ($SaveToFile -eq $true) {
     }
 
     if ($ExportAudioFiles -and $audioFileNames) {
+
+        if ($CustomFilePath) {
+
+            $audioFileNames = $audioFileNames.Replace($CustomFilePath,".")
+
+        }
         
         $mermaidCode += $audioFileNames
 
     }
 
     if ($ExportTTSGreetings -and $ttsGreetings) {
+
+        if ($CustomFilePath) {
+
+            $ttsGreetings = $ttsGreetings.Replace($CustomFilePath,".")
+
+        }
+
 
         $mermaidCode += $ttsGreetings
 

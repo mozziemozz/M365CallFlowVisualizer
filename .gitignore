@@ -1,6 +1,7 @@
 **/dev
 **/backup
 **/Output
+**/.VSCodeCounter
 *.mmd
 *.htm
 *.mp3
