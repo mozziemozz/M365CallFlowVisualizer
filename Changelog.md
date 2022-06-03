@@ -67,3 +67,5 @@
 |27.04.2022|Read-BusinessHours|1.0.0|Function created to read business hours properly|
 |18.04.2022|M365CallFlowVisualizerV2.ps1|2.6.6|add FixDisplayName function to fix DisplayNames with (), it affects the mermaid render|
 |17.05.2022|M365CallFlowVisualizerV2.ps1|2.6.8|Fix audio file or TTS greeting paths in HTML when using a custom file path|
+|03.06.2022|Get-TeamsUserCallFlow.ps1|1.0.2|Add Mermaid nodes and subgraphs to variables of main script for theme support|
+|03.06.2022|M365CallFlowVisualizerV2|2.6.9|Integrate Get-TeamsUserCallFlow.ps1 into main Script. This means that User Calling Settings can now be drawn as well.|

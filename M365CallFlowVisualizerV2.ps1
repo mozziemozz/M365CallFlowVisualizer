@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.6.8
+    Version:            2.6.9
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -53,7 +53,13 @@
         Specifies whether or not to also display the call flows of nested call queues or auto attendants. If set to false, only the name of nested voice apps will be rendered. Nested call flows won't be expanded.
         Required:           false
         Type:               boolean
-        Default value:      true   
+        Default value:      true
+
+    -ShowUserCallingSettings
+        Specifies whether or not to also display the user calling settings of a Teams user. If set to false, only the name of a user will be rendered.
+        Required:           false
+        Type:               boolean
+        Default value:      true
 
     -ShowCqAgentPhoneNumbers
         Specifies whether or not the agent subgraphs of call queues should include a users direct number.
@@ -194,6 +200,7 @@ param(
     [Parameter(Mandatory=$false)][Switch]$PreviewHtml,
     [Parameter(Mandatory=$false)][String]$CustomFilePath = ".\Output",
     [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
+    [Parameter(Mandatory=$false)][Bool]$ShowUserCallingSettings = $true,
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentPhoneNumbers,
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentOptInStatus,
     [Parameter(Mandatory=$false)][Switch]$ShowTTSGreetingText,
@@ -220,6 +227,7 @@ $ErrorActionPreference = "Continue"
 . .\Functions\Connect-M365CFV.ps1
 . .\Functions\Read-BusinessHours.ps1
 . .\Functions\FixDisplayName.ps1
+. .\Functions\Get-TeamsUserCallFlow.ps1
 
 . Connect-M365CFV
 
@@ -233,6 +241,7 @@ if ($SaveToFile -eq $false -and $CustomFilePath) {
 
 # Common arrays and variables
 $nestedVoiceApps = @()
+$userCallingSettings = @()
 $processedVoiceApps = @()
 $allMermaidNodes = @()
 $allSubgraphs = @()
@@ -1392,6 +1401,8 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                         $defaultCallFlowTargetName = FixDisplayName -String $defaultCallFlowTargetUser.DisplayName
                         $defaultCallFlowTargetIdentity = $defaultCallFlowTargetUser.Id
 
+                        $userCallingSettings += $defaultCallFlowTargetUser.Id
+
                         $defaultCallFlowVoicemailSystemGreeting = $null
 
                     }
@@ -1858,6 +1869,8 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                         $afterHoursCallFlowTargetName = FixDisplayName -String $afterHoursCallFlowTargetUser.DisplayName
                         $afterHoursCallFlowTargetIdentity = $afterHoursCallFlowTargetUser.Id
 
+                        $userCallingSettings += $afterHoursCallFlowTargetUser.Id
+
                         $afterHoursCallFlowVoicemailSystemGreeting = $null
 
                     }
@@ -2156,6 +2169,8 @@ function Get-CallQueueCallFlow {
                 $MatchingOverFlowUser = FixDisplayName -String $MatchingOverFlowUserProperties.DisplayName
                 $MatchingOverFlowIdentity = $MatchingOverFlowUserProperties.Id
 
+                $userCallingSettings += $MatchingOverFlowUserProperties.Id
+
                 $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowIdentity)(User <br> $MatchingOverFlowUser)"
 
                 $allMermaidNodes += @("cqOverFlowAction$($cqCallFlowObjectId)","$($MatchingOverFlowIdentity)")
@@ -2307,6 +2322,8 @@ function Get-CallQueueCallFlow {
                 $MatchingTimeoutUserProperties = (Get-MgUser -UserId $MatchingCQ.TimeoutActionTarget.Id)
                 $MatchingTimeoutUser = FixDisplayName -String $MatchingTimeoutUserProperties.DisplayName
                 $MatchingTimeoutIdentity = $MatchingTimeoutUserProperties.Id
+
+                $userCallingSettings += $MatchingTimeoutUserProperties.Id
     
                 $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingTimeoutIdentity)(User <br> $MatchingTimeoutUser)"
 
@@ -2891,6 +2908,18 @@ else {
         Write-Warning -Message "Your call flow contains nested call queues or auto attendants. They won't be expanded because 'ShowNestedCallFlows' is set to false."
         Write-Host "Nested Voice App Ids:" -ForegroundColor Yellow
         $nestedVoiceApps
+
+    }
+
+}
+
+if ($ShowUserCallingSettings -eq $true) {
+
+    foreach ($userId in $userCallingSettings) {
+
+        . Get-TeamsUserCallFlow -UserId $userId -PreviewSvg $false -SetClipBoard $false -StandAlone $true -ExportSvg $false -CustomFilePath $CustomFilePath
+
+        $mermaidCode += $mdUserCallingSettings
 
     }
 

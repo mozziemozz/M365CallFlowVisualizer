@@ -158,7 +158,9 @@ If you want to implement Mermaid Diagrams into your markdown based documentation
 
 # Known limitations
 - The tool has only been tested on Windows systems. Some functionalty might not be available on other platforms.
-- Syntax error if a CQ has no agents.
+- User Calling Settings are not recursive. Only the settings of the current user will be read and drawn. If a user forwards to another user, the diagram stops at the forwarding target's user name.
+- Forwarding Targets in a holiday list are not expanded.
+- IVRs in holiday call handlings are not supported.
 
 # Planned feature updates
 - Reflect if voicemail transcription or suppress system greeting is on --> Suppress system message was implemented in V 2.4.2

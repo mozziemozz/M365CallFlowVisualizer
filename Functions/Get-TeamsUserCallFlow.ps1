@@ -6,7 +6,7 @@
     Reads the user calling settings of a Teams user and outputs them in an easy to understand SVG diagram. See the script "ExportAllUserCallFlowsToSVG.ps1" in the root of this repo for an example on how to generate a diagram for each user in a tenant.
 
     Author:             Martin Heusser
-    Version:            1.0.1
+    Version:            1.0.2
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -118,7 +118,7 @@ function Get-TeamsUserCallFlow {
 
     $userCallingSettings = Get-CsUserCallingSettings -Identity $UserId
 
-    $userCallingSettings
+    #$userCallingSettings
 
     [int]$userUnansweredTimeoutMinutes = ($userCallingSettings.UnansweredDelay).Split(":")[1]
     [int]$userUnansweredTimeoutSeconds = ($userCallingSettings.UnansweredDelay).Split(":")[-1]
@@ -156,7 +156,7 @@ function Get-TeamsUserCallFlow {
     # user is neither forwarding or unanswered enabled
     if (!$userCallingSettings.IsForwardingEnabled -and !$userCallingSettings.IsUnansweredEnabled) {
 
-        Write-Host "User is neither forwaring or unanswered enabled"
+        #Write-Host "User is neither forwaring or unanswered enabled"
 
         $mdUserCallingSettings = @"
         $userNode
@@ -167,7 +167,7 @@ function Get-TeamsUserCallFlow {
     # user is immediate forwarding enabled
     elseif ($userCallingSettings.ForwardingType -eq "Immediate") {
 
-        Write-Host "user is immediate forwarding enabled."
+        #Write-Host "user is immediate forwarding enabled."
 
         switch ($userCallingSettings.ForwardingTargetType) {
             MyDelegates {
@@ -179,12 +179,18 @@ userForwarding$UserId --> subgraphDelegates$UserId
 
 "@
 
+$allMermaidNodes += @("userForwarding$UserId","userForwarding$UserId","")
+$allSubgraphs += "subgraphSettings$UserId"
+
                 $mdSubgraphDelegates = @"
 subgraph subgraphDelegates$UserId[Delegates of $($teamsUser.DisplayName)]
 direction LR
 ringType$UserId[(Simultaneous Ring)]
 
 "@
+
+$allMermaidNodes += "ringType$UserId"
+$allSubgraphs += "subgraphDelegates$UserId"
 
                 $delegateCounter = 1
 
@@ -196,7 +202,10 @@ ringType$UserId[(Simultaneous Ring)]
 
                     $mdSubgraphDelegates += $delegateRing
 
+                    $allMermaidNodes += "delegate$($delegateUserObject.Identity)$delegateCounter"
+
                     $delegateCounter ++
+
                 }
 
                 $mdUserCallingSettings += $mdSubgraphDelegates
@@ -205,6 +214,8 @@ ringType$UserId[(Simultaneous Ring)]
                     Voicemail {
                         $mdUnansweredTarget = "--> userVoicemail$UserId(Voicemail<br> $($teamsUser.DisplayName))"
                         $subgraphUnansweredSettings = $null
+
+                        $allMermaidNodes += "userVoicemail$UserId"
                     }
                     Group {
 
@@ -224,6 +235,9 @@ direction LR
 callGroupRingType$UserId[($ringOrder Ring)]
 
 "@
+
+$allMermaidNodes += "callGroupRingType$UserId"
+$allSubgraphs += "subgraphCallGroups$UserId"
 
                         $callGroupMemberCounter = 1
 
@@ -247,7 +261,10 @@ callGroupRingType$UserId[($ringOrder Ring)]
 
                             $subgraphUnansweredSettings += $callGroupRing
 
+                            $allMermaidNodes += "callGroupMember$($callGroupUserObject.Identity)"
+
                             $callGroupMemberCounter ++
+                            
                         }
 
                         $subgraphUnansweredSettings += "`nend"
@@ -280,7 +297,9 @@ callGroupRingType$UserId[($ringOrder Ring)]
                         }
 
                         $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
-                        $subgraphUnansweredSettings = $null       
+                        $subgraphUnansweredSettings = $null
+
+                        $allMermaidNodes += "userUnansweredTarget$UserId"
 
                     }
                     Default {}
@@ -297,6 +316,8 @@ userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Conne
 
 "@
 
+                $allMermaidNodes += @("userForwardingResult$UserId","userForwardingTimeout$UserId","userForwardingConnected$UserId")
+
                 $mdUserCallingSettings += $mdUserCallingSettingsAddition
 
             }
@@ -310,6 +331,8 @@ end
 
 "@
 
+$allMermaidNodes += @("userForwarding$UserId","voicemail$UserId")
+$allSubgraphs += "subgraphSettings$UserId"
 
             }
             Group {
@@ -331,12 +354,18 @@ userForwarding$UserId --> subgraphCallGroups$UserId
 
 "@
 
+$allMermaidNodes += "userForwarding$UserId"
+$allSubgraphs += "subgraphSettings$UserId"
+
                 $mdSubgraphcallGroups = @"
 subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
 direction LR
 ringType$UserId[($ringOrder Ring)]
 
 "@
+
+$allMermaidNodes += "ringType$UserId"
+$allSubgraphs += "subgraphCallGroups$UserId"
 
                 $callGroupMemberCounter = 1
 
@@ -359,8 +388,11 @@ ringType$UserId[($ringOrder Ring)]
                     $callGroupRing = "ringType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
 
                     $mdSubgraphcallGroups += $callGroupRing
+                    
+                    $allMermaidNodes += "callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter"
 
                     $callGroupMemberCounter ++
+
                 }
 
                 $mdUserCallingSettings += $mdSubgraphcallGroups
@@ -409,19 +441,22 @@ end
 
 "@
 
+$allMermaidNodes += @("userForwarding$UserId","userForwardingTarget$UserId")
+$allSubgraphs += "subgraphSettings$UserId"
+
             }
             Default {}
         }
 
     }
 
-    # user is either forwarding or unansered enabled
+    # user is either forwarding or unanswered enabled
     else {
 
         # user is forwarding and unanswered enabled
         if ($userCallingSettings.IsForwardingEnabled -and $userCallingSettings.IsUnansweredEnabled) {
 
-            Write-Host "user is forwaring and unanswered enabled"
+            #Write-Host "user is forwaring and unanswered enabled"
 
             switch ($userCallingSettings.UnansweredTargetType) {
                 MyDelegates {
@@ -434,6 +469,9 @@ direction LR
 delegateRingType$UserId[($ringOrder Ring)]
 
 "@
+
+$allMermaidNodes += "delegateRingType$UserId"
+$allSubgraphs += "subgraphdelegates$UserId"
 
                     $delegateCounter = 1
 
@@ -457,7 +495,10 @@ delegateRingType$UserId[($ringOrder Ring)]
 
                         $subgraphUnansweredSettings += $delegateRing
 
+                        $allMermaidNodes += "delegateMember$($delegateUserObject.Identity)$delegateCounter"
+
                         $delegateCounter ++
+
                     }
 
                     $subgraphUnansweredSettings += "`nend"
@@ -470,6 +511,8 @@ delegateRingType$UserId[($ringOrder Ring)]
                 Voicemail {
                     $mdUnansweredTarget = "--> userVoicemail$UserId(Voicemail<br> $($teamsUser.DisplayName))"
                     $subgraphUnansweredSettings = $null
+
+                    $allMermaidNodes += "userVoicemail$UserId"
                 }
 
                 Group {
@@ -500,6 +543,9 @@ direction LR
 callGroupRingType$UserId[($ringOrder Ring)]
 
 "@
+
+$allMermaidNodes += "callGroupRingType$UserId"
+$allSubgraphs += "subgraphCallGroups$UserId"
     
                         $callGroupMemberCounter = 1
     
@@ -522,8 +568,11 @@ callGroupRingType$UserId[($ringOrder Ring)]
                             $callGroupRing = "callGroupRingType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
     
                             $subgraphUnansweredSettings += $callGroupRing
+
+                            $allMermaidNodes += "callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter"
     
                             $callGroupCounter ++
+
                         }
     
                         $subgraphUnansweredSettings += "`nend"
@@ -559,7 +608,9 @@ callGroupRingType$UserId[($ringOrder Ring)]
                     }
 
                     $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
-                    $subgraphUnansweredSettings = $null       
+                    $subgraphUnansweredSettings = $null
+
+                    $allMermaidNodes += "userUnansweredTarget$UserId"
 
                 }
                 Default {}
@@ -576,6 +627,9 @@ userForwarding$UserId -.-> subgraphDelegates$UserId
 subgraph subgraphSettings$UserId[ ]
 
 "@
+
+$allMermaidNodes += @("userForwarding$UserId","userParallelRing$userId","userForwardingResult$UserId")
+$allSubgraphs += "subgraphSettings$UserId"
     
                     $mdSubgraphDelegates = @"
 subgraph subgraphDelegates$UserId[Delegates of $($teamsUser.DisplayName)]
@@ -583,6 +637,9 @@ direction LR
 ringType$UserId[(Simultaneous Ring)]
 
 "@
+
+$allMermaidNodes += "ringType$UserId"
+$allSubgraphs += "subgraphDelegates$UserId"
     
                     $delegateCounter = 1
     
@@ -593,6 +650,8 @@ ringType$UserId[(Simultaneous Ring)]
                         $delegateRing = "                ringType$UserId -.-> delegate$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
     
                         $mdSubgraphDelegates += $delegateRing
+
+                        $allMermaidNodes += "delegate$($delegateUserObject.Identity)$delegateCounter"
     
                         $delegateCounter ++
                     }
@@ -610,6 +669,8 @@ userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Conne
 
 "@
     
+                    $allMermaidNodes += @("userForwardingResult$UserId","userForwardingTimeout$UserId","userForwardingConnected$UserId")
+
                     $mdUserCallingSettings += $mdUserCallingSettingsAddition
     
                 }
@@ -622,8 +683,10 @@ userForwarding$UserId --> voicemail$UserId(Voicemail<br> $($teamsUser.DisplayNam
 end
 
 "@
-    
-    
+
+$allMermaidNodes += @("userForwarding$UserId","voicemail$UserId")
+$allSubgraphs += "subgraphSettings$UserId"
+
                 }
                 Group {
     
@@ -644,6 +707,9 @@ userForwarding$UserId -.-> subgraphCallGroups$UserId
 subgraph subgraphSettings$UserId[ ]
 
 "@
+
+$allMermaidNodes += @("userForwarding$UserId","userParallelRing$userId","userForwardingResult$UserId")
+$allSubgraphs += "subgraphSettings$UserId"
     
                     $mdSubgraphcallGroups = @"
 subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
@@ -651,7 +717,10 @@ direction LR
 ringType$UserId[($ringOrder Ring)]
 
 "@
-    
+
+$allMermaidNodes += "ringType$UserId"
+$allSubgraphs += "subgraphCallGroups$UserId"
+
                     $callGroupMemberCounter = 1
     
                     foreach ($callGroupMember in $userCallingSettings.CallGroupTargets) {
@@ -673,6 +742,8 @@ ringType$UserId[($ringOrder Ring)]
                         $callGroupRing = "ringType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
     
                         $mdSubgraphcallGroups += $callGroupRing
+
+                        $allMermaidNodes += "callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter"
     
                         $callGroupMemberCounter ++
                     }
@@ -690,11 +761,10 @@ userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Conne
 
 "@
     
+                    $allMermaidNodes += @("userForwardingResult$UserId","userForwardingTimeout$UserId","userForwardingConnected$UserId")
+
                     $mdUserCallingSettings += $mdUserCallingSettingsAddition
-    
-    
-    
-    
+
                 }
                 SingleTarget {
     
@@ -729,6 +799,9 @@ userForwardingTarget$UserId($forwardingTargetType<br> $userForwardingTarget)
 
 "@
 
+$allMermaidNodes += @("userForwarding$UserId","userParallelRing$userId","userForwardingResult$UserId","userForwardingTarget$UserId")
+$allSubgraphs += "subgraphSettings$UserId"
+
                     $mdUserCallingSettingsAddition = @"
 userForwardingTarget$UserId --> userForwardingResult$UserId{Call Answered?}    
 $subgraphUnansweredSettings
@@ -738,6 +811,8 @@ userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTar
 userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
 
 "@
+
+                    $allMermaidNodes += @("userForwardingTarget$UserId","userForwardingResult$UserId","userForwardingTimeout$UserId","userForwardingConnected$UserId")
 
                     $mdUserCallingSettings += $mdUserCallingSettingsAddition
 
@@ -751,7 +826,7 @@ userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Conne
         # user is forwarding enabled but not unanswered enabled
         elseif ($userCallingSettings.IsForwardingEnabled -and !$userCallingSettings.IsUnansweredEnabled) {
 
-            Write-Host "user is forwarding enabled but not unanswered enabled"
+            #Write-Host "user is forwarding enabled but not unanswered enabled"
 
             switch ($userCallingSettings.ForwardingTargetType) {
                 Group {
@@ -773,6 +848,9 @@ userForwarding$UserId -.-> subgraphCallGroups$UserId
 subgraph subgraphSettings$UserId[ ]
 
 "@
+
+$allMermaidNodes += @("userForwarding$UserId","userParallelRing$userId")
+$allSubgraphs += "subgraphSettings$UserId"
     
                     $mdSubgraphcallGroups = @"
 subgraph subgraphCallGroups$UserId[Call Group of $($teamsUser.DisplayName)]
@@ -780,6 +858,9 @@ direction LR
 ringType$UserId[($ringOrder Ring)]
  
 "@
+
+$allMermaidNodes += "ringType$UserId"
+$allSubgraphs += "subgraphCallGroups$UserId"
     
                     $callGroupMemberCounter = 1
     
@@ -802,6 +883,8 @@ ringType$UserId[($ringOrder Ring)]
                         $callGroupRing = "ringType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
     
                         $mdSubgraphcallGroups += $callGroupRing
+
+                        $allMermaidNodes += "callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter"
     
                         $callGroupMemberCounter ++
                     }
@@ -853,6 +936,9 @@ userForwardingTarget$UserId($forwardingTargetType<br> $userForwardingTarget)
 end
 
 "@
+
+$allMermaidNodes += @("userForwarding$UserId","userParallelRing$userId","userForwardingTarget$UserId")
+$allSubgraphs += "subgraphSettings$UserId"
     
                 }
 
@@ -863,7 +949,7 @@ end
         # user is unanswered enabled but not forwarding enabled
         elseif ($userCallingSettings.IsUnansweredEnabled -and !$userCallingSettings.IsForwardingEnabled) {
 
-            Write-Host "user is unanswered enabled but not forwarding enabled"
+            #Write-Host "user is unanswered enabled but not forwarding enabled"
 
             switch ($userCallingSettings.UnansweredTargetType) {
                 MyDelegates {
@@ -876,6 +962,9 @@ direction LR
 delegateRingType$UserId[($ringOrder Ring)]
     
 "@
+
+$allMermaidNodes += "delegateRingType$UserId"
+$allSubgraphs += "subgraphdelegates$UserId"
 
                     $delegateCounter = 1
 
@@ -899,6 +988,8 @@ delegateRingType$UserId[($ringOrder Ring)]
 
                         $subgraphUnansweredSettings += $delegateRing
 
+                        $allMermaidNodes += "delegateMember$($delegateUserObject.Identity)$delegateCounter"
+
                         $delegateCounter ++
                     }
 
@@ -912,6 +1003,8 @@ delegateRingType$UserId[($ringOrder Ring)]
                 Voicemail {
                     $mdUnansweredTarget = "--> userVoicemail$UserId(Voicemail<br> $($teamsUser.DisplayName))"
                     $subgraphUnansweredSettings = $null
+
+                    $allMermaidNodes += "userVoicemail$UserId"
                 }
 
                 Group {
@@ -932,6 +1025,9 @@ direction LR
 callGroupRingType$UserId[($ringOrder Ring)]
     
 "@
+
+$allMermaidNodes += "callGroupRingType$UserId"
+$allSubgraphs += "subgraphCallGroups$UserId"
 
                     $callGroupMemberCounter = 1
 
@@ -954,6 +1050,8 @@ callGroupRingType$UserId[($ringOrder Ring)]
                         $callGroupRing = "callGroupRingType$UserId -.->$linkNumber callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter($($callGroupUserObject.DisplayName))`n"
 
                         $subgraphUnansweredSettings += $callGroupRing
+
+                        $allMermaidNodes += "callGroupMember$($callGroupUserObject.Identity)$callGroupMemberCounter"
 
                         $callGroupCounter ++
                     }
@@ -987,7 +1085,9 @@ callGroupRingType$UserId[($ringOrder Ring)]
                     }
 
                     $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
-                    $subgraphUnansweredSettings = $null       
+                    $subgraphUnansweredSettings = $null
+                    
+                    $allMermaidNodes += "userUnansweredTarget$UserId"
 
                 }
                 Default {}
@@ -1001,6 +1101,9 @@ userParallelRing$userId --> userForwardingResult$UserId{Call Answered?}
 
 "@
 
+$allMermaidNodes += @("userParallelRing$userId","userForwardingResult$UserId")
+$allSubgraphs += "subgraphSettings$UserId"
+
             $mdUserCallingSettingsAddition = @"
 userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
 $subgraphUnansweredSettings
@@ -1009,6 +1112,9 @@ userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTar
 userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
 
 "@
+
+$allMermaidNodes += @("userForwardingResult$UserId","userForwardingTimeout$UserId","userForwardingConnected$UserId")
+$allSubgraphs += "subgraphSettings$UserId"
 
             $mdUserCallingSettings += $mdUserCallingSettingsAddition
 
