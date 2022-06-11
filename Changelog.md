@@ -69,3 +69,5 @@
 |17.05.2022|M365CallFlowVisualizerV2.ps1|2.6.8|Fix audio file or TTS greeting paths in HTML when using a custom file path|
 |03.06.2022|Get-TeamsUserCallFlow.ps1|1.0.2|Add Mermaid nodes and subgraphs to variables of main script for theme support|
 |03.06.2022|M365CallFlowVisualizerV2|2.6.9|Integrate Get-TeamsUserCallFlow.ps1 into main Script. This means that User Calling Settings can now be drawn as well.|
+|11.06.2022|Get-MsSystemMessage.ps1|1.0.0|Add switch statement to determine what the MS System Greeting says in which language.|
+|03.06.2022|M365CallFlowVisualizerV2|2.7.0|Implement FixDisplayName for Holiday Call Handling Names as well. Add support to display and export the MS System Greeting in German and English.|

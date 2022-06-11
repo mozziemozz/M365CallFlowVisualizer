@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.6.9
+    Version:            2.7.0
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -228,6 +228,7 @@ $ErrorActionPreference = "Continue"
 . .\Functions\Read-BusinessHours.ps1
 . .\Functions\FixDisplayName.ps1
 . .\Functions\Get-TeamsUserCallFlow.ps1
+. .\Functions\Get-MsSystemMessage.ps1
 
 . Connect-M365CFV
 
@@ -480,6 +481,8 @@ function Get-AutoAttendantHolidaysAndAfterHours {
 
     $aaObjectId = $aa.Identity
 
+    $languageId = $aa.LanguageId
+
     if ($aaHasHolidays -eq $true) {
 
         $holidaySubgraphName = "subgraphHolidays$($aa.Identity)[Holidays $($aa.Name)]"
@@ -599,6 +602,29 @@ subgraph $holidaySubgraphName
 
                         $holidayVoicemailSystemGreeting = "elementAAHolidayVoicemailSystemGreeting$($aaObjectId)-$($HolidayCounter)>Greeting <br> MS System Message] -->"
 
+                        $holidayVoicemailSystemGreetingValue = . Get-MsSystemMessage
+
+                        if ($ShowTTSGreetingText) {
+        
+                            if ($ExportTTSGreetings) {
+        
+                                $holidayVoicemailSystemGreetingValue | Out-File "$FilePath\$($aaObjectId)_autoAttendantHolidayVoicemailMsSystemMessage.txt"
+                
+                                $ttsGreetings += ("click elementAAHolidayVoicemailSystemGreeting$($aaObjectId)-$($HolidayCounter) " + '"' + "$FilePath\$($aaObjectId)_autoAttendantHolidayVoicemailMsSystemMessage.txt" + '"')
+                
+                            }
+        
+                            if ($holidayVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+        
+                                $holidayVoicemailSystemGreetingValue = $holidayVoicemailSystemGreetingValue.Remove($holidayVoicemailSystemGreetingValue.Length - ($holidayVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+        
+                            }
+        
+                            $holidayVoicemailSystemGreeting = $holidayVoicemailSystemGreeting.Replace("] -->"," <br> ''$holidayVoicemailSystemGreetingValue''] -->")
+        
+                        }
+        
+
                         $allMermaidNodes += "elementAAHolidayVoicemailSystemGreeting$($aaObjectId)-$($HolidayCounter)"
 
                     }
@@ -653,9 +679,12 @@ subgraph $holidaySubgraphName
             }
 
             # Create subgraph per holiday call handling inside the Holidays subgraph
+
+            $mermaidFriendlyHolidayName = FixDisplayName -String $($holidayCallFlow.Name)
+
             $nodeElementHolidayDetails =@"
 
-subgraph subgraph$($HolidayCallHandling.CallFlowId)[$($holidayCallFlow.Name)]
+subgraph subgraph$($HolidayCallHandling.CallFlowId)[$mermaidFriendlyHolidayName]
 direction LR
 elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedule.FixedSchedule.DateTimeRanges.Start) <br> $($holidaySchedule.FixedSchedule.DateTimeRanges.End)) --> elementAAHolidayGreeting$($aaObjectId)-$($HolidayCounter)>$holidayGreeting] --> $holidayVoicemailSystemGreeting $nodeElementHolidayAction
     end
@@ -1071,6 +1100,8 @@ function Get-AutoAttendantDefaultCallFlow {
 
     $aaDefaultCallFlowAaObjectId = $aa.Identity
 
+    $languageId = $aa.LanguageId
+
     # Get the current auto attendants default call flow and default call flow action
     $defaultCallFlow = $aa.DefaultCallFlow
     $defaultCallFlowAction = $aa.DefaultCallFlow.Menu.MenuOptions.Action
@@ -1452,6 +1483,30 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                             
                             $defaultCallFlowVoicemailSystemGreeting = "defaultCallFlowSystemGreeting$($aaDefaultCallFlowAaObjectId)>Greeting <br> MS System Message] -->"
 
+                            $defaultCallFlowVoicemailSystemGreetingValue = . Get-MsSystemMessage
+
+                            if ($ShowTTSGreetingText) {
+            
+                                if ($ExportTTSGreetings) {
+            
+                                    $defaultCallFlowVoicemailSystemGreetingValue | Out-File "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowMsSystemMessage.txt"
+                    
+                                    $ttsGreetings += ("click defaultCallFlowSystemGreeting$($aadefaultCallFlowAaObjectId) " + '"' + "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowMsSystemMessage.txt" + '"')
+                    
+                                }    
+                
+            
+                                if ($defaultCallFlowVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+            
+                                    $defaultCallFlowVoicemailSystemGreetingValue = $defaultCallFlowVoicemailSystemGreetingValue.Remove($defaultCallFlowVoicemailSystemGreetingValue.Length - ($defaultCallFlowVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+            
+                                }
+            
+                                $defaultCallFlowVoicemailSystemGreeting = $defaultCallFlowVoicemailSystemGreeting.Replace("] -->"," <br> ''$defaultCallFlowVoicemailSystemGreetingValue''] -->")
+            
+                            }
+            
+
                         }
 
                         else {
@@ -1535,6 +1590,8 @@ function Get-AutoAttendantAfterHoursCallFlow {
     )
 
     $aaAfterHoursCallFlowAaObjectId = $aa.Identity
+
+    $languageId = $aa.LanguageId
 
     # Get after hours call flow
     $afterHoursAssociatedCallFlowId = ($aa.CallHandlingAssociations | Where-Object {$_.Type -eq "AfterHours"}).CallFlowId
@@ -1920,6 +1977,30 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                             
                             $afterHoursCallFlowVoicemailSystemGreeting = "afterHoursCallFlowSystemGreeting$($aaafterHoursCallFlowAaObjectId)>Greeting <br> MS System Message] -->"
 
+                            $afterHoursCallFlowVoicemailSystemGreetingValue = . Get-MsSystemMessage
+
+                            if ($ShowTTSGreetingText) {
+            
+                                if ($ExportTTSGreetings) {
+            
+                                    $afterHoursCallFlowVoicemailSystemGreetingValue | Out-File "$FilePath\$($aaafterHoursCallFlowAaObjectId)_autoAttendantAfterHoursCallFlowMsSystemMessage.txt"
+                    
+                                    $ttsGreetings += ("click afterHoursCallFlowSystemGreeting$($aaafterHoursCallFlowAaObjectId) " + '"' + "$FilePath\$($aaafterHoursCallFlowAaObjectId)_autoAttendantAfterHoursCallFlowMsSystemMessage.txt" + '"')
+                    
+                                }    
+                
+            
+                                if ($afterHoursCallFlowVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+            
+                                    $afterHoursCallFlowVoicemailSystemGreetingValue = $afterHoursCallFlowVoicemailSystemGreetingValue.Remove($afterHoursCallFlowVoicemailSystemGreetingValue.Length - ($afterHoursCallFlowVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+            
+                                }
+            
+                                $afterHoursCallFlowVoicemailSystemGreeting = $afterHoursCallFlowVoicemailSystemGreeting.Replace("] -->"," <br> ''$afterHoursCallFlowVoicemailSystemGreetingValue''] -->")
+            
+                            }
+            
+
                         }
 
                         else {
@@ -2032,6 +2113,8 @@ function Get-CallQueueCallFlow {
     $CqDefaultMusicOnHold = $MatchingCQ.UseDefaultMusicOnHold
     $CqWelcomeMusicFileName = $MatchingCQ.WelcomeMusicFileName
     $CqLanguageId = $MatchingCQ.LanguageId
+    
+    $languageId = $CqLanguageId
 
     # Check if call queue uses default music on hold
     if ($CqDefaultMusicOnHold -eq $true) {
@@ -2262,6 +2345,29 @@ function Get-CallQueueCallFlow {
 
                 $CQOverFlowVoicemailSystemGreeting = "cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
 
+                $CQOverFlowVoicemailSystemGreetingValue = . Get-MsSystemMessage
+
+                if ($ShowTTSGreetingText) {
+
+                    if ($ExportTTSGreetings) {
+
+                        $CQOverFlowVoicemailSystemGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqOverFlowMsSystemMessage.txt"
+        
+                        $ttsGreetings += ("click cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqOverFlowMsSystemMessage.txt" + '"')
+        
+                    }    
+    
+
+                    if ($CQOverFlowVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+
+                        $CQOverFlowVoicemailSystemGreetingValue = $CQOverFlowVoicemailSystemGreetingValue.Remove($CQOverFlowVoicemailSystemGreetingValue.Length - ($CQOverFlowVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+
+                    }
+
+                    $CQOverFlowVoicemailSystemGreeting = $CQOverFlowVoicemailSystemGreeting.Replace("] -->"," <br> ''$CQOverFlowVoicemailSystemGreetingValue''] -->")
+
+                }
+
                 $allMermaidNodes += "cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)"
 
             }
@@ -2413,6 +2519,28 @@ function Get-CallQueueCallFlow {
                 }
 
                 $CQTimeoutVoicemailSystemGreeting = "cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
+
+                $CQTimeOutVoicemailSystemGreetingValue = . Get-MsSystemMessage
+
+                if ($ShowTTSGreetingText) {
+
+                    if ($ExportTTSGreetings) {
+
+                        $CQTimeOutVoicemailSystemGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeoutMsSystemMessage.txt"
+        
+                        $ttsGreetings += ("click cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqTimeoutMsSystemMessage.txt" + '"')
+        
+                    }
+
+                    if ($CQTimeOutVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+
+                        $CQTimeOutVoicemailSystemGreetingValue = $CQTimeOutVoicemailSystemGreetingValue.Remove($CQTimeOutVoicemailSystemGreetingValue.Length - ($CQTimeOutVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+
+                    }
+
+                    $CQTimeOutVoicemailSystemGreeting = $CQTimeOutVoicemailSystemGreeting.Replace("] -->"," <br> ''$CQTimeOutVoicemailSystemGreetingValue''] -->")
+
+                }
 
                 $allMermaidNodes += "cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)"
 
