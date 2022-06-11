@@ -33,7 +33,7 @@ function Get-MsSystemMessage {
             $systemGreetingText = "Bitte hinterlassen Sie eine Nachricht nach dem Ton. Wenn Sie fertig sind, legen Sie bitte auf."
         }
         Default {
-            $systemGreetingText = "Please leave a message after the tone. When you have finished, please hang up. Hint: This greeting will be synthesized in '$languageId'. However, this language is not supported yet by the M365 Call Flow Visualizer. If you would like to help and provide a transcript of this message in your language, please reach out to me."
+            $systemGreetingText = "Please leave a message after the tone. When you have finished, please hang up. Hint: This greeting will be synthesized in '$languageId'. However, this language is not supported by M365 Call Flow Visualizer yet. If you would like to help and provide a transcript of this message in your language, please reach out to me."
         }
     }
     return $systemGreetingText
