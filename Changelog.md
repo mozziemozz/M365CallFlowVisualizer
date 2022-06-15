@@ -72,3 +72,4 @@
 |11.06.2022|Get-MsSystemMessage.ps1|1.0.0|Add switch statement to determine what the MS System Greeting says in which language.|
 |03.06.2022|M365CallFlowVisualizerV2|2.7.0|Implement FixDisplayName for Holiday Call Handling Names as well. Add support to display and export the MS System Greeting in German and English.|
 |15.06.2022|M365CallFlowVisualizerV2|2.7.1|Fixed multiple links if a call flow forwarded to the same user on different actions. Local MS Graph Cache is now cleared if there are issues signing in.|
+|11.06.2022|Get-MsSystemMessage.ps1|1.0.1|Added all supported languages to the switch statement as preparation for the translation by the community.|
