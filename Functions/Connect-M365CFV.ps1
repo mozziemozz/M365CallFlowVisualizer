@@ -31,6 +31,7 @@ function Connect-M365CFV {
     }
 
     try {
+        $testMsGraphConnection = Get-MgUser -Top 1 -ErrorAction Stop > $null
         $msGraphContext = (Get-MgContext).TenantId
 
         if ($msGraphContext -ne $msTeamsTenantId) {
@@ -52,6 +53,14 @@ function Connect-M365CFV {
         
     }
     catch {
+
+        if (Test-Path -Path "$env:USERPROFILE\.graph") {
+
+            Remove-Item "$env:USERPROFILE\.graph" -Recurse -Force
+            Write-Host "Microsoft Graph cache has been cleared." -ForegroundColor Yellow
+
+        }
+
         Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsTenantId
         $msGraphContext = (Get-MgContext).TenantId
     }

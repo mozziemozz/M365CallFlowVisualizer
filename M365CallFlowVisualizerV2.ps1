@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.7.0
+    Version:            2.7.1
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -3047,7 +3047,11 @@ if ($ShowUserCallingSettings -eq $true) {
 
         . Get-TeamsUserCallFlow -UserId $userId -PreviewSvg $false -SetClipBoard $false -StandAlone $true -ExportSvg $false -CustomFilePath $CustomFilePath
 
-        $mermaidCode += $mdUserCallingSettings
+        if ($mermaidCode -notcontains $mdUserCallingSettings) {
+
+            $mermaidCode += $mdUserCallingSettings
+
+        }
 
     }
 
