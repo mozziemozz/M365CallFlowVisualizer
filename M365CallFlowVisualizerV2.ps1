@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.7.1
+    Version:            2.7.2
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -367,12 +367,14 @@ function Find-Holidays {
                 $OperatorName = FixDisplayName -String $OperatorUser.DisplayName
                 $OperatorIdentity = $OperatorUser.Id
                 $AddOperatorToNestedVoiceApps = $false
+                $AddOperatorToUserCallingSettings = $true
             }
             ExternalPstn { 
                 $OperatorTypeFriendly = "External PSTN"
                 $OperatorName = ($Operator.Id).Replace("tel:","")
                 $OperatorIdentity = $OperatorName
                 $AddOperatorToNestedVoiceApps = $false
+                $AddOperatorToUserCallingSettings = $false
             }
             ApplicationEndpoint {
 
@@ -401,6 +403,7 @@ function Find-Holidays {
                 }
 
                 $AddOperatorToNestedVoiceApps = $true
+                $AddOperatorToUserCallingSettings = $false
 
             }
 
@@ -413,6 +416,7 @@ function Find-Holidays {
     else {
 
         $AddOperatorToNestedVoiceApps = $false
+        $AddOperatorToUserCallingSettings = $false
 
     }
     
@@ -1352,6 +1356,12 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                 }
 
+                if ($userCallingSettings -notcontains $OperatorIdentity -and $AddOperatorToUserCallingSettings -eq $true) {
+
+                    $userCallingSettings += $OperatorIdentity
+
+                }
+
 
             }
 
@@ -1843,6 +1853,12 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                 if ($nestedVoiceApps -notcontains $OperatorIdentity -and $AddOperatorToNestedVoiceApps -eq $true) {
 
                     $nestedVoiceApps += $OperatorIdentity
+
+                }
+
+                if ($userCallingSettings -notcontains $OperatorIdentity -and $AddOperatorToUserCallingSettings -eq $true) {
+
+                    $userCallingSettings += $OperatorIdentity
 
                 }
 
