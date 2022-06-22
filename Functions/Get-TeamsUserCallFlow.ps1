@@ -1066,12 +1066,39 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                     if ($userCallingSettings.UnansweredTarget -match "sip:" -or $userCallingSettings.UnansweredTarget -notmatch "\+") {
 
                         $userForwardingTarget = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).DisplayName
-                        $forwardingTargetType = "Internal User"
-    
-                        if ($null -eq $userForwardingTarget) {
-    
-                            $userForwardingTarget = "External Tenant"
-                            $forwardingTargetType = "Federated User"
+
+                        $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.UnansweredTarget).Replace("sip:","")
+
+                        if ($checkUserAccountType) {
+
+                            switch ($checkUserAccountType.ApplicationId) {
+                                # Call Queue
+                                11cd3e2e-fccb-42ad-ad00-878b93575e07 {
+                                    $forwardingTargetType = "Call Queue"
+                                }
+                                # Auto Attendant
+                                ce933385-9390-45d1-9512-c8d228074e07 {
+                                    $forwardingTargetType = "Auto Attendant"
+                                }
+                                Default {}
+                            }
+
+                            $mdUnansweredTarget = "--> userUnansweredTarget$UserId([$forwardingTargetType<br> $userForwardingTarget])"
+
+                        }
+
+                        else {
+                            
+                            $forwardingTargetType = "Internal User"
+        
+                            if ($null -eq $userForwardingTarget) {
+        
+                                $userForwardingTarget = "External Tenant"
+                                $forwardingTargetType = "Federated User"
+        
+                            }
+
+                            $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
     
                         }
     
@@ -1081,10 +1108,11 @@ $allSubgraphs += "subgraphCallGroups$UserId"
     
                         $userForwardingTarget = $userCallingSettings.UnansweredTarget
                         $forwardingTargetType = "External PSTN"
+
+                        $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
     
                     }
 
-                    $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
                     $subgraphUnansweredSettings = $null
                     
                     $allMermaidNodes += "userUnansweredTarget$UserId"
