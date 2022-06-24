@@ -1067,7 +1067,11 @@ $allSubgraphs += "subgraphCallGroups$UserId"
 
                         $userForwardingTarget = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).DisplayName
 
-                        $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.UnansweredTarget).Replace("sip:","")
+                        if ((Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).FeatureTypes -contains "VoiceApp") {
+
+                            $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.UnansweredTarget).Replace("sip:","")
+
+                        }
 
                         if ($checkUserAccountType) {
 
@@ -1083,7 +1087,38 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                                 Default {}
                             }
 
-                            $mdUnansweredTarget = "--> userUnansweredTarget$UserId([$forwardingTargetType<br> $userForwardingTarget])"
+                            if ($StandAlone -eq $false) {
+
+                                switch ($forwardingTargetType) {
+                                    "Auto Attendant" {
+
+                                        $unansweredUserTargetVoiceAppId = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+
+                                    }
+                                    "Call Queue" {
+
+                                        $unansweredUserTargetVoiceAppId = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+
+                                    }
+                                    Default {}
+                                }
+
+                                $mdUnansweredTarget = "--> $unansweredUserTargetVoiceAppId([$forwardingTargetType<br> $userForwardingTarget])"
+
+                                if ($nestedVoiceApps -notcontains $unansweredUserTargetVoiceAppId) {
+
+                                    $nestedVoiceApps += $unansweredUserTargetVoiceAppId
+                
+                                }
+
+                            }
+
+                            else {
+
+                                $mdUnansweredTarget = "--> userUnansweredTarget$UserId([$forwardingTargetType<br> $userForwardingTarget])"
+
+                            }
+
 
                         }
 
@@ -1098,7 +1133,26 @@ $allSubgraphs += "subgraphCallGroups$UserId"
         
                             }
 
-                            $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
+                            if ($StandAlone -eq $false -and $userForwardingTarget -eq "Internal User") {
+
+                               $unansweredUserTargetUserId = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).Identity
+
+                                $mdUnansweredTarget = "-->$unansweredUserTargetUserId($forwardingTargetType<br> $userForwardingTarget)"
+
+                                if ($nestedVoiceApps -notcontains$unansweredUserTargetUserId) {
+    
+                                    $nestedVoiceApps +=$unansweredUserTargetUserId
+                
+                                }
+    
+                            }
+
+                            else {
+
+                                $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
+
+                            }
+
     
                         }
     

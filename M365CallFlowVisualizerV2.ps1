@@ -229,6 +229,7 @@ $ErrorActionPreference = "Continue"
 . .\Functions\FixDisplayName.ps1
 . .\Functions\Get-TeamsUserCallFlow.ps1
 . .\Functions\Get-MsSystemMessage.ps1
+. .\Functions\Get-AccountType.ps1
 
 . Connect-M365CFV
 
@@ -242,7 +243,6 @@ if ($SaveToFile -eq $false -and $CustomFilePath) {
 
 # Common arrays and variables
 $nestedVoiceApps = @()
-$userCallingSettings = @()
 $processedVoiceApps = @()
 $allMermaidNodes = @()
 $allSubgraphs = @()
@@ -250,7 +250,7 @@ $audioFileNames = @()
 $ttsGreetings = @()
 
 $allAutoAttendantIds = (Get-CsAutoAttendant).Identity
-#$allCallQueueIds = (Get-CsCallQueue).Identity
+$allCallQueueIds = (Get-CsCallQueue).Identity
 $allResourceAccounts = Get-CsOnlineApplicationInstance
 
 $applicationIdAa = "ce933385-9390-45d1-9512-c8d228074e07"
@@ -1356,9 +1356,9 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                 }
 
-                if ($userCallingSettings -notcontains $OperatorIdentity -and $AddOperatorToUserCallingSettings -eq $true) {
+                if ($nestedVoiceApps -notcontains $OperatorIdentity -and $AddOperatorToUserCallingSettings -eq $true) {
 
-                    $userCallingSettings += $OperatorIdentity
+                    $nestedVoiceApps += $OperatorIdentity
 
                 }
 
@@ -1442,7 +1442,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                         $defaultCallFlowTargetName = FixDisplayName -String $defaultCallFlowTargetUser.DisplayName
                         $defaultCallFlowTargetIdentity = $defaultCallFlowTargetUser.Id
 
-                        $userCallingSettings += $defaultCallFlowTargetUser.Id
+                        $nestedVoiceApps += $defaultCallFlowTargetUser.Id
 
                         $defaultCallFlowVoicemailSystemGreeting = $null
 
@@ -1856,9 +1856,9 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                 }
 
-                if ($userCallingSettings -notcontains $OperatorIdentity -and $AddOperatorToUserCallingSettings -eq $true) {
+                if ($nestedVoiceApps -notcontains $OperatorIdentity -and $AddOperatorToUserCallingSettings -eq $true) {
 
-                    $userCallingSettings += $OperatorIdentity
+                    $nestedVoiceApps += $OperatorIdentity
 
                 }
 
@@ -1942,7 +1942,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                         $afterHoursCallFlowTargetName = FixDisplayName -String $afterHoursCallFlowTargetUser.DisplayName
                         $afterHoursCallFlowTargetIdentity = $afterHoursCallFlowTargetUser.Id
 
-                        $userCallingSettings += $afterHoursCallFlowTargetUser.Id
+                        $nestedVoiceApps += $afterHoursCallFlowTargetUser.Id
 
                         $afterHoursCallFlowVoicemailSystemGreeting = $null
 
@@ -2268,7 +2268,7 @@ function Get-CallQueueCallFlow {
                 $MatchingOverFlowUser = FixDisplayName -String $MatchingOverFlowUserProperties.DisplayName
                 $MatchingOverFlowIdentity = $MatchingOverFlowUserProperties.Id
 
-                $userCallingSettings += $MatchingOverFlowUserProperties.Id
+                $nestedVoiceApps += $MatchingOverFlowUserProperties.Id
 
                 $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowIdentity)(User <br> $MatchingOverFlowUser)"
 
@@ -2445,7 +2445,7 @@ function Get-CallQueueCallFlow {
                 $MatchingTimeoutUser = FixDisplayName -String $MatchingTimeoutUserProperties.DisplayName
                 $MatchingTimeoutIdentity = $MatchingTimeoutUserProperties.Id
 
-                $userCallingSettings += $MatchingTimeoutUserProperties.Id
+                $nestedVoiceApps += $MatchingTimeoutUserProperties.Id
     
                 $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingTimeoutIdentity)(User <br> $MatchingTimeoutUser)"
 
@@ -3025,7 +3025,28 @@ function Get-NestedCallFlow {
 
             $processedVoiceApps += $nestedVoiceApp
 
-            . Get-CallFlow -VoiceAppId $nestedVoiceApp
+            . Get-AccountType -Id $nestedVoiceApp
+
+            Write-Host "Account Type: $accountType" -ForegroundColor Magenta
+
+            if ($accountType -eq "VoiceApp") {
+
+                . Get-CallFlow -VoiceAppId $nestedVoiceApp
+
+            }
+
+            if ($accountType -eq "UserAccount") {
+
+                . Get-TeamsUserCallFlow -UserId $nestedVoiceApp -PreviewSvg $false -SetClipBoard $false -StandAlone $false -ExportSvg $false -CustomFilePath $CustomFilePath
+
+                if ($mermaidCode -notcontains $mdUserCallingSettings) {
+    
+                    $mermaidCode += $mdUserCallingSettings
+        
+                }    
+
+            }
+
 
         }
 
@@ -3057,11 +3078,11 @@ else {
 
 }
 
-if ($ShowUserCallingSettings -eq $true) {
+<# if ($ShowUserCallingSettings -eq $true) {
 
-    foreach ($userId in $userCallingSettings) {
+    foreach ($userId in $nestedVoiceApps) {
 
-        . Get-TeamsUserCallFlow -UserId $userId -PreviewSvg $false -SetClipBoard $false -StandAlone $true -ExportSvg $false -CustomFilePath $CustomFilePath
+        . Get-TeamsUserCallFlow -UserId $userId -PreviewSvg $false -SetClipBoard $false -StandAlone $false -ExportSvg $false -CustomFilePath $CustomFilePath
 
         if ($mermaidCode -notcontains $mdUserCallingSettings) {
 
@@ -3071,8 +3092,7 @@ if ($ShowUserCallingSettings -eq $true) {
 
     }
 
-}
-
+} #>
 
 #Remove invalid characters from mermaid syntax
 $mermaidCode = $mermaidCode.Replace(";",",")
