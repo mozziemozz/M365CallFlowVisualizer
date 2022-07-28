@@ -1442,7 +1442,11 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                         $defaultCallFlowTargetName = FixDisplayName -String $defaultCallFlowTargetUser.DisplayName
                         $defaultCallFlowTargetIdentity = $defaultCallFlowTargetUser.Id
 
-                        $nestedVoiceApps += $defaultCallFlowTargetUser.Id
+                        if ($nestedVoiceApps -notcontains $defaultCallFlowTargetUser.Id) {
+
+                            $nestedVoiceApps += $defaultCallFlowTargetUser.Id
+
+                        }
 
                         $defaultCallFlowVoicemailSystemGreeting = $null
 
@@ -1942,7 +1946,11 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                         $afterHoursCallFlowTargetName = FixDisplayName -String $afterHoursCallFlowTargetUser.DisplayName
                         $afterHoursCallFlowTargetIdentity = $afterHoursCallFlowTargetUser.Id
 
-                        $nestedVoiceApps += $afterHoursCallFlowTargetUser.Id
+                        if ($nestedVoiceApps -notcontains $afterHoursCallFlowTargetUser.Id) {
+
+                            $nestedVoiceApps += $afterHoursCallFlowTargetUser.Id
+
+                        }
 
                         $afterHoursCallFlowVoicemailSystemGreeting = $null
 
@@ -2268,7 +2276,11 @@ function Get-CallQueueCallFlow {
                 $MatchingOverFlowUser = FixDisplayName -String $MatchingOverFlowUserProperties.DisplayName
                 $MatchingOverFlowIdentity = $MatchingOverFlowUserProperties.Id
 
-                $nestedVoiceApps += $MatchingOverFlowUserProperties.Id
+                if ($nestedVoiceApps -notcontains $MatchingOverFlowUserProperties.Id) {
+
+                    $nestedVoiceApps += $MatchingOverFlowUserProperties.Id
+
+                }
 
                 $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowIdentity)(User <br> $MatchingOverFlowUser)"
 
@@ -2445,7 +2457,11 @@ function Get-CallQueueCallFlow {
                 $MatchingTimeoutUser = FixDisplayName -String $MatchingTimeoutUserProperties.DisplayName
                 $MatchingTimeoutIdentity = $MatchingTimeoutUserProperties.Id
 
-                $nestedVoiceApps += $MatchingTimeoutUserProperties.Id
+                if ($nestedVoiceApps -notcontains $MatchingTimeoutUserProperties.Id) {
+
+                    $nestedVoiceApps += $MatchingTimeoutUserProperties.Id
+
+                }
     
                 $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingTimeoutIdentity)(User <br> $MatchingTimeoutUser)"
 

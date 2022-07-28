@@ -132,7 +132,7 @@ function Get-MsSystemMessage {
 
         # Swedish (Sweden)
         sv-SE {
-            $systemGreetingText = "Please leave a message after the tone. When you have finished, please hang up. Hint: This greeting will be synthesized in '$languageId'. However, this language is not supported by M365 Call Flow Visualizer yet. If you would like to help and provide a transcript of this message in your language, please reach out to me."
+            $systemGreetingText = "Lämna ett meddelande efter tonen. När du är klar lägger du på."
         }
 
         # Chinese (Simplified, PRC)
@@ -157,7 +157,7 @@ function Get-MsSystemMessage {
 
         # Turkish (Turkey)
         cs-CZ {
-            $systemGreetingText = "Please leave a message after the tone. When you have finished, please hang up. Hint: This greeting will be synthesized in '$languageId'. However, this language is not supported by M365 Call Flow Visualizer yet. If you would like to help and provide a transcript of this message in your language, please reach out to me."
+            $systemGreetingText = "Po zaznění tónu prosím zanechte vzkaz, na závěr zavěste."
         }
 
         # Thai (Thai)

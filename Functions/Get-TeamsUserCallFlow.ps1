@@ -278,7 +278,7 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                         if ($userCallingSettings.UnansweredTarget -match "sip:" -or $userCallingSettings.UnansweredTarget -notmatch "\+") {
 
                             $userForwardingTarget = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).DisplayName
-                            $forwardingTargetType = "Internal User"
+                            $forwardingTargetType = "User"
         
                             if ($null -eq $userForwardingTarget) {
         
@@ -414,7 +414,7 @@ end
                 if ($userCallingSettings.ForwardingTarget -match "sip:" -or $userCallingSettings.ForwardingTarget -notmatch "\+") {
 
                     $userForwardingTarget = (Get-CsOnlineUser -Identity $userCallingSettings.ForwardingTarget).DisplayName
-                    $forwardingTargetType = "Internal User"
+                    $forwardingTargetType = "User"
 
                     if ($null -eq $userForwardingTarget) {
 
@@ -589,7 +589,7 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                     if ($userCallingSettings.UnansweredTarget -match "sip:" -or $userCallingSettings.UnansweredTarget -notmatch "\+") {
 
                         $userForwardingTarget = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).DisplayName
-                        $forwardingTargetType = "Internal User"
+                        $forwardingTargetType = "User"
     
                         if ($null -eq $userForwardingTarget) {
     
@@ -771,7 +771,7 @@ userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Conne
                     if ($userCallingSettings.ForwardingTarget -match "sip:" -or $userCallingSettings.ForwardingTarget -notmatch "\+") {
     
                         $userForwardingTarget = (Get-CsOnlineUser -Identity $userCallingSettings.ForwardingTarget).DisplayName
-                        $forwardingTargetType = "Internal User"
+                        $forwardingTargetType = "User"
     
                         if ($null -eq $userForwardingTarget) {
     
@@ -908,7 +908,7 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                     if ($userCallingSettings.ForwardingTarget -match "sip:" -or $userCallingSettings.ForwardingTarget -notmatch "\+") {
     
                         $userForwardingTarget = (Get-CsOnlineUser -Identity $userCallingSettings.ForwardingTarget).DisplayName
-                        $forwardingTargetType = "Internal User"
+                        $forwardingTargetType = "User"
     
                         if ($null -eq $userForwardingTarget) {
     
@@ -1070,6 +1070,12 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                         if ((Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).FeatureTypes -contains "VoiceApp") {
 
                             $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.UnansweredTarget).Replace("sip:","")
+                            
+                        }
+
+                        else {
+
+                            $checkUserAccountType = $null
 
                         }
 
@@ -1124,7 +1130,7 @@ $allSubgraphs += "subgraphCallGroups$UserId"
 
                         else {
                             
-                            $forwardingTargetType = "Internal User"
+                            $forwardingTargetType = "User"
         
                             if ($null -eq $userForwardingTarget) {
         
@@ -1133,15 +1139,15 @@ $allSubgraphs += "subgraphCallGroups$UserId"
         
                             }
 
-                            if ($StandAlone -eq $false -and $userForwardingTarget -eq "Internal User") {
+                            if ($StandAlone -eq $false -and $forwardingTargetType -eq "User") {
 
                                $unansweredUserTargetUserId = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).Identity
 
                                 $mdUnansweredTarget = "-->$unansweredUserTargetUserId($forwardingTargetType<br> $userForwardingTarget)"
 
-                                if ($nestedVoiceApps -notcontains$unansweredUserTargetUserId) {
+                                if ($nestedVoiceApps -notcontains $unansweredUserTargetUserId) {
     
-                                    $nestedVoiceApps +=$unansweredUserTargetUserId
+                                    $nestedVoiceApps += $unansweredUserTargetUserId
                 
                                 }
     
