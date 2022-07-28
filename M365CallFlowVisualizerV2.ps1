@@ -3035,7 +3035,7 @@ function Get-NestedCallFlow {
 
             }
 
-            if ($accountType -eq "UserAccount") {
+            if ($accountType -eq "UserAccount" -and $ShowUserCallingSettings) {
 
                 . Get-TeamsUserCallFlow -UserId $nestedVoiceApp -PreviewSvg $false -SetClipBoard $false -StandAlone $false -ExportSvg $false -CustomFilePath $CustomFilePath
 
