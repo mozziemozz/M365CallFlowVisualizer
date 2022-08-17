@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.7.2
+    Version:            2.7.3
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -2338,6 +2338,15 @@ function Get-CallQueueCallFlow {
             }
 
         }
+        Voicemail {
+            $MatchingOverFlowPersonalVoicemailUserProperties = (Get-MgUser -UserId $MatchingCQ.OverflowActionTarget.Id)
+            $MatchingOverFlowPersonalVoicemailUser = FixDisplayName -String $MatchingOverFlowPersonalVoicemailUserProperties.DisplayName
+            $MatchingOverFlowPersonalVoicemailIdentity = $MatchingOverFlowPersonalVoicemailUserProperties.Id
+
+            $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqPersonalVoicemail$($MatchingOverFlowPersonalVoicemailIdentity)((Personal Voicemail <br> $MatchingOverFlowPersonalVoicemailUser))"
+
+            $allMermaidNodes += @("cqOverFlowAction$($cqCallFlowObjectId)","$($MatchingOverFlowPersonalVoicemailIdentity)")
+        }
         SharedVoicemail {
             $MatchingOverFlowVoicemailProperties = (Get-MgGroup -GroupId $MatchingCQ.OverflowActionTarget.Id)
             $MatchingOverFlowVoicemail = FixDisplayName -String $MatchingOverFlowVoicemailProperties.DisplayName
@@ -2370,33 +2379,42 @@ function Get-CallQueueCallFlow {
 
                 }
 
+                if ($MatchingCQ.EnableOverflowSharedVoicemailSystemPromptSuppression -eq $false) {
 
-                $CQOverFlowVoicemailSystemGreeting = "cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
+                    $CQOverFlowVoicemailSystemGreeting = "cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
 
-                $CQOverFlowVoicemailSystemGreetingValue = . Get-MsSystemMessage
+                    $CQOverFlowVoicemailSystemGreetingValue = . Get-MsSystemMessage
 
-                if ($ShowTTSGreetingText) {
+                    if ($ShowTTSGreetingText) {
 
-                    if ($ExportTTSGreetings) {
+                        if ($ExportTTSGreetings) {
 
-                        $CQOverFlowVoicemailSystemGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqOverFlowMsSystemMessage.txt"
+                            $CQOverFlowVoicemailSystemGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqOverFlowMsSystemMessage.txt"
+            
+                            $ttsGreetings += ("click cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqOverFlowMsSystemMessage.txt" + '"')
+            
+                        }    
         
-                        $ttsGreetings += ("click cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqOverFlowMsSystemMessage.txt" + '"')
-        
-                    }    
-    
 
-                    if ($CQOverFlowVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+                        if ($CQOverFlowVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
 
-                        $CQOverFlowVoicemailSystemGreetingValue = $CQOverFlowVoicemailSystemGreetingValue.Remove($CQOverFlowVoicemailSystemGreetingValue.Length - ($CQOverFlowVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+                            $CQOverFlowVoicemailSystemGreetingValue = $CQOverFlowVoicemailSystemGreetingValue.Remove($CQOverFlowVoicemailSystemGreetingValue.Length - ($CQOverFlowVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+
+                        }
+
+                        $CQOverFlowVoicemailSystemGreeting = $CQOverFlowVoicemailSystemGreeting.Replace("] -->"," <br> ''$CQOverFlowVoicemailSystemGreetingValue''] -->")
 
                     }
 
-                    $CQOverFlowVoicemailSystemGreeting = $CQOverFlowVoicemailSystemGreeting.Replace("] -->"," <br> ''$CQOverFlowVoicemailSystemGreetingValue''] -->")
+                    $allMermaidNodes += "cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)"
 
                 }
 
-                $allMermaidNodes += "cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)"
+                else {
+
+                    $CQOverFlowVoicemailSystemGreeting = $null
+
+                }
 
             }
 
@@ -2429,7 +2447,42 @@ function Get-CallQueueCallFlow {
         
                 }        
 
-                $CQOverFlowVoicemailSystemGreeting = $null
+                if ($MatchingCQ.EnableOverflowSharedVoicemailSystemPromptSuppression -eq $false) {
+
+                    $CQOverFlowVoicemailSystemGreeting = "cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
+
+                    $CQOverFlowVoicemailSystemGreetingValue = . Get-MsSystemMessage
+
+                    if ($ShowTTSGreetingText) {
+
+                        if ($ExportTTSGreetings) {
+
+                            $CQOverFlowVoicemailSystemGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqOverFlowMsSystemMessage.txt"
+            
+                            $ttsGreetings += ("click cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqOverFlowMsSystemMessage.txt" + '"')
+            
+                        }    
+        
+
+                        if ($CQOverFlowVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+
+                            $CQOverFlowVoicemailSystemGreetingValue = $CQOverFlowVoicemailSystemGreetingValue.Remove($CQOverFlowVoicemailSystemGreetingValue.Length - ($CQOverFlowVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+
+                        }
+
+                        $CQOverFlowVoicemailSystemGreeting = $CQOverFlowVoicemailSystemGreeting.Replace("] -->"," <br> ''$CQOverFlowVoicemailSystemGreetingValue''] -->")
+
+                    }
+
+                    $allMermaidNodes += "cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)"
+
+                }
+
+                else {
+
+                    $CQOverFlowVoicemailSystemGreeting = $null
+
+                }
 
             }
 
@@ -2518,6 +2571,15 @@ function Get-CallQueueCallFlow {
             }
     
         }
+        Voicemail {
+            $MatchingTimeoutPersonalVoicemailUserProperties = (Get-MgUser -UserId $MatchingCQ.TimeoutActionTarget.Id)
+            $MatchingTimeoutPersonalVoicemailUser = FixDisplayName -String $MatchingTimeoutPersonalVoicemailUserProperties.DisplayName
+            $MatchingTimeoutPersonalVoicemailIdentity = $MatchingTimeoutPersonalVoicemailUserProperties.Id
+
+            $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqPersonalVoicemail$($MatchingTimeoutPersonalVoicemailIdentity)((Personal Voicemail <br> $MatchingTimeoutPersonalVoicemailUser))"
+
+            $allMermaidNodes += @("cqTimeoutAction$($cqCallFlowObjectId)","$($MatchingTimeoutPersonalVoicemailIdentity)")
+        }
         SharedVoicemail {
             $MatchingTimeoutVoicemailProperties = (Get-MgGroup -GroupId $MatchingCQ.TimeoutActionTarget.Id)
             $MatchingTimeoutVoicemail = FixDisplayName -String $MatchingTimeoutVoicemailProperties.DisplayName
@@ -2550,31 +2612,41 @@ function Get-CallQueueCallFlow {
 
                 }
 
-                $CQTimeoutVoicemailSystemGreeting = "cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
+                if ($MatchingCQ.EnableTimeoutSharedVoicemailSystemPromptSuppression -eq $false) {
 
-                $CQTimeOutVoicemailSystemGreetingValue = . Get-MsSystemMessage
+                    $CQTimeoutVoicemailSystemGreeting = "cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
 
-                if ($ShowTTSGreetingText) {
+                    $CQTimeOutVoicemailSystemGreetingValue = . Get-MsSystemMessage
 
-                    if ($ExportTTSGreetings) {
+                    if ($ShowTTSGreetingText) {
 
-                        $CQTimeOutVoicemailSystemGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeoutMsSystemMessage.txt"
-        
-                        $ttsGreetings += ("click cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqTimeoutMsSystemMessage.txt" + '"')
-        
+                        if ($ExportTTSGreetings) {
+
+                            $CQTimeOutVoicemailSystemGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeoutMsSystemMessage.txt"
+            
+                            $ttsGreetings += ("click cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqTimeoutMsSystemMessage.txt" + '"')
+            
+                        }
+
+                        if ($CQTimeOutVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+
+                            $CQTimeOutVoicemailSystemGreetingValue = $CQTimeOutVoicemailSystemGreetingValue.Remove($CQTimeOutVoicemailSystemGreetingValue.Length - ($CQTimeOutVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+
+                        }
+
+                        $CQTimeOutVoicemailSystemGreeting = $CQTimeOutVoicemailSystemGreeting.Replace("] -->"," <br> ''$CQTimeOutVoicemailSystemGreetingValue''] -->")
+
                     }
 
-                    if ($CQTimeOutVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
-
-                        $CQTimeOutVoicemailSystemGreetingValue = $CQTimeOutVoicemailSystemGreetingValue.Remove($CQTimeOutVoicemailSystemGreetingValue.Length - ($CQTimeOutVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
-
-                    }
-
-                    $CQTimeOutVoicemailSystemGreeting = $CQTimeOutVoicemailSystemGreeting.Replace("] -->"," <br> ''$CQTimeOutVoicemailSystemGreetingValue''] -->")
+                    $allMermaidNodes += "cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)"
 
                 }
 
-                $allMermaidNodes += "cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)"
+                else {
+
+                    $CQTimeoutVoicemailSystemGreeting = $null
+
+                }
 
             }
     
@@ -2606,7 +2678,41 @@ function Get-CallQueueCallFlow {
         
                 }
 
-                $CQTimeoutVoicemailSystemGreeting = $null
+                if ($MatchingCQ.EnableTimeoutSharedVoicemailSystemPromptSuppression -eq $false) {
+
+                    $CQTimeoutVoicemailSystemGreeting = "cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
+
+                    $CQTimeOutVoicemailSystemGreetingValue = . Get-MsSystemMessage
+
+                    if ($ShowTTSGreetingText) {
+
+                        if ($ExportTTSGreetings) {
+
+                            $CQTimeOutVoicemailSystemGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeoutMsSystemMessage.txt"
+            
+                            $ttsGreetings += ("click cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqTimeoutMsSystemMessage.txt" + '"')
+            
+                        }
+
+                        if ($CQTimeOutVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+
+                            $CQTimeOutVoicemailSystemGreetingValue = $CQTimeOutVoicemailSystemGreetingValue.Remove($CQTimeOutVoicemailSystemGreetingValue.Length - ($CQTimeOutVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+
+                        }
+
+                        $CQTimeOutVoicemailSystemGreeting = $CQTimeOutVoicemailSystemGreeting.Replace("] -->"," <br> ''$CQTimeOutVoicemailSystemGreetingValue''] -->")
+
+                    }
+
+                    $allMermaidNodes += "cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)"
+
+                }
+
+                else {
+
+                    $CQTimeoutVoicemailSystemGreeting = $null
+
+                }
     
             }
     

@@ -74,3 +74,4 @@
 |15.06.2022|M365CallFlowVisualizerV2|2.7.1|Fixed multiple links if a call flow forwarded to the same user on different actions. Local MS Graph Cache is now cleared if there are issues signing in.|
 |11.06.2022|Get-MsSystemMessage.ps1|1.0.1|Added all supported languages to the switch statement as preparation for the translation by the community.|
 |21.06.2022|M365CallFlowVisualizerV2|2.7.2|The tool is now also displaying user calling settings of an Operator (if set to a user)|
+|17.08.2022|M365CallFlowVisualizerV2|2.7.3|Correctly displaying Skip voicemail system message on call queues with TTS and audio file greetings. Add support for redirect to a user's personal voicemail on CQ overflow and timeout.|
