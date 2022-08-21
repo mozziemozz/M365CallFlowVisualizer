@@ -333,7 +333,7 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                     
                                 else {
                     
-                                    $mdUnansweredTarget = "--> userUnansweredTarget$UserId([$forwardingTargetType<br> $userForwardingTarget])"
+                                    $mdUnansweredTarget = "--> userUnansweredTarget$unansweredUserTargetVoiceAppId([$forwardingTargetType<br> $userForwardingTarget])"
                     
                                 }
                     
@@ -353,9 +353,11 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                     
                                 if ($StandAlone -eq $false -and $forwardingTargetType -eq "User") {
                     
-                                   $unansweredUserTargetUserId = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).Identity
+                                    $unansweredUserTargetUserId = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).Identity
                     
                                     $mdUnansweredTarget = "-->$unansweredUserTargetUserId($forwardingTargetType<br> $userForwardingTarget)"
+
+                                    $allMermaidNodes += $unansweredUserTargetUserId
                     
                                     if ($nestedVoiceApps -notcontains $unansweredUserTargetUserId) {
                     
@@ -557,7 +559,7 @@ end
 
                         else {
 
-                            $mdImmediateForwardingTarget = "--> userImmediateForwardingTarget$UserId([$forwardingTargetType<br>$userForwardingTarget])"
+                            $mdImmediateForwardingTarget = "--> userImmediateForwardingTarget$immediateForwardingUserTargetVoiceAppId([$forwardingTargetType<br>$userForwardingTarget])"
 
                         }
 
@@ -580,6 +582,8 @@ end
                             $immediateForwardingUserTargetUserId = (Get-CsOnlineUser -Identity $userCallingSettings.ForwardingTarget).Identity
 
                             $mdImmediateForwardingTarget = "-->$immediateForwardingUserTargetUserId($forwardingTargetType<br> $userForwardingTarget)"
+
+                            $allMermaidNodes += $immediateForwardingUserTargetUserId
             
                             if ($nestedVoiceApps -notcontains $immediateForwardingUserTargetUserId) {
             
@@ -820,7 +824,7 @@ $allSubgraphs += "subgraphCallGroups$UserId"
 
                             else {
 
-                                $mdUnansweredTarget = "--> userUnansweredTarget$UserId([$forwardingTargetType<br> $userForwardingTarget])"
+                                $mdUnansweredTarget = "--> userUnansweredTarget$unansweredUserTargetVoiceAppId([$forwardingTargetType<br> $userForwardingTarget])"
 
                             }
 
@@ -840,9 +844,11 @@ $allSubgraphs += "subgraphCallGroups$UserId"
 
                             if ($StandAlone -eq $false -and $forwardingTargetType -eq "User") {
 
-                               $unansweredUserTargetUserId = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).Identity
+                                $unansweredUserTargetUserId = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).Identity
 
                                 $mdUnansweredTarget = "-->$unansweredUserTargetUserId($forwardingTargetType<br> $userForwardingTarget)"
+
+                                $allMermaidNodes += $unansweredUserTargetUserId
 
                                 if ($nestedVoiceApps -notcontains $unansweredUserTargetUserId) {
     
@@ -1172,14 +1178,115 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                     if ($userCallingSettings.ForwardingTarget -match "sip:" -or $userCallingSettings.ForwardingTarget -notmatch "\+") {
     
                         $userForwardingTarget = (Get-CsOnlineUser -Identity $userCallingSettings.ForwardingTarget).DisplayName
-                        $forwardingTargetType = "User"
-    
-                        if ($null -eq $userForwardingTarget) {
-    
-                            $userForwardingTarget = "External Tenant"
-                            $forwardingTargetType = "Federated User"
-    
+
+                        if (Get-CsOnlineUser -AccountType ResourceAccount |  Where-Object {$_.SipAddress -eq $userCallingSettings.ForwardingTarget}) {
+
+                            $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.ForwardingTarget).Replace("sip:","")
+                            
                         }
+                
+                        else {
+                
+                            $checkUserAccountType = $null
+                
+                        }
+
+                        if ($checkUserAccountType) {
+
+                            switch ($checkUserAccountType.ApplicationId) {
+                                # Call Queue
+                                11cd3e2e-fccb-42ad-ad00-878b93575e07 {
+                                    $forwardingTargetType = "Call Queue"
+                                }
+                                # Auto Attendant
+                                ce933385-9390-45d1-9512-c8d228074e07 {
+                                    $forwardingTargetType = "Auto Attendant"
+                                }
+                                Default {}
+                            }
+                
+                            if ($StandAlone -eq $false) {
+                
+                                switch ($forwardingTargetType) {
+                                    "Auto Attendant" {
+                
+                                        $alsoRingUserTargetVoiceAppId = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                                        $mdAlsoRingWarningMessage = "--> warning$alsoRingUserTargetVoiceAppId[[Warning: Also Ring is enabled<br> $forwardingTargetType will answer automatically!]] --> "
+                                    }
+                                    "Call Queue" {
+                
+                                        $alsoRingUserTargetVoiceAppId = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                                        $checkAlsoRingTargetCqOverflowThreshold = (Get-CsCallQueue -Identity $alsoRingUserTargetVoiceAppId).OverflowThreshold
+
+                                        if ($checkAlsoRingTargetCqOverflowThreshold -eq 0) {
+                                            $mdAlsoRingWarningMessage = "-.-> "
+                                        }
+
+                                        else {
+                                            $mdAlsoRingWarningMessage = "--> warning$alsoRingUserTargetVoiceAppId[[Warning: Also Ring is enabled<br> $forwardingTargetType will answer automatically!]] --> "
+                                        }
+                                    }
+                                    Default {}
+
+                                }
+
+                                $allMermaidNodes += "warning$alsoRingUserTargetVoiceAppId"
+                
+                                #2 variables without whitespace!
+                                $mdAlsoRingTarget = "$mdAlsoRingWarningMessage$alsoRingUserTargetVoiceAppId([$forwardingTargetType<br>$userForwardingTarget])"
+                
+                                if ($nestedVoiceApps -notcontains $alsoRingUserTargetVoiceAppId) {
+                
+                                    $nestedVoiceApps += $alsoRingUserTargetVoiceAppId
+                
+                                }            
+                
+                            }
+                
+                            else {
+                
+                                $mdAlsoRingTarget = "-.-> userForwardingTarget$alsoRingUserTargetVoiceAppId([$forwardingTargetType<br>$userForwardingTarget])"
+                
+                            }
+                
+                
+                        }
+                
+                        else {
+
+                            $forwardingTargetType = "User"
+    
+                            if ($null -eq $userForwardingTarget) {
+        
+                                $userForwardingTarget = "External Tenant"
+                                $forwardingTargetType = "Federated User"
+        
+                            }
+
+                            if ($StandAlone -eq $false -and $forwardingTargetType -eq "User") {
+
+                                $alsoRingUserTargetUserId = (Get-CsOnlineUser -Identity $userCallingSettings.ForwardingTarget).Identity
+                
+                                $mdAlsoRingTarget = "-.-> $alsoRingUserTargetUserId($forwardingTargetType<br> $userForwardingTarget)"
+
+                                $allMermaidNodes += $alsoRingUserTargetUserId
+                
+                                if ($nestedVoiceApps -notcontains $alsoRingUserTargetUserId) {
+                
+                                    $nestedVoiceApps += $alsoRingUserTargetUserId
+                
+                                }
+                
+                            }
+                
+                            else {
+                
+                                $mdAlsoRingTarget = "-.-> userForwardingTarget$UserId($forwardingTargetType<br>$userForwardingTarget)"
+                
+                            }
+                
+                        }
+
     
                     }
     
@@ -1187,6 +1294,8 @@ $allSubgraphs += "subgraphCallGroups$UserId"
     
                         $userForwardingTarget = $userCallingSettings.ForwardingTarget
                         $forwardingTargetType = "External PSTN"
+
+                        $mdAlsoRingTarget = "-.-> userForwardingTarget$UserId($forwardingTargetType<br>$userForwardingTarget)"
     
                     }
     
@@ -1194,15 +1303,10 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                     $mdUserCallingSettings = @"
 $userNode --> userForwarding$UserId(Also Ring)
 userForwarding$UserId -.-> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName))
-userForwarding$UserId -.-> userForwardingTarget$UserId
-subgraph subgraphSettings$UserId[ ]
-userForwardingTarget$UserId($forwardingTargetType<br> $userForwardingTarget)
-end
-
+userForwarding$UserId $mdAlsoRingTarget
 "@
 
 $allMermaidNodes += @("userForwarding$UserId","userParallelRing$userId","userForwardingTarget$UserId")
-$allSubgraphs += "subgraphSettings$UserId"
     
                 }
 
@@ -1385,7 +1489,7 @@ $allSubgraphs += "subgraphCallGroups$UserId"
 
                             else {
 
-                                $mdUnansweredTarget = "--> userUnansweredTarget$UserId([$forwardingTargetType<br> $userForwardingTarget])"
+                                $mdUnansweredTarget = "--> userUnansweredTarget$unansweredUserTargetVoiceAppId([$forwardingTargetType<br> $userForwardingTarget])"
 
                             }
 
@@ -1405,9 +1509,11 @@ $allSubgraphs += "subgraphCallGroups$UserId"
 
                             if ($StandAlone -eq $false -and $forwardingTargetType -eq "User") {
 
-                               $unansweredUserTargetUserId = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).Identity
+                                $unansweredUserTargetUserId = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).Identity
 
                                 $mdUnansweredTarget = "-->$unansweredUserTargetUserId($forwardingTargetType<br> $userForwardingTarget)"
+
+                                $allMermaidNodes += $unansweredUserTargetUserId
 
                                 if ($nestedVoiceApps -notcontains $unansweredUserTargetUserId) {
     

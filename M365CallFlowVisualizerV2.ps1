@@ -2325,7 +2325,7 @@ function Get-CallQueueCallFlow {
 
                     $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowCQ.Identity)([Call Queue <br> $($MatchingOverFlowCQ.Name)])"
 
-                    if ($nestedVoiceApps -notcontains $MatchingOverFlowCQ.Identity) {
+                    if ($nestedVoiceApps -notcontains $MatchingOverFlowCQ.Identity  -and $MatchingCQ.OverflowThreshold -ge 1) {
 
                         $nestedVoiceApps += $MatchingOverFlowCQ.Identity
         
@@ -2542,7 +2542,7 @@ function Get-CallQueueCallFlow {
     
                     $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingTimeoutAA.Identity)([Auto Attendant <br> $($MatchingTimeoutAA.Name)])"
 
-                    if ($nestedVoiceApps -notcontains $MatchingTimeoutAA.Identity) {
+                    if ($nestedVoiceApps -notcontains $MatchingTimeoutAA.Identity -and $MatchingCQ.OverflowThreshold -ge 1) {
 
                         $nestedVoiceApps += $MatchingTimeoutAA.Identity
         
