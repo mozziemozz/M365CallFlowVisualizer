@@ -77,3 +77,4 @@
 |17.08.2022|M365CallFlowVisualizerV2|2.7.3|Correctly displaying Skip voicemail system message on call queues with TTS and audio file greetings. Add support for redirect to a user's personal voicemail on CQ overflow and timeout.|
 |21.08.2022|M365CallFlowVisualizerV2|2.7.4|Fix an error where nested voice apps were rendered when CQ overflow was 0. Added Support for 0 Timeouts on CQs (Call Distribution is not rendered anymore).|
 |21.08.2022|Get-TeamsUserCallFlow.ps1|2.7.4|Add support for unlimited user and voice app nesting in user calling settings.|
+|21.08.2022|Get-MsSystemMessage.ps1|1.0.2|Added safe character greetings for languages with special characters for in diagram nodes.|

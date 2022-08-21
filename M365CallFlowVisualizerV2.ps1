@@ -606,13 +606,14 @@ subgraph $holidaySubgraphName
 
                         $holidayVoicemailSystemGreeting = "elementAAHolidayVoicemailSystemGreeting$($aaObjectId)-$($HolidayCounter)>Greeting <br> MS System Message] -->"
 
-                        $holidayVoicemailSystemGreetingValue = . Get-MsSystemMessage
+                        $holidayVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
+                        $holidayVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
 
                         if ($ShowTTSGreetingText) {
         
                             if ($ExportTTSGreetings) {
         
-                                $holidayVoicemailSystemGreetingValue | Out-File "$FilePath\$($aaObjectId)_autoAttendantHolidayVoicemailMsSystemMessage.txt"
+                                $holidayVoicemailSystemGreetingValueExport | Out-File "$FilePath\$($aaObjectId)_autoAttendantHolidayVoicemailMsSystemMessage.txt"
                 
                                 $ttsGreetings += ("click elementAAHolidayVoicemailSystemGreeting$($aaObjectId)-$($HolidayCounter) " + '"' + "$FilePath\$($aaObjectId)_autoAttendantHolidayVoicemailMsSystemMessage.txt" + '"')
                 
@@ -1497,13 +1498,14 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                             
                             $defaultCallFlowVoicemailSystemGreeting = "defaultCallFlowSystemGreeting$($aaDefaultCallFlowAaObjectId)>Greeting <br> MS System Message] -->"
 
-                            $defaultCallFlowVoicemailSystemGreetingValue = . Get-MsSystemMessage
+                            $defaultCallFlowVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
+                            $defaultCallFlowVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
 
                             if ($ShowTTSGreetingText) {
             
                                 if ($ExportTTSGreetings) {
             
-                                    $defaultCallFlowVoicemailSystemGreetingValue | Out-File "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowMsSystemMessage.txt"
+                                    $defaultCallFlowVoicemailSystemGreetingValueExport | Out-File "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowMsSystemMessage.txt"
                     
                                     $ttsGreetings += ("click defaultCallFlowSystemGreeting$($aadefaultCallFlowAaObjectId) " + '"' + "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowMsSystemMessage.txt" + '"')
                     
@@ -2001,13 +2003,14 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                             
                             $afterHoursCallFlowVoicemailSystemGreeting = "afterHoursCallFlowSystemGreeting$($aaafterHoursCallFlowAaObjectId)>Greeting <br> MS System Message] -->"
 
-                            $afterHoursCallFlowVoicemailSystemGreetingValue = . Get-MsSystemMessage
+                            $afterHoursCallFlowVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
+                            $afterHoursCallFlowVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
 
                             if ($ShowTTSGreetingText) {
             
                                 if ($ExportTTSGreetings) {
             
-                                    $afterHoursCallFlowVoicemailSystemGreetingValue | Out-File "$FilePath\$($aaafterHoursCallFlowAaObjectId)_autoAttendantAfterHoursCallFlowMsSystemMessage.txt"
+                                    $afterHoursCallFlowVoicemailSystemGreetingValueExport | Out-File "$FilePath\$($aaafterHoursCallFlowAaObjectId)_autoAttendantAfterHoursCallFlowMsSystemMessage.txt"
                     
                                     $ttsGreetings += ("click afterHoursCallFlowSystemGreeting$($aaafterHoursCallFlowAaObjectId) " + '"' + "$FilePath\$($aaafterHoursCallFlowAaObjectId)_autoAttendantAfterHoursCallFlowMsSystemMessage.txt" + '"')
                     
@@ -2383,13 +2386,15 @@ function Get-CallQueueCallFlow {
 
                     $CQOverFlowVoicemailSystemGreeting = "cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
 
-                    $CQOverFlowVoicemailSystemGreetingValue = . Get-MsSystemMessage
+                    $CQOverFlowVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
+                    $CQOverFlowVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
+
 
                     if ($ShowTTSGreetingText) {
 
                         if ($ExportTTSGreetings) {
 
-                            $CQOverFlowVoicemailSystemGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqOverFlowMsSystemMessage.txt"
+                            $CQOverFlowVoicemailSystemGreetingValueExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqOverFlowMsSystemMessage.txt"
             
                             $ttsGreetings += ("click cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqOverFlowMsSystemMessage.txt" + '"')
             
@@ -2451,13 +2456,14 @@ function Get-CallQueueCallFlow {
 
                     $CQOverFlowVoicemailSystemGreeting = "cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
 
-                    $CQOverFlowVoicemailSystemGreetingValue = . Get-MsSystemMessage
+                    $CQOverFlowVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
+                    $CQOverFlowVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
 
                     if ($ShowTTSGreetingText) {
 
                         if ($ExportTTSGreetings) {
 
-                            $CQOverFlowVoicemailSystemGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqOverFlowMsSystemMessage.txt"
+                            $CQOverFlowVoicemailSystemGreetingValueExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqOverFlowMsSystemMessage.txt"
             
                             $ttsGreetings += ("click cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqOverFlowMsSystemMessage.txt" + '"')
             
@@ -2616,13 +2622,14 @@ function Get-CallQueueCallFlow {
 
                     $CQTimeoutVoicemailSystemGreeting = "cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
 
-                    $CQTimeOutVoicemailSystemGreetingValue = . Get-MsSystemMessage
+                    $CQTimeOutVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
+                    $CQTimeOutVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
 
                     if ($ShowTTSGreetingText) {
 
                         if ($ExportTTSGreetings) {
 
-                            $CQTimeOutVoicemailSystemGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeoutMsSystemMessage.txt"
+                            $CQTimeOutVoicemailSystemGreetingValueExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeoutMsSystemMessage.txt"
             
                             $ttsGreetings += ("click cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqTimeoutMsSystemMessage.txt" + '"')
             
@@ -2682,13 +2689,14 @@ function Get-CallQueueCallFlow {
 
                     $CQTimeoutVoicemailSystemGreeting = "cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
 
-                    $CQTimeOutVoicemailSystemGreetingValue = . Get-MsSystemMessage
+                    $CQTimeOutVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
+                    $CQTimeOutVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
 
                     if ($ShowTTSGreetingText) {
 
                         if ($ExportTTSGreetings) {
 
-                            $CQTimeOutVoicemailSystemGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeoutMsSystemMessage.txt"
+                            $CQTimeOutVoicemailSystemGreetingValueExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeoutMsSystemMessage.txt"
             
                             $ttsGreetings += ("click cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqTimeoutMsSystemMessage.txt" + '"')
             
