@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.7.3
+    Version:            2.7.4
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -2308,7 +2308,7 @@ function Get-CallQueueCallFlow {
 
                     $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowAA.Identity)([Auto Attendant <br> $($MatchingOverFlowAA.Name)])"
 
-                    if ($nestedVoiceApps -notcontains $MatchingOverFlowAA.Identity) {
+                    if ($nestedVoiceApps -notcontains $MatchingOverFlowAA.Identity -and $MatchingCQ.TimeoutThreshold -ge 1) {
 
                         $nestedVoiceApps += $MatchingOverFlowAA.Identity
         
@@ -2325,7 +2325,7 @@ function Get-CallQueueCallFlow {
 
                     $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowCQ.Identity)([Call Queue <br> $($MatchingOverFlowCQ.Name)])"
 
-                    if ($nestedVoiceApps -notcontains $MatchingOverFlowCQ.Identity  -and $MatchingCQ.OverflowThreshold -ge 1) {
+                    if ($nestedVoiceApps -notcontains $MatchingOverFlowCQ.Identity -and $MatchingCQ.TimeoutThreshold -ge 1) {
 
                         $nestedVoiceApps += $MatchingOverFlowCQ.Identity
         
@@ -2343,9 +2343,9 @@ function Get-CallQueueCallFlow {
             $MatchingOverFlowPersonalVoicemailUser = FixDisplayName -String $MatchingOverFlowPersonalVoicemailUserProperties.DisplayName
             $MatchingOverFlowPersonalVoicemailIdentity = $MatchingOverFlowPersonalVoicemailUserProperties.Id
 
-            $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqPersonalVoicemail$($MatchingOverFlowPersonalVoicemailIdentity)((Personal Voicemail <br> $MatchingOverFlowPersonalVoicemailUser))"
+            $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqPersonalVoicemail$($MatchingOverFlowPersonalVoicemailIdentity)(Personal Voicemail <br> $MatchingOverFlowPersonalVoicemailUser)"
 
-            $allMermaidNodes += @("cqOverFlowAction$($cqCallFlowObjectId)","$($MatchingOverFlowPersonalVoicemailIdentity)")
+            $allMermaidNodes += @("cqOverFlowAction$($cqCallFlowObjectId)","$($MatchingOverFlowPersonalVoicemailIdentity)","cqPersonalVoicemail$($MatchingOverFlowPersonalVoicemailIdentity)")
         }
         SharedVoicemail {
             $MatchingOverFlowVoicemailProperties = (Get-MgGroup -GroupId $MatchingCQ.OverflowActionTarget.Id)
@@ -2510,7 +2510,7 @@ function Get-CallQueueCallFlow {
                 $MatchingTimeoutUser = FixDisplayName -String $MatchingTimeoutUserProperties.DisplayName
                 $MatchingTimeoutIdentity = $MatchingTimeoutUserProperties.Id
 
-                if ($nestedVoiceApps -notcontains $MatchingTimeoutUserProperties.Id) {
+                if ($nestedVoiceApps -notcontains $MatchingTimeoutUserProperties.Id -and $MatchingCQ.OverflowThreshold -ge 1) {
 
                     $nestedVoiceApps += $MatchingTimeoutUserProperties.Id
 
@@ -2558,7 +2558,7 @@ function Get-CallQueueCallFlow {
 
                     $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingTimeoutCQ.Identity)([Call Queue <br> $($MatchingTimeoutCQ.Name)])"
 
-                    if ($nestedVoiceApps -notcontains $MatchingTimeoutCQ.Identity) {
+                    if ($nestedVoiceApps -notcontains $MatchingTimeoutCQ.Identity -and $MatchingCQ.OverflowThreshold -ge 1) {
 
                         $nestedVoiceApps += $MatchingTimeoutCQ.Identity
         
@@ -2576,9 +2576,9 @@ function Get-CallQueueCallFlow {
             $MatchingTimeoutPersonalVoicemailUser = FixDisplayName -String $MatchingTimeoutPersonalVoicemailUserProperties.DisplayName
             $MatchingTimeoutPersonalVoicemailIdentity = $MatchingTimeoutPersonalVoicemailUserProperties.Id
 
-            $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqPersonalVoicemail$($MatchingTimeoutPersonalVoicemailIdentity)((Personal Voicemail <br> $MatchingTimeoutPersonalVoicemailUser))"
+            $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqPersonalVoicemail$($MatchingTimeoutPersonalVoicemailIdentity)(Personal Voicemail <br> $MatchingTimeoutPersonalVoicemailUser)"
 
-            $allMermaidNodes += @("cqTimeoutAction$($cqCallFlowObjectId)","$($MatchingTimeoutPersonalVoicemailIdentity)")
+            $allMermaidNodes += @("cqTimeoutAction$($cqCallFlowObjectId)","$($MatchingTimeoutPersonalVoicemailIdentity)","cqPersonalVoicemail$($MatchingTimeoutPersonalVoicemailIdentity)")
         }
         SharedVoicemail {
             $MatchingTimeoutVoicemailProperties = (Get-MgGroup -GroupId $MatchingCQ.TimeoutActionTarget.Id)
@@ -2826,7 +2826,7 @@ cqResult$($cqCallFlowObjectId) --> |No| timeOut$($cqCallFlowObjectId) --> $CqTim
 
     if ($mermaidCode -notcontains $mdCallQueueCallFlow) {
 
-        if ($MatchingCQ.OverflowThreshold -ge 1) {
+        if ($MatchingCQ.OverflowThreshold -ge 1 -and $MatchingCQ.TimeoutThreshold -ge 1) {
 
             $mermaidCode += $mdCallQueueCallFlow
 
@@ -2834,14 +2834,25 @@ cqResult$($cqCallFlowObjectId) --> |No| timeOut$($cqCallFlowObjectId) --> $CqTim
 
         else {
 
-            $mdCallQueueCallFlow =@"
+            if ($MatchingCQ.OverflowThreshold -eq 0) {
+
+                $mdCallQueueCallFlow =@"
 $($MatchingCQIdentity)([Call Queue <br> $($CqName)]) -->$cqGreetingNode overFlow$($cqCallFlowObjectId)[(Overflow Threshold: $CqOverFlowThreshold <br> Immediate Overflow Action <br> TTS Greeting Language: $CqLanguageId)]
 overFlow$($cqCallFlowObjectId) --> $CqOverFlowActionFriendly
 
 "@
 
             $mermaidCode += $mdCallQueueCallFlow
+            }
 
+            else {
+                $mdCallQueueCallFlow =@"
+$($MatchingCQIdentity)([Call Queue <br> $($CqName)]) -->$cqGreetingNode timeOut$($cqCallFlowObjectId)[(Timeout Threshold: $CqTimeOut <br> Immediate Timeout Action <br> TTS Greeting Language: $CqLanguageId)]
+timeOut$($cqCallFlowObjectId) --> $CqTimeoutActionFriendly
+
+"@
+            $mermaidCode += $mdCallQueueCallFlow
+            }
         }
 
         $allMermaidNodes += @("cqGreeting$($cqCallFlowObjectId)","overFlow$($cqCallFlowObjectId)","routingMethod$($cqCallFlowObjectId)","agentAlertTime$($cqCallFlowObjectId)","cqSettingsContainer$($cqCallFlowObjectId)","timeOut$($cqCallFlowObjectId)","agentListType$($cqCallFlowObjectId)","cqResult$($cqCallFlowObjectId)","cqEnd$($cqCallFlowObjectId)")
