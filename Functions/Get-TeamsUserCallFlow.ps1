@@ -156,7 +156,7 @@ function Get-TeamsUserCallFlow {
     # user is neither forwarding or unanswered enabled
     if (!$userCallingSettings.IsForwardingEnabled -and !$userCallingSettings.IsUnansweredEnabled) {
 
-        #Write-Host "User is neither forwaring or unanswered enabled"
+        Write-Host "User is neither forwaring or unanswered enabled"
 
         $mdUserCallingSettings = @"
         $userNode
@@ -167,7 +167,7 @@ function Get-TeamsUserCallFlow {
     # user is immediate forwarding enabled
     elseif ($userCallingSettings.ForwardingType -eq "Immediate") {
 
-        #Write-Host "user is immediate forwarding enabled."
+        Write-Host "user is immediate forwarding enabled."
 
         switch ($userCallingSettings.ForwardingTargetType) {
             MyDelegates {
@@ -278,29 +278,117 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                         if ($userCallingSettings.UnansweredTarget -match "sip:" -or $userCallingSettings.UnansweredTarget -notmatch "\+") {
 
                             $userForwardingTarget = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).DisplayName
-                            $forwardingTargetType = "User"
-        
-                            if ($null -eq $userForwardingTarget) {
-        
-                                $userForwardingTarget = "External Tenant"
-                                $forwardingTargetType = "Federated User"
-        
+                    
+                            if (Get-CsOnlineUser -AccountType ResourceAccount |  Where-Object {$_.SipAddress -eq $userCallingSettings.UnansweredTarget}) {
+                    
+                                $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.UnansweredTarget).Replace("sip:","")
+                                
                             }
-        
+                    
+                            else {
+                    
+                                $checkUserAccountType = $null
+                    
+                            }
+                    
+                            if ($checkUserAccountType) {
+                    
+                                switch ($checkUserAccountType.ApplicationId) {
+                                    # Call Queue
+                                    11cd3e2e-fccb-42ad-ad00-878b93575e07 {
+                                        $forwardingTargetType = "Call Queue"
+                                    }
+                                    # Auto Attendant
+                                    ce933385-9390-45d1-9512-c8d228074e07 {
+                                        $forwardingTargetType = "Auto Attendant"
+                                    }
+                                    Default {}
+                                }
+                    
+                                if ($StandAlone -eq $false) {
+                    
+                                    switch ($forwardingTargetType) {
+                                        "Auto Attendant" {
+                    
+                                            $unansweredUserTargetVoiceAppId = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                    
+                                        }
+                                        "Call Queue" {
+                    
+                                            $unansweredUserTargetVoiceAppId = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                    
+                                        }
+                                        Default {}
+                                    }
+                    
+                                    $mdUnansweredTarget = "--> $unansweredUserTargetVoiceAppId([$forwardingTargetType<br> $userForwardingTarget])"
+                    
+                                    if ($nestedVoiceApps -notcontains $unansweredUserTargetVoiceAppId) {
+                    
+                                        $nestedVoiceApps += $unansweredUserTargetVoiceAppId
+                    
+                                    }
+                    
+                                }
+                    
+                                else {
+                    
+                                    $mdUnansweredTarget = "--> userUnansweredTarget$UserId([$forwardingTargetType<br> $userForwardingTarget])"
+                    
+                                }
+                    
+                    
+                            }
+                    
+                            else {
+                                
+                                $forwardingTargetType = "User"
+                    
+                                if ($null -eq $userForwardingTarget) {
+                    
+                                    $userForwardingTarget = "External Tenant"
+                                    $forwardingTargetType = "Federated User"
+                    
+                                }
+                    
+                                if ($StandAlone -eq $false -and $forwardingTargetType -eq "User") {
+                    
+                                   $unansweredUserTargetUserId = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).Identity
+                    
+                                    $mdUnansweredTarget = "-->$unansweredUserTargetUserId($forwardingTargetType<br> $userForwardingTarget)"
+                    
+                                    if ($nestedVoiceApps -notcontains $unansweredUserTargetUserId) {
+                    
+                                        $nestedVoiceApps += $unansweredUserTargetUserId
+                    
+                                    }
+                    
+                                }
+                    
+                                else {
+                    
+                                    $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
+                    
+                                }
+                    
+                    
+                            }
+                    
                         }
-        
+                    
                         else {
-        
+                    
                             $userForwardingTarget = $userCallingSettings.UnansweredTarget
                             $forwardingTargetType = "External PSTN"
-        
+                    
+                            $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
+                    
                         }
-
-                        $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
+                    
                         $subgraphUnansweredSettings = $null
-
+                        
                         $allMermaidNodes += "userUnansweredTarget$UserId"
-
+                    
                     }
                     Default {}
                 }
@@ -414,14 +502,102 @@ end
                 if ($userCallingSettings.ForwardingTarget -match "sip:" -or $userCallingSettings.ForwardingTarget -notmatch "\+") {
 
                     $userForwardingTarget = (Get-CsOnlineUser -Identity $userCallingSettings.ForwardingTarget).DisplayName
-                    $forwardingTargetType = "User"
 
-                    if ($null -eq $userForwardingTarget) {
+                    if (Get-CsOnlineUser -AccountType ResourceAccount |  Where-Object {$_.SipAddress -eq $userCallingSettings.ForwardingTarget}) {
 
-                        $userForwardingTarget = "External Tenant"
-                        $forwardingTargetType = "Federated User"
+                        $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.ForwardingTarget).Replace("sip:","")
+                        
+                    }
+            
+                    else {
+            
+                        $checkUserAccountType = $null
+            
+                    }
+
+                    if ($checkUserAccountType) {
+
+                        switch ($checkUserAccountType.ApplicationId) {
+                            # Call Queue
+                            11cd3e2e-fccb-42ad-ad00-878b93575e07 {
+                                $forwardingTargetType = "Call Queue"
+                            }
+                            # Auto Attendant
+                            ce933385-9390-45d1-9512-c8d228074e07 {
+                                $forwardingTargetType = "Auto Attendant"
+                            }
+                            Default {}
+                        }
+            
+                        if ($StandAlone -eq $false) {
+
+                            switch ($forwardingTargetType) {
+                                "Auto Attendant" {
+            
+                                    $immediateForwardingUserTargetVoiceAppId = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+            
+                                }
+                                "Call Queue" {
+            
+                                    $immediateForwardingUserTargetVoiceAppId = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+            
+                                }
+                                Default {}
+                            }
+
+                            $mdImmediateForwardingTarget = "--> $immediateForwardingUserTargetVoiceAppId([$forwardingTargetType<br>$userForwardingTarget])"
+            
+                            if ($nestedVoiceApps -notcontains $immediateForwardingUserTargetVoiceAppId) {
+
+                                $nestedVoiceApps += $immediateForwardingUserTargetVoiceAppId
+            
+                            }            
+
+                        }
+
+                        else {
+
+                            $mdImmediateForwardingTarget = "--> userImmediateForwardingTarget$UserId([$forwardingTargetType<br>$userForwardingTarget])"
+
+                        }
+
 
                     }
+
+                    else {
+
+                        $forwardingTargetType = "User"
+
+                        if ($null -eq $userForwardingTarget) {
+    
+                            $userForwardingTarget = "External Tenant"
+                            $forwardingTargetType = "Federated User"
+    
+                        }
+
+                        if ($StandAlone -eq $false -and $forwardingTargetType -eq "User") {
+
+                            $immediateForwardingUserTargetUserId = (Get-CsOnlineUser -Identity $userCallingSettings.ForwardingTarget).Identity
+
+                            $mdImmediateForwardingTarget = "-->$immediateForwardingUserTargetUserId($forwardingTargetType<br> $userForwardingTarget)"
+            
+                            if ($nestedVoiceApps -notcontains $immediateForwardingUserTargetUserId) {
+            
+                                $nestedVoiceApps += $immediateForwardingUserTargetUserId
+            
+                            }
+            
+                        }
+
+                        else {
+
+                            $mdImmediateForwardingTarget = "--> userImmediateForwardingTarget$UserId($forwardingTargetType<br>$userForwardingTarget)"
+
+                        }
+
+
+                    }
+            
 
                 }
 
@@ -430,19 +606,19 @@ end
                     $userForwardingTarget = $userCallingSettings.ForwardingTarget
                     $forwardingTargetType = "External PSTN"
 
+                    $mdImmediateForwardingTarget = "--> userImmediateForwardingTarget$UserId($forwardingTargetType<br>$userForwardingTarget)"
+
                 }
 
 
                 $mdUserCallingSettings = @"
 $userNode --> userForwarding$UserId(Immediate Forwarding)
-subgraph subgraphSettings$UserId[ ]
-userForwarding$UserId --> userForwardingTarget$UserId($forwardingTargetType<br> $userForwardingTarget)
-end
+userForwarding$UserId $mdImmediateForwardingTarget
 
 "@
 
 $allMermaidNodes += @("userForwarding$UserId","userForwardingTarget$UserId")
-$allSubgraphs += "subgraphSettings$UserId"
+#$allSubgraphs += "subgraphSettings$UserId"
 
             }
             Default {}
@@ -456,7 +632,7 @@ $allSubgraphs += "subgraphSettings$UserId"
         # user is forwarding and unanswered enabled
         if ($userCallingSettings.IsForwardingEnabled -and $userCallingSettings.IsUnansweredEnabled) {
 
-            #Write-Host "user is forwaring and unanswered enabled"
+            Write-Host "user is forwaring and unanswered enabled"
 
             switch ($userCallingSettings.UnansweredTargetType) {
                 MyDelegates {
@@ -589,12 +765,99 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                     if ($userCallingSettings.UnansweredTarget -match "sip:" -or $userCallingSettings.UnansweredTarget -notmatch "\+") {
 
                         $userForwardingTarget = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).DisplayName
-                        $forwardingTargetType = "User"
+
+                        if (Get-CsOnlineUser -AccountType ResourceAccount |  Where-Object {$_.SipAddress -eq $userCallingSettings.UnansweredTarget}) {
+
+                            $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.UnansweredTarget).Replace("sip:","")
+                            
+                        }
+
+                        else {
+
+                            $checkUserAccountType = $null
+
+                        }
+
+                        if ($checkUserAccountType) {
+
+                            switch ($checkUserAccountType.ApplicationId) {
+                                # Call Queue
+                                11cd3e2e-fccb-42ad-ad00-878b93575e07 {
+                                    $forwardingTargetType = "Call Queue"
+                                }
+                                # Auto Attendant
+                                ce933385-9390-45d1-9512-c8d228074e07 {
+                                    $forwardingTargetType = "Auto Attendant"
+                                }
+                                Default {}
+                            }
+
+                            if ($StandAlone -eq $false) {
+
+                                switch ($forwardingTargetType) {
+                                    "Auto Attendant" {
+
+                                        $unansweredUserTargetVoiceAppId = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+
+                                    }
+                                    "Call Queue" {
+
+                                        $unansweredUserTargetVoiceAppId = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+
+                                    }
+                                    Default {}
+                                }
+
+                                $mdUnansweredTarget = "--> $unansweredUserTargetVoiceAppId([$forwardingTargetType<br> $userForwardingTarget])"
+
+                                if ($nestedVoiceApps -notcontains $unansweredUserTargetVoiceAppId) {
+
+                                    $nestedVoiceApps += $unansweredUserTargetVoiceAppId
+                
+                                }
+
+                            }
+
+                            else {
+
+                                $mdUnansweredTarget = "--> userUnansweredTarget$UserId([$forwardingTargetType<br> $userForwardingTarget])"
+
+                            }
+
+
+                        }
+
+                        else {
+                            
+                            $forwardingTargetType = "User"
+        
+                            if ($null -eq $userForwardingTarget) {
+        
+                                $userForwardingTarget = "External Tenant"
+                                $forwardingTargetType = "Federated User"
+        
+                            }
+
+                            if ($StandAlone -eq $false -and $forwardingTargetType -eq "User") {
+
+                               $unansweredUserTargetUserId = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).Identity
+
+                                $mdUnansweredTarget = "-->$unansweredUserTargetUserId($forwardingTargetType<br> $userForwardingTarget)"
+
+                                if ($nestedVoiceApps -notcontains $unansweredUserTargetUserId) {
     
-                        if ($null -eq $userForwardingTarget) {
+                                    $nestedVoiceApps += $unansweredUserTargetUserId
+                
+                                }
     
-                            $userForwardingTarget = "External Tenant"
-                            $forwardingTargetType = "Federated User"
+                            }
+
+                            else {
+
+                                $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
+
+                            }
+
     
                         }
     
@@ -604,12 +867,13 @@ $allSubgraphs += "subgraphCallGroups$UserId"
     
                         $userForwardingTarget = $userCallingSettings.UnansweredTarget
                         $forwardingTargetType = "External PSTN"
+
+                        $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
     
                     }
 
-                    $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
                     $subgraphUnansweredSettings = $null
-
+                    
                     $allMermaidNodes += "userUnansweredTarget$UserId"
 
                 }
@@ -826,7 +1090,7 @@ userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Conne
         # user is forwarding enabled but not unanswered enabled
         elseif ($userCallingSettings.IsForwardingEnabled -and !$userCallingSettings.IsUnansweredEnabled) {
 
-            #Write-Host "user is forwarding enabled but not unanswered enabled"
+            Write-Host "user is forwarding enabled but not unanswered enabled"
 
             switch ($userCallingSettings.ForwardingTargetType) {
                 Group {
@@ -949,7 +1213,7 @@ $allSubgraphs += "subgraphSettings$UserId"
         # user is unanswered enabled but not forwarding enabled
         elseif ($userCallingSettings.IsUnansweredEnabled -and !$userCallingSettings.IsForwardingEnabled) {
 
-            #Write-Host "user is unanswered enabled but not forwarding enabled"
+            Write-Host "user is unanswered enabled but not forwarding enabled"
 
             switch ($userCallingSettings.UnansweredTargetType) {
                 MyDelegates {
@@ -1067,7 +1331,7 @@ $allSubgraphs += "subgraphCallGroups$UserId"
 
                         $userForwardingTarget = (Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).DisplayName
 
-                        if ((Get-CsOnlineUser -Identity $userCallingSettings.UnansweredTarget).FeatureTypes -contains "VoiceApp") {
+                        if (Get-CsOnlineUser -AccountType ResourceAccount |  Where-Object {$_.SipAddress -eq $userCallingSettings.UnansweredTarget}) {
 
                             $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.UnansweredTarget).Replace("sip:","")
                             
