@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.7.5
+    Version:            2.7.6
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -110,6 +110,13 @@
         Accepted values:    Markdown, Mermaid
         Default value:      Markdown
 
+    -DateFormat
+        Specifies the format of the holiday dates. EU = "dd.MM.yyyy HH:mm" US = "MM.dd.yyyy HH:mm"
+        Required:           false
+        Type:               string
+        Accepted values:    EU, US
+        Default value:      EU
+
     -Theme
         Specifies the mermaid theme in Markdown. Custom will use the default hex color codes below if not specified otherwise. Themes are currently only supported for Markdown output.
         Required:           false
@@ -206,9 +213,10 @@ param(
     [Parameter(Mandatory=$false)][Switch]$ShowTTSGreetingText,
     [Parameter(Mandatory=$false)][Switch]$ShowAudioFileName,
     [Parameter(Mandatory=$false)][Single]$turncateGreetings = 20,
-    [Parameter(Mandatory=$false)][Switch]$ExportAudioFiles, # experimental feature
-    [Parameter(Mandatory=$false)][Switch]$ExportTTSGreetings, # experimental feature
+    [Parameter(Mandatory=$false)][Switch]$ExportAudioFiles,
+    [Parameter(Mandatory=$false)][Switch]$ExportTTSGreetings,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
+    [Parameter(Mandatory=$false)][ValidateSet("EU","US")][String]$DateFormat = "EU",
     [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral","custom")][String]$Theme = "default",
     [Parameter(Mandatory=$false)][String]$NodeColor = "#505AC9",
     [Parameter(Mandatory=$false)][String]$NodeBorderColor = "#464EB8",
@@ -226,7 +234,7 @@ $ErrorActionPreference = "Continue"
 
 . .\Functions\Connect-M365CFV.ps1
 . .\Functions\Read-BusinessHours.ps1
-. .\Functions\FixDisplayName.ps1
+. .\Functions\Optimize-DisplayName.ps1
 . .\Functions\Get-TeamsUserCallFlow.ps1
 . .\Functions\Get-MsSystemMessage.ps1
 . .\Functions\Get-AccountType.ps1
@@ -255,6 +263,18 @@ $allResourceAccounts = Get-CsOnlineApplicationInstance
 
 $applicationIdAa = "ce933385-9390-45d1-9512-c8d228074e07"
 $applicationIdCq = "11cd3e2e-fccb-42ad-ad00-878b93575e07"
+
+switch ($DateFormat) {
+    EU {
+        $dateFormat = "dd.MM.yyyy HH:mm"
+    }
+    US {
+        $dateFormat = "MM.dd.yyyy HH:mm"
+    }
+    Default {
+        $dateFormat = "dd.MM.yyyy HH:mm"
+    }
+}
 
 if ($CustomFilePath) {
 
@@ -366,7 +386,7 @@ function Find-Holidays {
             User { 
                 $OperatorTypeFriendly = "User"
                 $OperatorUser = (Get-MgUser -UserId $($Operator.Id))
-                $OperatorName = FixDisplayName -String $OperatorUser.DisplayName
+                $OperatorName = Optimize-DisplayName -String $OperatorUser.DisplayName
                 $OperatorIdentity = $OperatorUser.Id
                 $AddOperatorToNestedVoiceApps = $false
                 $AddOperatorToUserCallingSettings = $true
@@ -596,13 +616,13 @@ subgraph $holidaySubgraphName
                 # Switch through different transfer call to target types
                 switch ($holidayActionTargetType) {
                     User { $holidayActionTargetTypeFriendly = "User" 
-                    $holidayActionTargetName = FixDisplayName -String (Get-MgUser -UserId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
+                    $holidayActionTargetName = Optimize-DisplayName -String (Get-MgUser -UserId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
 
                     $holidayVoicemailSystemGreeting = $null
 
                 }
                     SharedVoicemail { $holidayActionTargetTypeFriendly = "Voicemail"
-                    $holidayActionTargetName = FixDisplayName -String (Get-MgGroup -GroupId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
+                    $holidayActionTargetName = Optimize-DisplayName -String (Get-MgGroup -GroupId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
 
                     if ($holidayCallFlow.Menu.MenuOptions.CallTarget.EnableSharedVoicemailSystemPromptSuppression -eq $false) {
 
@@ -687,16 +707,39 @@ subgraph $holidaySubgraphName
 
             # Create subgraph per holiday call handling inside the Holidays subgraph
 
-            $mermaidFriendlyHolidayName = FixDisplayName -String $($holidayCallFlow.Name)
+            $mermaidFriendlyHolidayName = Optimize-DisplayName -String $($holidayCallFlow.Name)
 
+            $holidayScheduleSorted = $holidaySchedule.FixedSchedule.DateTimeRanges | Sort-Object Start
+
+            $holidayDates = ""
+            $holidayScheduleCounter = 0
+            
+            foreach ($holidayDate in $holidayScheduleSorted) {
+            
+                $holidayDates += "$($holidayDate.Start.ToString($dateFormat))<br>$($holidayDate.End.ToString($dateFormat))"
+            
+                $holidayScheduleCounter ++
+            
+                if ($holidayScheduleCounter -lt $holidayScheduleSorted.Count) {
+            
+                    $holidayDates += "<br><br>"
+            
+                }
+            
+            }
+
+            $matchingHolidayScheduleName = Optimize-DisplayName (Get-CsOnlineSchedule -Id $holidaySchedule.Id).Name
+            
             $nodeElementHolidayDetails =@"
-
-subgraph subgraph$($HolidayCallHandling.CallFlowId)[$mermaidFriendlyHolidayName]
-direction LR
-elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedule.FixedSchedule.DateTimeRanges.Start) <br> $($holidaySchedule.FixedSchedule.DateTimeRanges.End)) --> elementAAHolidayGreeting$($aaObjectId)-$($HolidayCounter)>$holidayGreeting] --> $holidayVoicemailSystemGreeting $nodeElementHolidayAction
-    end
+            
+            subgraph subgraphHolidayCallHandling$($HolidayCallHandling.CallFlowId)[Call Handling: $mermaidFriendlyHolidayName]
+            subgraph subgraphHolidaySchedule$($HolidayCallHandling.CallFlowId)[Holiday Schedule: $matchingHolidayScheduleName]
+            direction LR
+            elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Dates<br>$holidayDates) --> elementAAHolidayGreeting$($aaObjectId)-$($HolidayCounter)>$holidayGreeting] --> $holidayVoicemailSystemGreeting $nodeElementHolidayAction
+                end
+                end
 "@
-
+            
             $allMermaidNodes += @("elementAAHoliday$($aaObjectId)-$($HolidayCounter)","elementAAHolidayGreeting$($aaObjectId)-$($HolidayCounter)")
 
 
@@ -712,7 +755,7 @@ elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Schedule <br> $($holidaySchedu
             # Add holiday call handling subgraph to holiday subgraph
             $mdSubGraphHolidays += $nodeElementHolidayDetails
 
-            $allSubgraphs += "subgraph$($HolidayCallHandling.CallFlowId)"
+            $allSubgraphs += @("subgraphHolidayCallHandling$($HolidayCallHandling.CallFlowId)","subgraphHolidaySchedule$($HolidayCallHandling.CallFlowId)")
 
         } # End of for-each loop
 
@@ -1442,7 +1485,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                     User { 
                         $defaultCallFlowTargetTypeFriendly = "User"
                         $defaultCallFlowTargetUser = (Get-MgUser -UserId $($MenuOption.CallTarget.Id))
-                        $defaultCallFlowTargetName = FixDisplayName -String $defaultCallFlowTargetUser.DisplayName
+                        $defaultCallFlowTargetName = Optimize-DisplayName -String $defaultCallFlowTargetUser.DisplayName
                         $defaultCallFlowTargetIdentity = $defaultCallFlowTargetUser.Id
 
                         if ($nestedVoiceApps -notcontains $defaultCallFlowTargetUser.Id) {
@@ -1493,7 +1536,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                         $defaultCallFlowTargetTypeFriendly = "Voicemail"
                         $defaultCallFlowTargetGroup = (Get-MgGroup -GroupId $MenuOption.CallTarget.Id)
-                        $defaultCallFlowTargetName = FixDisplayName -String $defaultCallFlowTargetGroup.DisplayName
+                        $defaultCallFlowTargetName = Optimize-DisplayName -String $defaultCallFlowTargetGroup.DisplayName
                         $defaultCallFlowTargetIdentity = $defaultCallFlowTargetGroup.Id
 
                         if ($MenuOption.CallTarget.EnableSharedVoicemailSystemPromptSuppression -eq $false) {
@@ -1947,7 +1990,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                     User { 
                         $afterHoursCallFlowTargetTypeFriendly = "User"
                         $afterHoursCallFlowTargetUser = (Get-MgUser -UserId $($MenuOption.CallTarget.Id))
-                        $afterHoursCallFlowTargetName = FixDisplayName -String $afterHoursCallFlowTargetUser.DisplayName
+                        $afterHoursCallFlowTargetName = Optimize-DisplayName -String $afterHoursCallFlowTargetUser.DisplayName
                         $afterHoursCallFlowTargetIdentity = $afterHoursCallFlowTargetUser.Id
 
                         if ($nestedVoiceApps -notcontains $afterHoursCallFlowTargetUser.Id) {
@@ -1998,7 +2041,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                         $afterHoursCallFlowTargetTypeFriendly = "Voicemail"
                         $afterHoursCallFlowTargetGroup = (Get-MgGroup -GroupId $MenuOption.CallTarget.Id)
-                        $afterHoursCallFlowTargetName = FixDisplayName -String $afterHoursCallFlowTargetGroup.DisplayName
+                        $afterHoursCallFlowTargetName = Optimize-DisplayName -String $afterHoursCallFlowTargetGroup.DisplayName
                         $afterHoursCallFlowTargetIdentity = $afterHoursCallFlowTargetGroup.Id
 
                         if ($MenuOption.CallTarget.EnableSharedVoicemailSystemPromptSuppression -eq $false) {
@@ -2240,7 +2283,7 @@ function Get-CallQueueCallFlow {
 
             foreach ($DistributionList in $MatchingCQ.DistributionLists.Guid) {
 
-                $DistributionListName = FixDisplayName -String (Get-MgGroup -GroupId $DistributionList).DisplayName
+                $DistributionListName = Optimize-DisplayName -String (Get-MgGroup -GroupId $DistributionList).DisplayName
 
                 $CqAgentListType += " <br> Group Name: $DistributionListName"
 
@@ -2257,7 +2300,7 @@ function Get-CallQueueCallFlow {
         else {
 
             $TeamName = (Get-Team -GroupId $MatchingCQ.DistributionLists.Guid).DisplayName
-            $ChannelName = FixDisplayName -String (Get-TeamChannel -GroupId $MatchingCQ.DistributionLists.Guid | Where-Object {$_.Id -eq $MatchingCQ.ChannelId}).DisplayName
+            $ChannelName = Optimize-DisplayName -String (Get-TeamChannel -GroupId $MatchingCQ.DistributionLists.Guid | Where-Object {$_.Id -eq $MatchingCQ.ChannelId}).DisplayName
 
             $CqAgentListType = "Teams Channel <br> Team Name: $TeamName <br> Channel Name: $ChannelName"
 
@@ -2278,7 +2321,7 @@ function Get-CallQueueCallFlow {
             if ($MatchingCQ.OverflowActionTarget.Type -eq "User") {
 
                 $MatchingOverFlowUserProperties = (Get-MgUser -UserId $MatchingCQ.OverflowActionTarget.Id)
-                $MatchingOverFlowUser = FixDisplayName -String $MatchingOverFlowUserProperties.DisplayName
+                $MatchingOverFlowUser = Optimize-DisplayName -String $MatchingOverFlowUserProperties.DisplayName
                 $MatchingOverFlowIdentity = $MatchingOverFlowUserProperties.Id
 
                 if ($nestedVoiceApps -notcontains $MatchingOverFlowUserProperties.Id) {
@@ -2345,7 +2388,7 @@ function Get-CallQueueCallFlow {
         }
         Voicemail {
             $MatchingOverFlowPersonalVoicemailUserProperties = (Get-MgUser -UserId $MatchingCQ.OverflowActionTarget.Id)
-            $MatchingOverFlowPersonalVoicemailUser = FixDisplayName -String $MatchingOverFlowPersonalVoicemailUserProperties.DisplayName
+            $MatchingOverFlowPersonalVoicemailUser = Optimize-DisplayName -String $MatchingOverFlowPersonalVoicemailUserProperties.DisplayName
             $MatchingOverFlowPersonalVoicemailIdentity = $MatchingOverFlowPersonalVoicemailUserProperties.Id
 
             $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqPersonalVoicemail$($MatchingOverFlowPersonalVoicemailIdentity)(Personal Voicemail <br> $MatchingOverFlowPersonalVoicemailUser)"
@@ -2354,7 +2397,7 @@ function Get-CallQueueCallFlow {
         }
         SharedVoicemail {
             $MatchingOverFlowVoicemailProperties = (Get-MgGroup -GroupId $MatchingCQ.OverflowActionTarget.Id)
-            $MatchingOverFlowVoicemail = FixDisplayName -String $MatchingOverFlowVoicemailProperties.DisplayName
+            $MatchingOverFlowVoicemail = Optimize-DisplayName -String $MatchingOverFlowVoicemailProperties.DisplayName
             $MatchingOverFlowIdentity = $MatchingOverFlowVoicemailProperties.Id
 
             if ($MatchingCQ.OverflowSharedVoicemailTextToSpeechPrompt) {
@@ -2515,7 +2558,7 @@ function Get-CallQueueCallFlow {
             if ($MatchingCQ.TimeoutActionTarget.Type -eq "User") {
 
                 $MatchingTimeoutUserProperties = (Get-MgUser -UserId $MatchingCQ.TimeoutActionTarget.Id)
-                $MatchingTimeoutUser = FixDisplayName -String $MatchingTimeoutUserProperties.DisplayName
+                $MatchingTimeoutUser = Optimize-DisplayName -String $MatchingTimeoutUserProperties.DisplayName
                 $MatchingTimeoutIdentity = $MatchingTimeoutUserProperties.Id
 
                 if ($nestedVoiceApps -notcontains $MatchingTimeoutUserProperties.Id -and $MatchingCQ.OverflowThreshold -ge 1) {
@@ -2581,7 +2624,7 @@ function Get-CallQueueCallFlow {
         }
         Voicemail {
             $MatchingTimeoutPersonalVoicemailUserProperties = (Get-MgUser -UserId $MatchingCQ.TimeoutActionTarget.Id)
-            $MatchingTimeoutPersonalVoicemailUser = FixDisplayName -String $MatchingTimeoutPersonalVoicemailUserProperties.DisplayName
+            $MatchingTimeoutPersonalVoicemailUser = Optimize-DisplayName -String $MatchingTimeoutPersonalVoicemailUserProperties.DisplayName
             $MatchingTimeoutPersonalVoicemailIdentity = $MatchingTimeoutPersonalVoicemailUserProperties.Id
 
             $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqPersonalVoicemail$($MatchingTimeoutPersonalVoicemailIdentity)(Personal Voicemail <br> $MatchingTimeoutPersonalVoicemailUser)"
@@ -2590,7 +2633,7 @@ function Get-CallQueueCallFlow {
         }
         SharedVoicemail {
             $MatchingTimeoutVoicemailProperties = (Get-MgGroup -GroupId $MatchingCQ.TimeoutActionTarget.Id)
-            $MatchingTimeoutVoicemail = FixDisplayName -String $MatchingTimeoutVoicemailProperties.DisplayName
+            $MatchingTimeoutVoicemail = Optimize-DisplayName -String $MatchingTimeoutVoicemailProperties.DisplayName
             $MatchingTimeoutIdentity = $MatchingTimeoutVoicemailProperties.Id
     
             if ($MatchingCQ.TimeoutSharedVoicemailTextToSpeechPrompt) {
@@ -2743,7 +2786,7 @@ function Get-CallQueueCallFlow {
 
     # add each agent to the empty agents mermaid element
     foreach ($CqAgent in $CqAgents) {
-        $AgentDisplayName = FixDisplayName -String (Get-MgUser -UserId $CqAgent.ObjectId).DisplayName
+        $AgentDisplayName = Optimize-DisplayName -String (Get-MgUser -UserId $CqAgent.ObjectId).DisplayName
 
         if ($ShowCqAgentPhoneNumbers -eq $true) {
 

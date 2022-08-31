@@ -9,9 +9,17 @@
 
 #>
 
-function FixDisplayName {
+function Optimize-DisplayName {
     param (
         $String
     )
-    return $String = $String -replace "[()]",""
+    return $String = ($String `
+        -Replace "\(","" `
+        -Replace "\)","" `
+        -Replace "\[","" `
+        -Replace "\]","" `
+        -Replace "\|","" `
+        -Replace "\~","" `
+        -Replace "  "," " `
+        ).Trim()
 }
