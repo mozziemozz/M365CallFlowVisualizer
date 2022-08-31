@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.7.4
+    Version:            2.7.5
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -281,8 +281,10 @@ function Set-Mermaid {
 
     else {
 
+        $Theme = $Theme.ToLower()
+
         $MarkdownTheme =@"
-%%{init: {'theme': '$($Theme)', "flowchart" : { "curve" : "basis" } } }%%
+%%{init: {'theme': '$($Theme)', 'flowchart' : { 'curve' : 'basis' } } }%%
 
 "@ 
 
@@ -3219,22 +3221,6 @@ else {
 
 }
 
-<# if ($ShowUserCallingSettings -eq $true) {
-
-    foreach ($userId in $nestedVoiceApps) {
-
-        . Get-TeamsUserCallFlow -UserId $userId -PreviewSvg $false -SetClipBoard $false -StandAlone $false -ExportSvg $false -CustomFilePath $CustomFilePath
-
-        if ($mermaidCode -notcontains $mdUserCallingSettings) {
-
-            $mermaidCode += $mdUserCallingSettings
-
-        }
-
-    }
-
-} #>
-
 #Remove invalid characters from mermaid syntax
 $mermaidCode = $mermaidCode.Replace(";",",")
 
@@ -3367,12 +3353,13 @@ if ($ExportHtml -eq $true) {
     if ($Theme -eq "custom") {
 
         $MarkdownTheme = '<div class="mermaid">'
+        $MarkdownThemeHtml = '<div class="mermaid">'
         
     }
 
     else {
 
-        $MarkdownTheme = '<div class="mermaid">' + $MarkdownTheme 
+        $MarkdownThemeHtml = '<div class="mermaid">' + $MarkdownTheme 
 
     }
 
@@ -3381,7 +3368,7 @@ if ($ExportHtml -eq $true) {
 
         $HtmlOutput -Replace "VoiceAppNamePlaceHolder","Call Flow $VoiceAppFileName" `
         -Replace "VoiceAppNameHtmlIdPlaceHolder",($($VoiceAppFileName).Replace(" ","-")) `
-        -Replace '<div class="mermaid">ThemePlaceHolder',$MarkdownTheme `
+        -Replace '<div class="mermaid">ThemePlaceHolder',$MarkdownThemeHtml `
         -Replace "MermaidPlaceHolder",($mermaidCode | Out-String).Replace($MarkdownTheme,"") `
         -Replace "# Call Flow $VoiceAppFileName","" `
         -Replace('```mermaid','') `
@@ -3393,7 +3380,7 @@ if ($ExportHtml -eq $true) {
 
         $HtmlOutput -Replace "VoiceAppNamePlaceHolder","Call Flow $VoiceAppFileName" `
         -Replace "VoiceAppNameHtmlIdPlaceHolder",($($VoiceAppFileName).Replace(" ","-")) `
-        -Replace '<div class="mermaid">ThemePlaceHolder',$MarkdownTheme `
+        -Replace '<div class="mermaid">ThemePlaceHolder',$MarkdownThemeHtml `
         -Replace "MermaidPlaceHolder",($mermaidCode | Out-String).Replace($MarkdownTheme,"") | Set-Content -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.htm" -Encoding UTF8
 
     }
