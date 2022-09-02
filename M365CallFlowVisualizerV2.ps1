@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.7.6
+    Version:            2.7.7
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -270,7 +270,7 @@ $audioFileNames = @()
 $ttsGreetings = @()
 
 $allAutoAttendantIds = (Get-CsAutoAttendant).Identity
-#$allCallQueueIds = (Get-CsCallQueue).Identity # not in use at the moment
+$allCallQueueIds = (Get-CsCallQueue -WarningAction SilentlyContinue).Identity
 $allResourceAccounts = Get-CsOnlineApplicationInstance
 
 $applicationIdAa = "ce933385-9390-45d1-9512-c8d228074e07"
@@ -433,7 +433,7 @@ function Find-Holidays {
 
                 else {
 
-                    $MatchingOperatorCq = Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $Operator.Id}
+                    $MatchingOperatorCq = Get-CsCallQueue -WarningAction SilentlyContinue | Where-Object {$_.ApplicationInstances -contains $Operator.Id}
 
                     $OperatorTypeFriendly = "[Call Queue"
                     $OperatorName = "$($MatchingOperatorCq.Name)]"
@@ -706,7 +706,7 @@ subgraph $holidaySubgraphName
 
                         else {
 
-                            $MatchingCQ = Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $holidayCallFlow.Menu.MenuOptions.CallTarget.Id}
+                            $MatchingCQ = Get-CsCallQueue -WarningAction SilentlyContinue | Where-Object {$_.ApplicationInstances -contains $holidayCallFlow.Menu.MenuOptions.CallTarget.Id}
 
                             $holidayActionTargetTypeFriendly = "[Call Queue"
                             $holidayActionTargetName = "$($MatchingCQ.Name)]"
@@ -1542,7 +1542,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                         else {
 
-                            $MatchingCqAaDefaultCallFlow = Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
+                            $MatchingCqAaDefaultCallFlow = Get-CsCallQueue -WarningAction SilentlyContinue | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
 
                             $defaultCallFlowTargetTypeFriendly = "[Call Queue"
                             $defaultCallFlowTargetName = "$($MatchingCqAaDefaultCallFlow.Name)]"
@@ -1604,7 +1604,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                 # Check if transfer target type is call queue
                 if ($defaultCallFlowTargetTypeFriendly -eq "[Call Queue") {
 
-                    $MatchingCQIdentity = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}).Identity
+                    $MatchingCQIdentity = (Get-CsCallQueue -WarningAction SilentlyContinue | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}).Identity
 
                     $mdAutoAttendantDefaultCallFlow = "$mdDtmfLink defaultCallFlow$($aaDefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction) --> $($MatchingCQIdentity)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)`n"
                     
@@ -2047,7 +2047,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                         else {
 
-                            $MatchingCqAaafterHoursCallFlow = Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
+                            $MatchingCqAaafterHoursCallFlow = Get-CsCallQueue -WarningAction SilentlyContinue | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
 
                             $afterHoursCallFlowTargetTypeFriendly = "[Call Queue"
                             $afterHoursCallFlowTargetName = "$($MatchingCqAaafterHoursCallFlow.Name)]"
@@ -2109,7 +2109,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                 # Check if transfer target type is call queue
                 if ($afterHoursCallFlowTargetTypeFriendly -eq "[Call Queue") {
 
-                    $MatchingCQIdentity = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}).Identity
+                    $MatchingCQIdentity = (Get-CsCallQueue -WarningAction SilentlyContinue | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}).Identity
 
                     $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction) --> $($MatchingCQIdentity)($afterHoursCallFlowTargetTypeFriendly <br> $afterHoursCallFlowTargetName)`n"
                     
@@ -2177,7 +2177,7 @@ function Get-CallQueueCallFlow {
         [Parameter(Mandatory=$true)][String]$MatchingCQIdentity
     )
 
-    $MatchingCQ = Get-CsCallQueue -Identity $MatchingCQIdentity
+    $MatchingCQ = Get-CsCallQueue -WarningAction SilentlyContinue -Identity $MatchingCQIdentity
 
     $cqCallFlowObjectId = $MatchingCQ.Identity
 
@@ -2395,7 +2395,7 @@ function Get-CallQueueCallFlow {
 
                 else {
 
-                    $MatchingOverFlowCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.OverflowActionTarget.Id})
+                    $MatchingOverFlowCQ = (Get-CsCallQueue -WarningAction SilentlyContinue | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.OverflowActionTarget.Id})
 
                     $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowCQ.Identity)([Call Queue <br> $($MatchingOverFlowCQ.Name)])"
 
@@ -2637,7 +2637,7 @@ function Get-CallQueueCallFlow {
     
                 else {
     
-                    $MatchingTimeoutCQ = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.TimeoutActionTarget.Id})
+                    $MatchingTimeoutCQ = (Get-CsCallQueue -WarningAction SilentlyContinue | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.TimeoutActionTarget.Id})
 
                     $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingTimeoutCQ.Identity)([Call Queue <br> $($MatchingTimeoutCQ.Name)])"
 
@@ -2964,7 +2964,7 @@ function Get-CallFlow {
         $VoiceApps = @()
 
         $VoiceAppAas = Get-CsAutoAttendant
-        $VoiceAppCqs = Get-CsCallQueue
+        $VoiceAppCqs = Get-CsCallQueue -WarningAction SilentlyContinue
 
         foreach ($VoiceApp in $VoiceAppAas) {
 
@@ -3079,7 +3079,7 @@ function Get-CallFlow {
 
         else {
 
-            $VoiceApp = Get-CsCallQueue | Where-Object {$_.Name -eq $VoiceAppSelection.Name}
+            $VoiceApp = Get-CsCallQueue -WarningAction SilentlyContinue | Where-Object {$_.Name -eq $VoiceAppSelection.Name}
             $voiceAppType = "Call Queue"
 
         }
@@ -3098,7 +3098,7 @@ function Get-CallFlow {
 
         else {
 
-            $VoiceApp = Get-CsCallQueue -Identity $VoiceAppId
+            $VoiceApp = Get-CsCallQueue -WarningAction SilentlyContinue -Identity $VoiceAppId
             $voiceAppType = "Call Queue"
 
         }
@@ -3115,7 +3115,7 @@ function Get-CallFlow {
 
         else {
 
-            $VoiceApp = Get-CsCallQueue | Where-Object {$_.Name -eq $VoiceAppName}
+            $VoiceApp = Get-CsCallQueue -WarningAction SilentlyContinue | Where-Object {$_.Name -eq $VoiceAppName}
 
         }
 

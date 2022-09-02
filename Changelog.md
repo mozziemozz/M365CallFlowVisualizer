@@ -79,3 +79,6 @@
 |21.08.2022|Get-TeamsUserCallFlow.ps1|2.7.4|Add support for unlimited user and voice app nesting in user calling settings.|
 |21.08.2022|Get-MsSystemMessage.ps1|1.0.2|Added safe character greetings for languages with special characters for in diagram nodes.|
 |31.08.2022|M365CallFlowVisualizerV2.ps1|2.7.5|Improve HTML Output compatibility.|
+|31.08.2022|M365CallFlowVisualizerV2.ps1|2.7.6|Rename FixDisplayName to Optimize-Displayname. Remove more special characters from display names. Improve formatting of holiday lists. Add Parameter for US and EU date formats.|
+|02.09.2022|M365CallFlowVisualizerV2.ps1|2.7.7|Add support for obfuscating phone numbers. Suppress Conf Mode warnings on CQs. Correctly reflect order of greeting, system greeting and transfer for shared voicemail on AAs and CQs.|
+|02.09.2022|Get-TeamsUserCallFlow.ps1|1.0.3|Add support for obfuscating phone numbers. Unify names for external transfers (change from External PSTN to Number).|

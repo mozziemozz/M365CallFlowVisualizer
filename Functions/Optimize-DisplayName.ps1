@@ -4,7 +4,8 @@
     
     .DESCRIPTION
     Author:             Luca Sain (https://github.com/ChocoMilkWithoutSugar)
-    Version:            1.0.0
+    Conributors:        Martin Heusser
+    Version:            1.0.1
     Changelog:          .\Changelog.md
 
 #>
