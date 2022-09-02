@@ -103,6 +103,12 @@
         Type:               switch
         Default value:      false
 
+    -ObfuscatePhoneNumbers
+        Specifies if phone numbers in call flows should be obfuscated for sharing / example reasons. This will replace the last 4 digits in numbers with an asterisk (*) character. Warning: This will only obfuscate phone numbers in node descriptions. The complete phone number will still be included in Markdown, Mermaid and HTML output!
+        Required:           false
+        Type:               bool
+        Default value:      false
+
     -DocType
         Specifies the document type.
         Required:           false
@@ -215,6 +221,7 @@ param(
     [Parameter(Mandatory=$false)][Single]$turncateGreetings = 20,
     [Parameter(Mandatory=$false)][Switch]$ExportAudioFiles,
     [Parameter(Mandatory=$false)][Switch]$ExportTTSGreetings,
+    [Parameter(Mandatory=$false)][Bool]$ObfuscatePhoneNumbers = $false,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][ValidateSet("EU","US")][String]$DateFormat = "EU",
     [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral","custom")][String]$Theme = "default",
@@ -239,15 +246,20 @@ $ErrorActionPreference = "Continue"
 . .\Functions\Get-MsSystemMessage.ps1
 . .\Functions\Get-AccountType.ps1
 
+# Connect to MicrosoftTeams and Microsoft.Graph
 . Connect-M365CFV
-
 
 if ($SaveToFile -eq $false -and $CustomFilePath) {
 
-    Write-Warning -Message "Warning: Custom file path is specified but SaveToFile is set to false. The call flow won't be saved!"
+    Write-Warning -Message "Custom file path is specified but SaveToFile is set to false. The call flow won't be saved!"
 
 }
 
+if ($ObfuscatePhoneNumbers -eq $true) {
+
+    Write-Warning -Message "Obfuscate phone numbers is True. This will only obfuscate phone numbers in node descriptions. The complete phone number will still be included in Markdown, Mermaid and HTML output!"
+
+}
 
 # Common arrays and variables
 $nestedVoiceApps = @()
@@ -258,21 +270,21 @@ $audioFileNames = @()
 $ttsGreetings = @()
 
 $allAutoAttendantIds = (Get-CsAutoAttendant).Identity
-$allCallQueueIds = (Get-CsCallQueue).Identity
+#$allCallQueueIds = (Get-CsCallQueue).Identity # not in use at the moment
 $allResourceAccounts = Get-CsOnlineApplicationInstance
 
 $applicationIdAa = "ce933385-9390-45d1-9512-c8d228074e07"
-$applicationIdCq = "11cd3e2e-fccb-42ad-ad00-878b93575e07"
+#$applicationIdCq = "11cd3e2e-fccb-42ad-ad00-878b93575e07" # not in use at the moment
 
 switch ($DateFormat) {
     EU {
-        $dateFormat = "dd.MM.yyyy HH:mm"
+        $dateFormatString = "dd.MM.yyyy HH:mm"
     }
     US {
-        $dateFormat = "MM.dd.yyyy HH:mm"
+        $dateFormatString = "MM.dd.yyyy HH:mm"
     }
     Default {
-        $dateFormat = "dd.MM.yyyy HH:mm"
+        $dateFormatString = "dd.MM.yyyy HH:mm"
     }
 }
 
@@ -388,15 +400,20 @@ function Find-Holidays {
                 $OperatorUser = (Get-MgUser -UserId $($Operator.Id))
                 $OperatorName = Optimize-DisplayName -String $OperatorUser.DisplayName
                 $OperatorIdentity = $OperatorUser.Id
-                $AddOperatorToNestedVoiceApps = $false
-                $AddOperatorToUserCallingSettings = $true
+                $AddOperatorToNestedVoiceApps = $true
             }
             ExternalPstn { 
-                $OperatorTypeFriendly = "External PSTN"
+                $OperatorTypeFriendly = "External Number"
                 $OperatorName = ($Operator.Id).Replace("tel:","")
                 $OperatorIdentity = $OperatorName
                 $AddOperatorToNestedVoiceApps = $false
-                $AddOperatorToUserCallingSettings = $false
+
+                if ($ObfuscatePhoneNumbers -eq $true) {
+
+                    $OperatorName = $OperatorName.Remove(($OperatorName.Length -4)) + "****"
+
+                }
+
             }
             ApplicationEndpoint {
 
@@ -425,7 +442,6 @@ function Find-Holidays {
                 }
 
                 $AddOperatorToNestedVoiceApps = $true
-                $AddOperatorToUserCallingSettings = $false
 
             }
 
@@ -438,7 +454,6 @@ function Find-Holidays {
     else {
 
         $AddOperatorToNestedVoiceApps = $false
-        $AddOperatorToUserCallingSettings = $false
 
     }
     
@@ -626,7 +641,7 @@ subgraph $holidaySubgraphName
 
                     if ($holidayCallFlow.Menu.MenuOptions.CallTarget.EnableSharedVoicemailSystemPromptSuppression -eq $false) {
 
-                        $holidayVoicemailSystemGreeting = "elementAAHolidayVoicemailSystemGreeting$($aaObjectId)-$($HolidayCounter)>Greeting <br> MS System Message] -->"
+                        $holidayVoicemailSystemGreeting = "--> elementAAHolidayVoicemailSystemGreeting$($aaObjectId)-$($HolidayCounter)>Greeting <br> MS System Message] "
 
                         $holidayVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
                         $holidayVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
@@ -647,7 +662,7 @@ subgraph $holidaySubgraphName
         
                             }
         
-                            $holidayVoicemailSystemGreeting = $holidayVoicemailSystemGreeting.Replace("] -->"," <br> ''$holidayVoicemailSystemGreetingValue''] -->")
+                            $holidayVoicemailSystemGreeting = $holidayVoicemailSystemGreeting.Replace("] "," <br> ''$holidayVoicemailSystemGreetingValue''] ")
         
                         }
         
@@ -665,6 +680,12 @@ subgraph $holidaySubgraphName
                 }
                     ExternalPstn { $holidayActionTargetTypeFriendly = "External Number" 
                     $holidayActionTargetName =  ($holidayCallFlow.Menu.MenuOptions.CallTarget.Id).Replace("tel:","")
+
+                    if ($ObfuscatePhoneNumbers -eq $true) {
+
+                        $holidayActionTargetName = $holidayActionTargetName.Remove(($holidayActionTargetName.Length -4)) + "****"
+    
+                    }    
 
                     $holidayVoicemailSystemGreeting = $null
 
@@ -699,7 +720,7 @@ subgraph $holidaySubgraphName
                 }
 
                 # Create mermaid code for the holiday action node based on the variables created in the switch statemenet
-                $nodeElementHolidayAction = "elementAAHolidayAction$($aaObjectId)-$($HolidayCounter)($holidayAction) --> elementAAHolidayActionTargetType$($aaObjectId)-$($HolidayCounter)($holidayActionTargetTypeFriendly <br> $holidayActionTargetName)"
+                $nodeElementHolidayAction = "elementAAHolidayAction$($aaObjectId)-$($HolidayCounter)($holidayAction) $holidayVoicemailSystemGreeting--> elementAAHolidayActionTargetType$($aaObjectId)-$($HolidayCounter)($holidayActionTargetTypeFriendly <br> $holidayActionTargetName)"
 
                 $allMermaidNodes += @("elementAAHolidayAction$($aaObjectId)-$($HolidayCounter)","elementAAHolidayActionTargetType$($aaObjectId)-$($HolidayCounter)")
 
@@ -716,13 +737,13 @@ subgraph $holidaySubgraphName
             
             foreach ($holidayDate in $holidayScheduleSorted) {
             
-                $holidayDates += "$($holidayDate.Start.ToString($dateFormat))<br>$($holidayDate.End.ToString($dateFormat))"
+                $holidayDates += "$($holidayDate.Start.ToString($dateFormatString)) - $($holidayDate.End.ToString($dateFormatString))"
             
                 $holidayScheduleCounter ++
             
                 if ($holidayScheduleCounter -lt $holidayScheduleSorted.Count) {
             
-                    $holidayDates += "<br><br>"
+                    $holidayDates += "<br>"
             
                 }
             
@@ -735,7 +756,7 @@ subgraph $holidaySubgraphName
             subgraph subgraphHolidayCallHandling$($HolidayCallHandling.CallFlowId)[Call Handling: $mermaidFriendlyHolidayName]
             subgraph subgraphHolidaySchedule$($HolidayCallHandling.CallFlowId)[Holiday Schedule: $matchingHolidayScheduleName]
             direction LR
-            elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Dates<br>$holidayDates) --> elementAAHolidayGreeting$($aaObjectId)-$($HolidayCounter)>$holidayGreeting] --> $holidayVoicemailSystemGreeting $nodeElementHolidayAction
+            elementAAHoliday$($aaObjectId)-$($HolidayCounter)(Dates<br>$holidayDates) --> elementAAHolidayGreeting$($aaObjectId)-$($HolidayCounter)>$holidayGreeting] --> $nodeElementHolidayAction
                 end
                 end
 "@
@@ -1402,13 +1423,6 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                 }
 
-                if ($nestedVoiceApps -notcontains $OperatorIdentity -and $AddOperatorToUserCallingSettings -eq $true) {
-
-                    $nestedVoiceApps += $OperatorIdentity
-
-                }
-
-
             }
 
             elseif ($defaultCallFlowAction -eq "Announcement") {
@@ -1498,9 +1512,15 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                     }
                     ExternalPstn { 
-                        $defaultCallFlowTargetTypeFriendly = "External PSTN"
+                        $defaultCallFlowTargetTypeFriendly = "External Number"
                         $defaultCallFlowTargetName = ($MenuOption.CallTarget.Id).Replace("tel:","")
                         $defaultCallFlowTargetIdentity = $defaultCallFlowTargetName
+
+                        if ($ObfuscatePhoneNumbers -eq $true) {
+
+                            $defaultCallFlowTargetName = $defaultCallFlowTargetName.Remove(($defaultCallFlowTargetName.Length -4)) + "****"
+        
+                        }        
 
                         $defaultCallFlowVoicemailSystemGreeting = $null
 
@@ -1541,7 +1561,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                         if ($MenuOption.CallTarget.EnableSharedVoicemailSystemPromptSuppression -eq $false) {
                             
-                            $defaultCallFlowVoicemailSystemGreeting = "defaultCallFlowSystemGreeting$($aaDefaultCallFlowAaObjectId)>Greeting <br> MS System Message] -->"
+                            $defaultCallFlowVoicemailSystemGreeting = "--> defaultCallFlowSystemGreeting$($aaDefaultCallFlowAaObjectId)>Greeting <br> MS System Message]"
 
                             $defaultCallFlowVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
                             $defaultCallFlowVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
@@ -1563,7 +1583,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
             
                                 }
             
-                                $defaultCallFlowVoicemailSystemGreeting = $defaultCallFlowVoicemailSystemGreeting.Replace("] -->"," <br> ''$defaultCallFlowVoicemailSystemGreetingValue''] -->")
+                                $defaultCallFlowVoicemailSystemGreeting = $defaultCallFlowVoicemailSystemGreeting.Replace("]"," <br> ''$defaultCallFlowVoicemailSystemGreetingValue'']")
             
                             }
             
@@ -1616,7 +1636,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                 # Check if default callflow action target is trasnfer call to target but something other than call queue
                 else {
 
-                    $mdAutoAttendantDefaultCallFlow = "$mdDtmfLink$defaultCallFlowVoicemailSystemGreeting defaultCallFlow$($aaDefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction) --> $($defaultCallFlowTargetIdentity)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)`n"
+                    $mdAutoAttendantDefaultCallFlow = $mdDtmfLink + "defaultCallFlow$($aaDefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction) $defaultCallFlowVoicemailSystemGreeting --> $($defaultCallFlowTargetIdentity)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)`n"
 
                     $allMermaidNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey","$($defaultCallFlowTargetIdentity)")
 
@@ -1907,12 +1927,6 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                 }
 
-                if ($nestedVoiceApps -notcontains $OperatorIdentity -and $AddOperatorToUserCallingSettings -eq $true) {
-
-                    $nestedVoiceApps += $OperatorIdentity
-
-                }
-
             }
 
             elseif ($afterHoursCallFlowAction -eq "Announcement") {
@@ -2003,9 +2017,15 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                     }
                     ExternalPstn { 
-                        $afterHoursCallFlowTargetTypeFriendly = "External PSTN"
+                        $afterHoursCallFlowTargetTypeFriendly = "External Number"
                         $afterHoursCallFlowTargetName = ($MenuOption.CallTarget.Id).Replace("tel:","")
                         $afterHoursCallFlowTargetIdentity = $afterHoursCallFlowTargetName
+
+                        if ($ObfuscatePhoneNumbers -eq $true) {
+
+                            $afterHoursCallFlowTargetName = $afterHoursCallFlowTargetName.Remove(($afterHoursCallFlowTargetName.Length -4)) + "****"
+        
+                        }        
 
                         $afterHoursCallFlowVoicemailSystemGreeting = $null
 
@@ -2046,7 +2066,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                         if ($MenuOption.CallTarget.EnableSharedVoicemailSystemPromptSuppression -eq $false) {
                             
-                            $afterHoursCallFlowVoicemailSystemGreeting = "afterHoursCallFlowSystemGreeting$($aaafterHoursCallFlowAaObjectId)>Greeting <br> MS System Message] -->"
+                            $afterHoursCallFlowVoicemailSystemGreeting = "--> afterHoursCallFlowSystemGreeting$($aaafterHoursCallFlowAaObjectId)>Greeting <br> MS System Message]"
 
                             $afterHoursCallFlowVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
                             $afterHoursCallFlowVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
@@ -2068,7 +2088,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
             
                                 }
             
-                                $afterHoursCallFlowVoicemailSystemGreeting = $afterHoursCallFlowVoicemailSystemGreeting.Replace("] -->"," <br> ''$afterHoursCallFlowVoicemailSystemGreetingValue''] -->")
+                                $afterHoursCallFlowVoicemailSystemGreeting = $afterHoursCallFlowVoicemailSystemGreeting.Replace("]"," <br> ''$afterHoursCallFlowVoicemailSystemGreetingValue'']")
             
                             }
             
@@ -2121,7 +2141,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                 # Check if afterHours callflow action target is trasnfer call to target but something other than call queue
                 else {
 
-                    $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink$afterHoursCallFlowVoicemailSystemGreeting afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction) --> $($afterHoursCallFlowTargetIdentity)($afterHoursCallFlowTargetTypeFriendly <br> $afterHoursCallFlowTargetName)`n"
+                    $mdAutoAttendantafterHoursCallFlow = $mdDtmfLink + "afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction) $afterHoursCallFlowVoicemailSystemGreeting --> $($afterHoursCallFlowTargetIdentity)($afterHoursCallFlowTargetTypeFriendly <br> $afterHoursCallFlowTargetName)`n"
                     
                     $allMermaidNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey","$($afterHoursCallFlowTargetIdentity)")
 
@@ -2340,6 +2360,12 @@ function Get-CallQueueCallFlow {
 
                 $cqOverFlowPhoneNumber = ($MatchingCQ.OverflowActionTarget.Id).Replace("tel:","")
 
+                if ($ObfuscatePhoneNumbers -eq $true) {
+
+                    $cqOverFlowPhoneNumber = $cqOverFlowPhoneNumber.Remove(($cqOverFlowPhoneNumber.Length -4)) + "****"
+
+                }        
+
                 $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($cqOverFlowPhoneNumber)(External Number <br> $cqOverFlowPhoneNumber)"
 
                 $allMermaidNodes += @("cqOverFlowAction$($cqCallFlowObjectId)","$($cqOverFlowPhoneNumber)")
@@ -2429,7 +2455,7 @@ function Get-CallQueueCallFlow {
 
                 if ($MatchingCQ.EnableOverflowSharedVoicemailSystemPromptSuppression -eq $false) {
 
-                    $CQOverFlowVoicemailSystemGreeting = "cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
+                    $CQOverFlowVoicemailSystemGreeting = "--> cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] "
 
                     $CQOverFlowVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
                     $CQOverFlowVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
@@ -2452,7 +2478,7 @@ function Get-CallQueueCallFlow {
 
                         }
 
-                        $CQOverFlowVoicemailSystemGreeting = $CQOverFlowVoicemailSystemGreeting.Replace("] -->"," <br> ''$CQOverFlowVoicemailSystemGreetingValue''] -->")
+                        $CQOverFlowVoicemailSystemGreeting = $CQOverFlowVoicemailSystemGreeting.Replace("] "," <br> ''$CQOverFlowVoicemailSystemGreetingValue''] ")
 
                     }
 
@@ -2499,7 +2525,7 @@ function Get-CallQueueCallFlow {
 
                 if ($MatchingCQ.EnableOverflowSharedVoicemailSystemPromptSuppression -eq $false) {
 
-                    $CQOverFlowVoicemailSystemGreeting = "cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
+                    $CQOverFlowVoicemailSystemGreeting = "--> cqOverFlowVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] "
 
                     $CQOverFlowVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
                     $CQOverFlowVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
@@ -2521,7 +2547,7 @@ function Get-CallQueueCallFlow {
 
                         }
 
-                        $CQOverFlowVoicemailSystemGreeting = $CQOverFlowVoicemailSystemGreeting.Replace("] -->"," <br> ''$CQOverFlowVoicemailSystemGreetingValue''] -->")
+                        $CQOverFlowVoicemailSystemGreeting = $CQOverFlowVoicemailSystemGreeting.Replace("] "," <br> ''$CQOverFlowVoicemailSystemGreetingValue''] ")
 
                     }
 
@@ -2537,7 +2563,7 @@ function Get-CallQueueCallFlow {
 
             }
 
-            $CqOverFlowActionFriendly = "cqOverFlowVoicemailGreeting$($cqCallFlowObjectId)>Greeting <br> $CqOverFlowVoicemailGreeting] --> cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $CQOverFlowVoicemailSystemGreeting $($MatchingOverFlowIdentity)(Shared Voicemail <br> $MatchingOverFlowVoicemail)"
+            $CqOverFlowActionFriendly = "cqOverFlowVoicemailGreeting$($cqCallFlowObjectId)>Greeting <br> $CqOverFlowVoicemailGreeting] $CQOverFlowVoicemailSystemGreeting--> cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowIdentity)(Shared Voicemail <br> $MatchingOverFlowVoicemail)"
 
             $allMermaidNodes += @("cqOverFlowAction$($cqCallFlowObjectId)","cqOverFlowVoicemailGreeting$($cqCallFlowObjectId)","$($MatchingOverFlowIdentity)")
 
@@ -2576,6 +2602,12 @@ function Get-CallQueueCallFlow {
             elseif ($MatchingCQ.TimeoutActionTarget.Type -eq "Phone") {
     
                 $cqTimeoutPhoneNumber = ($MatchingCQ.TimeoutActionTarget.Id).Replace("tel:","")
+
+                if ($ObfuscatePhoneNumbers -eq $true) {
+
+                    $cqTimeoutPhoneNumber = $cqTimeoutPhoneNumber.Remove(($cqTimeoutPhoneNumber.Length -4)) + "****"
+
+                }
     
                 $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($cqTimeoutPhoneNumber)(External Number <br> $cqTimeoutPhoneNumber)"
 
@@ -2665,7 +2697,7 @@ function Get-CallQueueCallFlow {
 
                 if ($MatchingCQ.EnableTimeoutSharedVoicemailSystemPromptSuppression -eq $false) {
 
-                    $CQTimeoutVoicemailSystemGreeting = "cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
+                    $CQTimeoutVoicemailSystemGreeting = "--> cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] "
 
                     $CQTimeOutVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
                     $CQTimeOutVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
@@ -2686,7 +2718,7 @@ function Get-CallQueueCallFlow {
 
                         }
 
-                        $CQTimeOutVoicemailSystemGreeting = $CQTimeOutVoicemailSystemGreeting.Replace("] -->"," <br> ''$CQTimeOutVoicemailSystemGreetingValue''] -->")
+                        $CQTimeOutVoicemailSystemGreeting = $CQTimeOutVoicemailSystemGreeting.Replace("] "," <br> ''$CQTimeOutVoicemailSystemGreetingValue''] ")
 
                     }
 
@@ -2732,7 +2764,7 @@ function Get-CallQueueCallFlow {
 
                 if ($MatchingCQ.EnableTimeoutSharedVoicemailSystemPromptSuppression -eq $false) {
 
-                    $CQTimeoutVoicemailSystemGreeting = "cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] -->"
+                    $CQTimeoutVoicemailSystemGreeting = "--> cqTimeoutVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] "
 
                     $CQTimeOutVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
                     $CQTimeOutVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
@@ -2753,7 +2785,7 @@ function Get-CallQueueCallFlow {
 
                         }
 
-                        $CQTimeOutVoicemailSystemGreeting = $CQTimeOutVoicemailSystemGreeting.Replace("] -->"," <br> ''$CQTimeOutVoicemailSystemGreetingValue''] -->")
+                        $CQTimeOutVoicemailSystemGreeting = $CQTimeOutVoicemailSystemGreeting.Replace("] "," <br> ''$CQTimeOutVoicemailSystemGreetingValue''] ")
 
                     }
 
@@ -2769,7 +2801,7 @@ function Get-CallQueueCallFlow {
     
             }
     
-            $CqTimeoutActionFriendly = "cqTimeoutVoicemailGreeting$($cqCallFlowObjectId)>Greeting <br> $CqTimeoutVoicemailGreeting] --> cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $CQTimeoutVoicemailSystemGreeting $($MatchingTimeoutIdentity)(Shared Voicemail <br> $MatchingTimeoutVoicemail)"
+            $CqTimeoutActionFriendly = "cqTimeoutVoicemailGreeting$($cqCallFlowObjectId)>Greeting <br> $CqTimeoutVoicemailGreeting] $CQTimeoutVoicemailSystemGreeting--> cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingTimeoutIdentity)(Shared Voicemail <br> $MatchingTimeoutVoicemail)"
     
             $allMermaidNodes += @("cqTimeoutAction$($cqCallFlowObjectId)","cqTimeoutVoicemailGreeting$($cqCallFlowObjectId)","$($MatchingTimeoutIdentity)")
 
@@ -3116,7 +3148,19 @@ function Get-CallFlow {
     
             }
 
-            $mdNodeNumber = "start$($ApplicationInstancePhoneNumber)((Incoming Call at <br> $ApplicationInstancePhoneNumber)) $mdPhoneNumberLinkType $($VoiceApp.Identity)([$($voiceAppType) <br> $($VoiceApp.Name)])"
+            if ($ObfuscatePhoneNumbers -eq $true) {
+
+                $ApplicationInstancePhoneNumberName = $ApplicationInstancePhoneNumber.Remove(($ApplicationInstancePhoneNumber.Length -4)) + "****"
+
+            }
+
+            else {
+
+                $ApplicationInstancePhoneNumberName = $ApplicationInstancePhoneNumber
+            
+            }
+
+            $mdNodeNumber = "start$($ApplicationInstancePhoneNumber)((Incoming Call at <br> $ApplicationInstancePhoneNumberName)) $mdPhoneNumberLinkType $($VoiceApp.Identity)([$($voiceAppType) <br> $($VoiceApp.Name)])"
 
             $mdNodePhoneNumbers += $mdNodeNumber
     
@@ -3223,7 +3267,7 @@ function Get-NestedCallFlow {
 
             if ($accountType -eq "UserAccount" -and $ShowUserCallingSettings) {
 
-                . Get-TeamsUserCallFlow -UserId $nestedVoiceApp -PreviewSvg $false -SetClipBoard $false -StandAlone $false -ExportSvg $false -CustomFilePath $CustomFilePath
+                . Get-TeamsUserCallFlow -UserId $nestedVoiceApp -PreviewSvg $false -SetClipBoard $false -StandAlone $false -ExportSvg $false -CustomFilePath $CustomFilePath -ObfuscatePhoneNumbers $ObfuscatePhoneNumbers
 
                 if ($mermaidCode -notcontains $mdUserCallingSettings) {
     
