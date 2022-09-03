@@ -82,3 +82,7 @@
 |31.08.2022|M365CallFlowVisualizerV2.ps1|2.7.6|Rename FixDisplayName to Optimize-Displayname. Remove more special characters from display names. Improve formatting of holiday lists. Add Parameter for US and EU date formats.|
 |02.09.2022|M365CallFlowVisualizerV2.ps1|2.7.7|Add support for obfuscating phone numbers. Suppress Conf Mode warnings on CQs. Correctly reflect order of greeting, system greeting and transfer for shared voicemail on AAs and CQs.|
 |02.09.2022|Get-TeamsUserCallFlow.ps1|1.0.3|Add support for obfuscating phone numbers. Unify names for external transfers (change from External PSTN to Number).|
+|04.09.2022|M365CallFlowVisualizerV2.ps1|2.7.8|Add support to write user information of users which are linked to CQs or AAs into an external variable.|
+|04.09.2022|New-VoiceAppUserLinkProperties.ps1|1.0.0|Initial commit.|
+|04.09.2022|Find-CallQueueAndAutoAttendantUserLinks.ps1|1.0.0|Initial commit.|
+

@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.7.7
+    Version:            2.7.8
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -99,6 +99,12 @@
 
     -ExportTTSGreetings
         Specifies if the value of TTS greetings and announcements should be exported to the specified directory. If this is enabled, Markdown and HTML output will have clickable links on the greeting nodes with which open a text file in the browser. This is an experimental feature.
+        Required:           false
+        Type:               switch
+        Default value:      false
+
+    -FindUserLinks
+        This paramter can only be used by the external function Find-CallQueueAndAutoAttendantUserLinks. When this parameter is true, the script will write every user which is part of a call flow into an external variable.
         Required:           false
         Type:               switch
         Default value:      false
@@ -221,6 +227,7 @@ param(
     [Parameter(Mandatory=$false)][Single]$turncateGreetings = 20,
     [Parameter(Mandatory=$false)][Switch]$ExportAudioFiles,
     [Parameter(Mandatory=$false)][Switch]$ExportTTSGreetings,
+    [Parameter(Mandatory=$false)][Switch]$FindUserLinks,
     [Parameter(Mandatory=$false)][Bool]$ObfuscatePhoneNumbers = $false,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][ValidateSet("EU","US")][String]$DateFormat = "EU",
@@ -245,11 +252,12 @@ $ErrorActionPreference = "Continue"
 . .\Functions\Get-TeamsUserCallFlow.ps1
 . .\Functions\Get-MsSystemMessage.ps1
 . .\Functions\Get-AccountType.ps1
+. .\Functions\New-VoiceAppUserLinkProperties.ps1
 
 # Connect to MicrosoftTeams and Microsoft.Graph
 . Connect-M365CFV
 
-if ($SaveToFile -eq $false -and $CustomFilePath) {
+if ($SaveToFile -eq $false -and $CustomFilePath -ne ".\Output") {
 
     Write-Warning -Message "Custom file path is specified but SaveToFile is set to false. The call flow won't be saved!"
 
@@ -634,6 +642,12 @@ subgraph $holidaySubgraphName
                     $holidayActionTargetName = Optimize-DisplayName -String (Get-MgUser -UserId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
 
                     $holidayVoicemailSystemGreeting = $null
+
+                    if ($FindUserLinks -eq $true) {
+         
+                        . New-VoiceAppUserLinkProperties -userLinkUserId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id) -userLinkUserName $holidayActionTargetName -userLinkVoiceAppType "Auto Attendant" -userLinkVoiceAppActionType "HolidayActionTarget" -userLinkVoiceAppName $aa.Name -userLinkVoiceAppId $aa.Identity
+                    
+                    }            
 
                 }
                     SharedVoicemail { $holidayActionTargetTypeFriendly = "Voicemail"
@@ -1423,6 +1437,12 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                 }
 
+                if ($FindUserLinks -eq $true) {
+         
+                    . New-VoiceAppUserLinkProperties -userLinkUserId $OperatorIdentity -userLinkUserName $OperatorName -userLinkVoiceAppType "Auto Attendant" -userLinkVoiceAppActionType "TransferCallToOperator (DTMF Option: $DtmfKey)" -userLinkVoiceAppName $aa.Name -userLinkVoiceAppId $aa.Identity
+                
+                }
+
             }
 
             elseif ($defaultCallFlowAction -eq "Announcement") {
@@ -1501,6 +1521,24 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                         $defaultCallFlowTargetUser = (Get-MgUser -UserId $($MenuOption.CallTarget.Id))
                         $defaultCallFlowTargetName = Optimize-DisplayName -String $defaultCallFlowTargetUser.DisplayName
                         $defaultCallFlowTargetIdentity = $defaultCallFlowTargetUser.Id
+
+                        if ($FindUserLinks -eq $true) {
+
+                            if ($DtmfKey) {
+
+                                $DtmfOption = " (DTMF Option: $DtmfKey)"
+
+                            }
+
+                            else {
+
+                                $DtmfOption =$null
+
+                            }
+         
+                            . New-VoiceAppUserLinkProperties -userLinkUserId $($MenuOption.CallTarget.Id) -userLinkUserName $defaultCallFlowTargetUser.DisplayName -userLinkVoiceAppType "Auto Attendant" -userLinkVoiceAppActionType "DefaultCallFlowTransferCallToTarget$DtmfOption" -userLinkVoiceAppName $aa.Name -userLinkVoiceAppId $aa.Identity
+                        
+                        }                
 
                         if ($nestedVoiceApps -notcontains $defaultCallFlowTargetUser.Id) {
 
@@ -1927,6 +1965,12 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                 }
 
+                if ($FindUserLinks -eq $true) {
+         
+                    . New-VoiceAppUserLinkProperties -userLinkUserId $OperatorIdentity -userLinkUserName $OperatorName -userLinkVoiceAppType "Auto Attendant" -userLinkVoiceAppActionType "TransferCallToOperator (DTMF Option: $DtmfKey)" -userLinkVoiceAppName $aa.Name -userLinkVoiceAppId $aa.Identity
+                
+                }
+
             }
 
             elseif ($afterHoursCallFlowAction -eq "Announcement") {
@@ -2006,6 +2050,24 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                         $afterHoursCallFlowTargetUser = (Get-MgUser -UserId $($MenuOption.CallTarget.Id))
                         $afterHoursCallFlowTargetName = Optimize-DisplayName -String $afterHoursCallFlowTargetUser.DisplayName
                         $afterHoursCallFlowTargetIdentity = $afterHoursCallFlowTargetUser.Id
+
+                        if ($FindUserLinks -eq $true) {
+
+                            if ($DtmfKey) {
+
+                                $DtmfOption = " (DTMF Option: $DtmfKey)"
+
+                            }
+
+                            else {
+
+                                $DtmfOption =$null
+
+                            }
+         
+                            . New-VoiceAppUserLinkProperties -userLinkUserId $($MenuOption.CallTarget.Id) -userLinkUserName $afterHoursCallFlowTargetUser.DisplayName -userLinkVoiceAppType "Auto Attendant" -userLinkVoiceAppActionType "AfterHoursCallFlowTransferCallToTarget$DtmfOption" -userLinkVoiceAppName $aa.Name -userLinkVoiceAppId $aa.Identity
+                        
+                        }                
 
                         if ($nestedVoiceApps -notcontains $afterHoursCallFlowTargetUser.Id) {
 
@@ -2344,6 +2406,12 @@ function Get-CallQueueCallFlow {
                 $MatchingOverFlowUser = Optimize-DisplayName -String $MatchingOverFlowUserProperties.DisplayName
                 $MatchingOverFlowIdentity = $MatchingOverFlowUserProperties.Id
 
+                if ($FindUserLinks -eq $true) {
+         
+                    . New-VoiceAppUserLinkProperties -userLinkUserId $MatchingCQ.OverflowActionTarget.Id -userLinkUserName $MatchingOverFlowUserProperties.DisplayName -userLinkVoiceAppType "Call Queue" -userLinkVoiceAppActionType "OverflowActionTarget" -userLinkVoiceAppName $MatchingCQ.Name -userLinkVoiceAppId $MatchingCQIdentity
+                
+                }        
+
                 if ($nestedVoiceApps -notcontains $MatchingOverFlowUserProperties.Id) {
 
                     $nestedVoiceApps += $MatchingOverFlowUserProperties.Id
@@ -2416,6 +2484,12 @@ function Get-CallQueueCallFlow {
             $MatchingOverFlowPersonalVoicemailUserProperties = (Get-MgUser -UserId $MatchingCQ.OverflowActionTarget.Id)
             $MatchingOverFlowPersonalVoicemailUser = Optimize-DisplayName -String $MatchingOverFlowPersonalVoicemailUserProperties.DisplayName
             $MatchingOverFlowPersonalVoicemailIdentity = $MatchingOverFlowPersonalVoicemailUserProperties.Id
+
+            if ($FindUserLinks -eq $true) {
+         
+                . New-VoiceAppUserLinkProperties -userLinkUserId $MatchingCQ.OverflowActionTarget.Id -userLinkUserName $MatchingOverFlowPersonalVoicemailUserProperties.DisplayName -userLinkVoiceAppType "Call Queue" -userLinkVoiceAppActionType "OverflowActionTargetPersonalVoicemail" -userLinkVoiceAppName $MatchingCQ.Name -userLinkVoiceAppId $MatchingCQIdentity
+            
+            }        
 
             $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqPersonalVoicemail$($MatchingOverFlowPersonalVoicemailIdentity)(Personal Voicemail <br> $MatchingOverFlowPersonalVoicemailUser)"
 
@@ -2587,6 +2661,12 @@ function Get-CallQueueCallFlow {
                 $MatchingTimeoutUser = Optimize-DisplayName -String $MatchingTimeoutUserProperties.DisplayName
                 $MatchingTimeoutIdentity = $MatchingTimeoutUserProperties.Id
 
+                if ($FindUserLinks -eq $true) {
+         
+                    . New-VoiceAppUserLinkProperties -userLinkUserId $MatchingCQ.TimeoutActionTarget.Id -userLinkUserName $MatchingTimeoutUserProperties.DisplayName -userLinkVoiceAppType "Call Queue" -userLinkVoiceAppActionType "TimoutActionTarget" -userLinkVoiceAppName $MatchingCQ.Name -userLinkVoiceAppId $MatchingCQIdentity
+                
+                }        
+
                 if ($nestedVoiceApps -notcontains $MatchingTimeoutUserProperties.Id -and $MatchingCQ.OverflowThreshold -ge 1) {
 
                     $nestedVoiceApps += $MatchingTimeoutUserProperties.Id
@@ -2658,6 +2738,12 @@ function Get-CallQueueCallFlow {
             $MatchingTimeoutPersonalVoicemailUserProperties = (Get-MgUser -UserId $MatchingCQ.TimeoutActionTarget.Id)
             $MatchingTimeoutPersonalVoicemailUser = Optimize-DisplayName -String $MatchingTimeoutPersonalVoicemailUserProperties.DisplayName
             $MatchingTimeoutPersonalVoicemailIdentity = $MatchingTimeoutPersonalVoicemailUserProperties.Id
+
+            if ($FindUserLinks -eq $true) {
+         
+                . New-VoiceAppUserLinkProperties -userLinkUserId $MatchingCQ.TimeoutActionTarget.Id -userLinkUserName $MatchingTimeoutPersonalVoicemailUserProperties.DisplayName -userLinkVoiceAppType "Call Queue" -userLinkVoiceAppActionType "TimoutActionTargetPersonalVoicemail" -userLinkVoiceAppName $MatchingCQ.Name -userLinkVoiceAppId $MatchingCQIdentity
+            
+            }        
 
             $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqPersonalVoicemail$($MatchingTimeoutPersonalVoicemailIdentity)(Personal Voicemail <br> $MatchingTimeoutPersonalVoicemailUser)"
 
@@ -2819,6 +2905,12 @@ function Get-CallQueueCallFlow {
     # add each agent to the empty agents mermaid element
     foreach ($CqAgent in $CqAgents) {
         $AgentDisplayName = Optimize-DisplayName -String (Get-MgUser -UserId $CqAgent.ObjectId).DisplayName
+
+        if ($FindUserLinks -eq $true) {
+         
+            . New-VoiceAppUserLinkProperties -userLinkUserId $CqAgent.ObjectId -userLinkUserName $AgentDisplayName -userLinkVoiceAppType "Call Queue" -userLinkVoiceAppActionType "Agent" -userLinkVoiceAppName $MatchingCQ.Name -userLinkVoiceAppId $MatchingCQIdentity
+        
+        }
 
         if ($ShowCqAgentPhoneNumbers -eq $true) {
 
