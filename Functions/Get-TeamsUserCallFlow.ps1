@@ -6,7 +6,7 @@
     Reads the user calling settings of a Teams user and outputs them in an easy to understand SVG diagram. See the script "ExportAllUserCallFlowsToSVG.ps1" in the root of this repo for an example on how to generate a diagram for each user in a tenant.
 
     Author:             Martin Heusser
-    Version:            1.0.2
+    Version:            1.0.3
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -58,6 +58,12 @@
         Accepted values:    true, false
         Default value:      true
 
+    -ObfuscatePhoneNumbers
+        Specifies if phone numbers in call flows should be obfuscated for sharing / example reasons. This will replace the last 4 digits in numbers with an asterisk (*) character. Warning: This will only obfuscate phone numbers in node descriptions. The complete phone number will still be included in Markdown, Mermaid and HTML output!
+        Required:           false
+        Type:               bool
+        Default value:      false
+
     -ExportSvg
         Specifies if the function should export the diagram as a markdown file (*.md) NOT YET IMPLEMENTED
         Required:           false
@@ -89,6 +95,7 @@ function Get-TeamsUserCallFlow {
         [Parameter(Mandatory=$false)][bool]$ExportMarkdown = $false,
         [Parameter(Mandatory=$false)][bool]$PreviewSvg = $true,
         [Parameter(Mandatory=$false)][bool]$SetClipBoard = $true,
+        [Parameter(Mandatory=$false)][Bool]$ObfuscatePhoneNumbers = $false,
         [Parameter(Mandatory=$false)][bool]$ExportSvg = $true
     )
 
@@ -115,6 +122,9 @@ function Get-TeamsUserCallFlow {
     }
 
     $teamsUser = Get-CsOnlineUser -Identity $UserId
+
+    Write-Host "Reading user calling settings for: $($teamsUser.DisplayName)" -ForegroundColor Magenta
+    Write-Host "User Id: $UserId" -ForegroundColor Magenta
 
     $userCallingSettings = Get-CsUserCallingSettings -Identity $UserId
 
@@ -156,7 +166,7 @@ function Get-TeamsUserCallFlow {
     # user is neither forwarding or unanswered enabled
     if (!$userCallingSettings.IsForwardingEnabled -and !$userCallingSettings.IsUnansweredEnabled) {
 
-        Write-Host "User is neither forwaring or unanswered enabled"
+        #Write-Host "User is neither forwaring or unanswered enabled"
 
         $mdUserCallingSettings = @"
         $userNode
@@ -167,7 +177,7 @@ function Get-TeamsUserCallFlow {
     # user is immediate forwarding enabled
     elseif ($userCallingSettings.ForwardingType -eq "Immediate") {
 
-        Write-Host "user is immediate forwarding enabled."
+        #Write-Host "User is immediate forwarding enabled."
 
         switch ($userCallingSettings.ForwardingTargetType) {
             MyDelegates {
@@ -381,7 +391,13 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                         else {
                     
                             $userForwardingTarget = $userCallingSettings.UnansweredTarget
-                            $forwardingTargetType = "External PSTN"
+                            $forwardingTargetType = "External Number"
+
+                            if ($ObfuscatePhoneNumbers -eq $true) {
+
+                                $userForwardingTarget = $userForwardingTarget.Remove(($userForwardingTarget.Length -4)) + "****"
+            
+                            }            
                     
                             $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
                     
@@ -608,7 +624,13 @@ end
                 else {
 
                     $userForwardingTarget = $userCallingSettings.ForwardingTarget
-                    $forwardingTargetType = "External PSTN"
+                    $forwardingTargetType = "External Number"
+
+                    if ($ObfuscatePhoneNumbers -eq $true) {
+
+                        $userForwardingTarget = $userForwardingTarget.Remove(($userForwardingTarget.Length -4)) + "****"
+    
+                    }            
 
                     $mdImmediateForwardingTarget = "--> userImmediateForwardingTarget$UserId($forwardingTargetType<br>$userForwardingTarget)"
 
@@ -638,7 +660,7 @@ $allMermaidNodes += @("userForwarding$UserId","userForwardingTarget$UserId")
         # user is forwarding and unanswered enabled
         if ($userCallingSettings.IsForwardingEnabled -and $userCallingSettings.IsUnansweredEnabled) {
 
-            Write-Host "user is forwaring and unanswered enabled"
+            #Write-Host "User is forwaring and unanswered enabled"
 
             switch ($userCallingSettings.UnansweredTargetType) {
                 MyDelegates {
@@ -874,7 +896,13 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                     else {
     
                         $userForwardingTarget = $userCallingSettings.UnansweredTarget
-                        $forwardingTargetType = "External PSTN"
+                        $forwardingTargetType = "External Number"
+
+                        if ($ObfuscatePhoneNumbers -eq $true) {
+
+                            $userForwardingTarget = $userForwardingTarget.Remove(($userForwardingTarget.Length -4)) + "****"
+        
+                        }
 
                         $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
     
@@ -1161,7 +1189,13 @@ userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Conne
                     else {
     
                         $userForwardingTarget = $userCallingSettings.ForwardingTarget
-                        $forwardingTargetType = "External PSTN"
+                        $forwardingTargetType = "External Number"
+
+                        if ($ObfuscatePhoneNumbers -eq $true) {
+
+                            $userForwardingTarget = $userForwardingTarget.Remove(($userForwardingTarget.Length -4)) + "****"
+        
+                        }            
 
                         $mdAlsoRingTarget = "-.-> userForwardingTarget$UserId($forwardingTargetType<br>$userForwardingTarget)"
     
@@ -1204,7 +1238,7 @@ userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Conne
         # user is forwarding enabled but not unanswered enabled
         elseif ($userCallingSettings.IsForwardingEnabled -and !$userCallingSettings.IsUnansweredEnabled) {
 
-            Write-Host "user is forwarding enabled but not unanswered enabled"
+            #Write-Host "User is forwarding enabled but not unanswered enabled"
 
             switch ($userCallingSettings.ForwardingTargetType) {
                 Group {
@@ -1401,7 +1435,13 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                     else {
     
                         $userForwardingTarget = $userCallingSettings.ForwardingTarget
-                        $forwardingTargetType = "External PSTN"
+                        $forwardingTargetType = "External Number"
+
+                        if ($ObfuscatePhoneNumbers -eq $true) {
+
+                            $userForwardingTarget = $userForwardingTarget.Remove(($userForwardingTarget.Length -4)) + "****"
+        
+                        }            
 
                         $mdAlsoRingTarget = "-.-> userForwardingTarget$UserId($forwardingTargetType<br>$userForwardingTarget)"
     
@@ -1425,7 +1465,7 @@ $allMermaidNodes += @("userForwarding$UserId","userParallelRing$userId","userFor
         # user is unanswered enabled but not forwarding enabled
         elseif ($userCallingSettings.IsUnansweredEnabled -and !$userCallingSettings.IsForwardingEnabled) {
 
-            Write-Host "user is unanswered enabled but not forwarding enabled"
+            #Write-Host "User is unanswered enabled but not forwarding enabled"
 
             switch ($userCallingSettings.UnansweredTargetType) {
                 MyDelegates {
@@ -1645,7 +1685,13 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                     else {
     
                         $userForwardingTarget = $userCallingSettings.UnansweredTarget
-                        $forwardingTargetType = "External PSTN"
+                        $forwardingTargetType = "External Number"
+
+                        if ($ObfuscatePhoneNumbers -eq $true) {
+
+                            $userForwardingTarget = $userForwardingTarget.Remove(($userForwardingTarget.Length -4)) + "****"
+        
+                        }            
 
                         $mdUnansweredTarget = "--> userUnansweredTarget$UserId($forwardingTargetType<br> $userForwardingTarget)"
     
