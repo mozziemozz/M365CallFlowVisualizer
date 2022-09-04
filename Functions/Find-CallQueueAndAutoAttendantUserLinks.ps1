@@ -4,10 +4,19 @@
     
     .DESCRIPTION
     Author:             Martin Heusser
-    Version:            1.0.0
+    Version:            1.0.1
     Changelog:          .\Changelog.md
 
 #>
+
+function Export-UserLinkVoiceApps {
+    param (
+        
+    )
+
+    $userLinkVoiceApps | Export-CSV -Path ".\Output\VoiceAppsLinkedTo_$($SearchUserId).csv" -Delimiter ";" -NoTypeInformation -Encoding UTF8 -Force
+    
+}
 
 function Find-CallQueueAndAutoAttendantUserLinks {
     param (
@@ -51,6 +60,8 @@ function Find-CallQueueAndAutoAttendantUserLinks {
 
     $userLinkVoiceApps = $userLinkVoiceApps | Where-Object {$_.UserId -eq $SearchUserId} | Sort-Object VoiceAppName, VoiceAppActionType -Unique
 
-    return $userLinkVoiceApps, $userLinkVoiceApps | Export-CSV -Path ".\Output\VoiceAppsLinkedTo_$($SearchUserId).csv" -Delimiter ";" -NoTypeInformation -Encoding UTF8 -Force
+    . Export-UserLinkVoiceApps
+
+    return $userLinkVoiceApps
 
 }
