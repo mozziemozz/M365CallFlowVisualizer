@@ -29,8 +29,6 @@ function Find-CallQueueAndAutoAttendantUserLinks {
 
     $searchScopeIncludedVoiceApps = @()
 
-    #$searchScopeIncludedVoiceApps += "09900154-b7e6-410c-bc9b-57346aea15f1"
-
     switch ($SearchScope) {
         All {
             $searchScopeIncludedVoiceApps += (Get-CsCallQueue -WarningAction SilentlyContinue).Identity
@@ -44,8 +42,6 @@ function Find-CallQueueAndAutoAttendantUserLinks {
         }
         Default {}
     }
-
-    $searchScopeIncludedVoiceApps = "28c273bc-eeb1-4e51-b284-2b157e26608a"
 
     foreach ($searchScopeIncludedVoiceApp in $searchScopeIncludedVoiceApps) {
 
