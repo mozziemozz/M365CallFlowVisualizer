@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.7.8
+    Version:            2.7.9
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -2412,7 +2412,7 @@ function Get-CallQueueCallFlow {
                 
                 }        
 
-                if ($nestedVoiceApps -notcontains $MatchingOverFlowUserProperties.Id) {
+                if ($nestedVoiceApps -notcontains $MatchingOverFlowUserProperties.Id -and $MatchingCQ.TimeoutThreshold -ge 1) {
 
                     $nestedVoiceApps += $MatchingOverFlowUserProperties.Id
 

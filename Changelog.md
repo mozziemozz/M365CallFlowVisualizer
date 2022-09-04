@@ -85,4 +85,6 @@
 |04.09.2022|M365CallFlowVisualizerV2.ps1|2.7.8|Add support to write user information of users which are linked to CQs or AAs into an external variable.|
 |04.09.2022|New-VoiceAppUserLinkProperties.ps1|1.0.0|Initial commit.|
 |04.09.2022|Find-CallQueueAndAutoAttendantUserLinks.ps1|1.0.0|Initial commit.|
+|04.09.2022|Find-CallQueueAndAutoAttendantUserLinks.ps1|1.0.1|Bug fixes.|
+|04.09.2022|M365CallFlowVisualizerV2.ps1|2.7.9|Bug fixes (User Calling Settings were drawn on CQs when a user was configured as Overflow despite timeout being 0)|
 

@@ -4,10 +4,19 @@
     
     .DESCRIPTION
     Author:             Martin Heusser
-    Version:            1.0.0
+    Version:            1.0.1
     Changelog:          .\Changelog.md
 
 #>
+
+function Export-UserLinkVoiceApps {
+    param (
+        
+    )
+
+    $userLinkVoiceApps | Export-CSV -Path ".\Output\VoiceAppsLinkedTo_$($SearchUserId).csv" -Delimiter ";" -NoTypeInformation -Encoding UTF8 -Force
+    
+}
 
 function Find-CallQueueAndAutoAttendantUserLinks {
     param (
@@ -29,8 +38,6 @@ function Find-CallQueueAndAutoAttendantUserLinks {
 
     $searchScopeIncludedVoiceApps = @()
 
-    #$searchScopeIncludedVoiceApps += "09900154-b7e6-410c-bc9b-57346aea15f1"
-
     switch ($SearchScope) {
         All {
             $searchScopeIncludedVoiceApps += (Get-CsCallQueue -WarningAction SilentlyContinue).Identity
@@ -45,8 +52,6 @@ function Find-CallQueueAndAutoAttendantUserLinks {
         Default {}
     }
 
-    $searchScopeIncludedVoiceApps = "28c273bc-eeb1-4e51-b284-2b157e26608a"
-
     foreach ($searchScopeIncludedVoiceApp in $searchScopeIncludedVoiceApps) {
 
         . .\M365CallFlowVisualizerV2.ps1 -Identity $searchScopeIncludedVoiceApp -FindUserLinks -SaveToFile $false -SetClipBoard $false -ExportHtml $false -ShowNestedCallFlows $false -ShowUserCallingSettings $false
@@ -55,6 +60,8 @@ function Find-CallQueueAndAutoAttendantUserLinks {
 
     $userLinkVoiceApps = $userLinkVoiceApps | Where-Object {$_.UserId -eq $SearchUserId} | Sort-Object VoiceAppName, VoiceAppActionType -Unique
 
-    return $userLinkVoiceApps, $userLinkVoiceApps | Export-CSV -Path ".\Output\VoiceAppsLinkedTo_$($SearchUserId).csv" -Delimiter ";" -NoTypeInformation -Encoding UTF8 -Force
+    . Export-UserLinkVoiceApps
+
+    return $userLinkVoiceApps
 
 }
