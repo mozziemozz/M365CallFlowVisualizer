@@ -87,4 +87,6 @@
 |04.09.2022|Find-CallQueueAndAutoAttendantUserLinks.ps1|1.0.0|Initial commit.|
 |04.09.2022|Find-CallQueueAndAutoAttendantUserLinks.ps1|1.0.1|Bug fixes.|
 |04.09.2022|M365CallFlowVisualizerV2.ps1|2.7.9|Bug fixes (User Calling Settings were drawn on CQs when a user was configured as Overflow despite timeout being 0)|
+|04.09.2022|M365CallFlowVisualizerV2.ps1|2.8.0|Add support to expand members of M365 Groups which are configured for Shared Voicemail on AAs and CQs|
+|04.09.2022|Get-SharedVoicemailGroupMembers.ps1|1.0.0|Initial commit.|
 

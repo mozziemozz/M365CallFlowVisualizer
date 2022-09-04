@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.7.9
+    Version:            2.8.0
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -111,6 +111,12 @@
 
     -ObfuscatePhoneNumbers
         Specifies if phone numbers in call flows should be obfuscated for sharing / example reasons. This will replace the last 4 digits in numbers with an asterisk (*) character. Warning: This will only obfuscate phone numbers in node descriptions. The complete phone number will still be included in Markdown, Mermaid and HTML output!
+        Required:           false
+        Type:               bool
+        Default value:      false
+
+    -ShowSharedVoicemailGroupMembers
+        Specifies if group members (email) should be shown on a shared voicemail node.
         Required:           false
         Type:               bool
         Default value:      false
@@ -229,6 +235,7 @@ param(
     [Parameter(Mandatory=$false)][Switch]$ExportTTSGreetings,
     [Parameter(Mandatory=$false)][Switch]$FindUserLinks,
     [Parameter(Mandatory=$false)][Bool]$ObfuscatePhoneNumbers = $false,
+    [Parameter(Mandatory=$false)][Bool]$ShowSharedVoicemailGroupMembers = $false,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][ValidateSet("EU","US")][String]$DateFormat = "EU",
     [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral","custom")][String]$Theme = "default",
@@ -253,6 +260,7 @@ $ErrorActionPreference = "Continue"
 . .\Functions\Get-MsSystemMessage.ps1
 . .\Functions\Get-AccountType.ps1
 . .\Functions\New-VoiceAppUserLinkProperties.ps1
+. .\Functions\Get-SharedVoicemailGroupMembers.ps1
 
 # Connect to MicrosoftTeams and Microsoft.Graph
 . Connect-M365CFV
@@ -650,7 +658,7 @@ subgraph $holidaySubgraphName
                     }            
 
                 }
-                    SharedVoicemail { $holidayActionTargetTypeFriendly = "Voicemail"
+                    SharedVoicemail { $holidayActionTargetTypeFriendly = "Shared Voicemail"
                     $holidayActionTargetName = Optimize-DisplayName -String (Get-MgGroup -GroupId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
 
                     if ($holidayCallFlow.Menu.MenuOptions.CallTarget.EnableSharedVoicemailSystemPromptSuppression -eq $false) {
@@ -678,6 +686,14 @@ subgraph $holidaySubgraphName
         
                             $holidayVoicemailSystemGreeting = $holidayVoicemailSystemGreeting.Replace("] "," <br> ''$holidayVoicemailSystemGreetingValue''] ")
         
+                        }
+
+                        if ($ShowSharedVoicemailGroupMembers -eq $true) {
+
+                            . Get-SharedVoicemailGroupMembers -SharedVoicemailGroupId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)
+
+                            $holidayActionTargetName = "$holidayActionTargetName$mdSharedVoicemailGroupMembers"
+
                         }
         
 
@@ -1592,7 +1608,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                     }
                     SharedVoicemail {
 
-                        $defaultCallFlowTargetTypeFriendly = "Voicemail"
+                        $defaultCallFlowTargetTypeFriendly = "Shared Voicemail"
                         $defaultCallFlowTargetGroup = (Get-MgGroup -GroupId $MenuOption.CallTarget.Id)
                         $defaultCallFlowTargetName = Optimize-DisplayName -String $defaultCallFlowTargetGroup.DisplayName
                         $defaultCallFlowTargetIdentity = $defaultCallFlowTargetGroup.Id
@@ -1631,6 +1647,14 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                         else {
                             
                             $defaultCallFlowVoicemailSystemGreeting = $null
+
+                        }
+
+                        if ($ShowSharedVoicemailGroupMembers -eq $true) {
+
+                            . Get-SharedVoicemailGroupMembers -SharedVoicemailGroupId $MenuOption.CallTarget.Id
+
+                            $defaultCallFlowTargetName = "$defaultCallFlowTargetName$mdSharedVoicemailGroupMembers"
 
                         }
 
@@ -2121,7 +2145,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                     }
                     SharedVoicemail {
 
-                        $afterHoursCallFlowTargetTypeFriendly = "Voicemail"
+                        $afterHoursCallFlowTargetTypeFriendly = "Shared Voicemail"
                         $afterHoursCallFlowTargetGroup = (Get-MgGroup -GroupId $MenuOption.CallTarget.Id)
                         $afterHoursCallFlowTargetName = Optimize-DisplayName -String $afterHoursCallFlowTargetGroup.DisplayName
                         $afterHoursCallFlowTargetIdentity = $afterHoursCallFlowTargetGroup.Id
@@ -2160,6 +2184,14 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                         else {
                             
                             $afterHoursCallFlowVoicemailSystemGreeting = $null
+
+                        }
+
+                        if ($ShowSharedVoicemailGroupMembers -eq $true) {
+
+                            . Get-SharedVoicemailGroupMembers -SharedVoicemailGroupId $MenuOption.CallTarget.Id
+
+                            $afterHoursCallFlowTargetName = "$afterHoursCallFlowTargetName$mdSharedVoicemailGroupMembers"
 
                         }
 
@@ -2500,6 +2532,14 @@ function Get-CallQueueCallFlow {
             $MatchingOverFlowVoicemail = Optimize-DisplayName -String $MatchingOverFlowVoicemailProperties.DisplayName
             $MatchingOverFlowIdentity = $MatchingOverFlowVoicemailProperties.Id
 
+            if ($ShowSharedVoicemailGroupMembers -eq $true) {
+
+                . Get-SharedVoicemailGroupMembers -SharedVoicemailGroupId $MatchingCQ.OverflowActionTarget.Id
+
+                $MatchingOverFlowVoicemail = "$MatchingOverFlowVoicemail$mdSharedVoicemailGroupMembers"
+
+            }
+
             if ($MatchingCQ.OverflowSharedVoicemailTextToSpeechPrompt) {
 
                 $CqOverFlowVoicemailGreeting = "TextToSpeech"
@@ -2753,6 +2793,14 @@ function Get-CallQueueCallFlow {
             $MatchingTimeoutVoicemailProperties = (Get-MgGroup -GroupId $MatchingCQ.TimeoutActionTarget.Id)
             $MatchingTimeoutVoicemail = Optimize-DisplayName -String $MatchingTimeoutVoicemailProperties.DisplayName
             $MatchingTimeoutIdentity = $MatchingTimeoutVoicemailProperties.Id
+
+            if ($ShowSharedVoicemailGroupMembers -eq $true) {
+
+                . Get-SharedVoicemailGroupMembers -SharedVoicemailGroupId $MatchingCQ.TimeoutActionTarget.Id
+
+                $MatchingTimeoutVoicemail = "$MatchingTimeoutVoicemail$mdSharedVoicemailGroupMembers"
+
+            }
     
             if ($MatchingCQ.TimeoutSharedVoicemailTextToSpeechPrompt) {
     
