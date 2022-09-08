@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.8.0
+    Version:            2.8.1
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -74,18 +74,18 @@
         Default value:      false   
 
     -ShowTTSGreetingText
-        Specifies whether or not the text of TTS greetings should be included in greeting nodes. Note: this can create wide diagrams. Use parameter -TurncateGreetings to shorten the text.
+        Specifies whether or not the text of TTS greetings should be included in greeting nodes. Note: this can create wide diagrams. Use parameter -TruncateGreetings to shorten the text.
         Required:           false
         Type:               switch
         Default value:      false
         
     -ShowAudioFileName
-        Specifies whether or not the filename of audio file greetings should be included in greeting nodes. Note: this can create wide diagrams. Use parameter -TurncateGreetings to shorten the filename
+        Specifies whether or not the filename of audio file greetings should be included in greeting nodes. Note: this can create wide diagrams. Use parameter -TruncateGreetings to shorten the filename
         Required:           false
         Type:               switch
         Default value:      false
 
-    -TurncateGreetings
+    -TruncateGreetings
         Specifies how many characters of the file name or the greeting text should be included. The default value is 20. This will shorten all greetings and filenames to 20 characters, excluding the file name extension.
         Required:           false
         Type:               single
@@ -230,7 +230,7 @@ param(
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentOptInStatus,
     [Parameter(Mandatory=$false)][Switch]$ShowTTSGreetingText,
     [Parameter(Mandatory=$false)][Switch]$ShowAudioFileName,
-    [Parameter(Mandatory=$false)][Single]$turncateGreetings = 20,
+    [Parameter(Mandatory=$false)][Single]$TruncateGreetings = 20,
     [Parameter(Mandatory=$false)][Switch]$ExportAudioFiles,
     [Parameter(Mandatory=$false)][Switch]$ExportTTSGreetings,
     [Parameter(Mandatory=$false)][Switch]$FindUserLinks,
@@ -586,9 +586,9 @@ subgraph $holidaySubgraphName
 
                     }
 
-                    if ($holidayTTSGreetingValue.Length -gt $turncateGreetings) {
+                    if ($holidayTTSGreetingValue.Length -gt $truncateGreetings) {
 
-                        $holidayTTSGreetingValue = $holidayTTSGreetingValue.Remove($holidayTTSGreetingValue.Length - ($holidayTTSGreetingValue.Length -$turncateGreetings)) + "..."
+                        $holidayTTSGreetingValue = $holidayTTSGreetingValue.Remove($holidayTTSGreetingValue.Length - ($holidayTTSGreetingValue.Length -$truncateGreetings)) + "..."
                     
                     }
 
@@ -613,10 +613,10 @@ subgraph $holidaySubgraphName
                     }
 
 
-                    if ($audioFileName.Length -gt $turncateGreetings) {
+                    if ($audioFileName.Length -gt $truncateGreetings) {
 
                         $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
-                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
 
                     }
 
@@ -678,9 +678,9 @@ subgraph $holidaySubgraphName
                 
                             }
         
-                            if ($holidayVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+                            if ($holidayVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
         
-                                $holidayVoicemailSystemGreetingValue = $holidayVoicemailSystemGreetingValue.Remove($holidayVoicemailSystemGreetingValue.Length - ($holidayVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+                                $holidayVoicemailSystemGreetingValue = $holidayVoicemailSystemGreetingValue.Remove($holidayVoicemailSystemGreetingValue.Length - ($holidayVoicemailSystemGreetingValue.Length -$truncateGreetings)) + "..."
         
                             }
         
@@ -1230,9 +1230,9 @@ function Get-AutoAttendantDefaultCallFlow {
 
             }
 
-            if ($defaultTTSGreetingValue.Length -gt $turncateGreetings) {
+            if ($defaultTTSGreetingValue.Length -gt $truncateGreetings) {
 
-                $defaultTTSGreetingValue = $defaultTTSGreetingValue.Remove($defaultTTSGreetingValue.Length - ($defaultTTSGreetingValue.Length -$turncateGreetings)) + "..."
+                $defaultTTSGreetingValue = $defaultTTSGreetingValue.Remove($defaultTTSGreetingValue.Length - ($defaultTTSGreetingValue.Length -$truncateGreetings)) + "..."
             
             }
 
@@ -1257,10 +1257,10 @@ function Get-AutoAttendantDefaultCallFlow {
             }
 
 
-            if ($audioFileName.Length -gt $turncateGreetings) {
+            if ($audioFileName.Length -gt $truncateGreetings) {
 
                 $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
-                $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+                $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
 
             }
 
@@ -1315,9 +1315,9 @@ function Get-AutoAttendantDefaultCallFlow {
     
                 }    
     
-                if ($defaultCallFlowMenuOptionsTTSGreetingValue.Length -gt $turncateGreetings) {
+                if ($defaultCallFlowMenuOptionsTTSGreetingValue.Length -gt $truncateGreetings) {
     
-                    $defaultCallFlowMenuOptionsTTSGreetingValue = $defaultCallFlowMenuOptionsTTSGreetingValue.Remove($defaultCallFlowMenuOptionsTTSGreetingValue.Length - ($defaultCallFlowMenuOptionsTTSGreetingValue.Length -$turncateGreetings)) + "..."
+                    $defaultCallFlowMenuOptionsTTSGreetingValue = $defaultCallFlowMenuOptionsTTSGreetingValue.Remove($defaultCallFlowMenuOptionsTTSGreetingValue.Length - ($defaultCallFlowMenuOptionsTTSGreetingValue.Length -$truncateGreetings)) + "..."
                 
                 }
     
@@ -1342,10 +1342,10 @@ function Get-AutoAttendantDefaultCallFlow {
                 }
 
     
-                if ($audioFileName.Length -gt $turncateGreetings) {
+                if ($audioFileName.Length -gt $truncateGreetings) {
     
                     $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
-                    $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+                    $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
     
                 }
     
@@ -1481,9 +1481,9 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
         
                     }    
     
-                    if ($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length -gt $turncateGreetings) {
+                    if ($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length -gt $truncateGreetings) {
         
-                        $defaultCallFlowMenuOptionsTTSAnnouncementValue = $defaultCallFlowMenuOptionsTTSAnnouncementValue.Remove($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length - ($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length -$turncateGreetings)) + "..."
+                        $defaultCallFlowMenuOptionsTTSAnnouncementValue = $defaultCallFlowMenuOptionsTTSAnnouncementValue.Remove($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length - ($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length -$truncateGreetings)) + "..."
                     
                     }
         
@@ -1508,10 +1508,10 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                     }
     
         
-                    if ($audioFileName.Length -gt $turncateGreetings) {
+                    if ($audioFileName.Length -gt $truncateGreetings) {
         
                         $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
-                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
         
                     }
         
@@ -1631,9 +1631,9 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                                 }    
                 
             
-                                if ($defaultCallFlowVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+                                if ($defaultCallFlowVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
             
-                                    $defaultCallFlowVoicemailSystemGreetingValue = $defaultCallFlowVoicemailSystemGreetingValue.Remove($defaultCallFlowVoicemailSystemGreetingValue.Length - ($defaultCallFlowVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+                                    $defaultCallFlowVoicemailSystemGreetingValue = $defaultCallFlowVoicemailSystemGreetingValue.Remove($defaultCallFlowVoicemailSystemGreetingValue.Length - ($defaultCallFlowVoicemailSystemGreetingValue.Length -$truncateGreetings)) + "..."
             
                                 }
             
@@ -1764,9 +1764,9 @@ function Get-AutoAttendantAfterHoursCallFlow {
             }
 
 
-            if ($afterHoursTTSGreetingValue.Length -gt $turncateGreetings) {
+            if ($afterHoursTTSGreetingValue.Length -gt $truncateGreetings) {
 
-                $afterHoursTTSGreetingValue = $afterHoursTTSGreetingValue.Remove($afterHoursTTSGreetingValue.Length - ($afterHoursTTSGreetingValue.Length -$turncateGreetings)) + "..."
+                $afterHoursTTSGreetingValue = $afterHoursTTSGreetingValue.Remove($afterHoursTTSGreetingValue.Length - ($afterHoursTTSGreetingValue.Length -$truncateGreetings)) + "..."
             
             }
 
@@ -1791,10 +1791,10 @@ function Get-AutoAttendantAfterHoursCallFlow {
             }
 
 
-            if ($audioFileName.Length -gt $turncateGreetings) {
+            if ($audioFileName.Length -gt $truncateGreetings) {
 
                 $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
-                $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+                $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
 
             }
 
@@ -1851,9 +1851,9 @@ function Get-AutoAttendantAfterHoursCallFlow {
                 }    
 
     
-                if ($afterHoursCallFlowMenuOptionsTTSGreetingValue.Length -gt $turncateGreetings) {
+                if ($afterHoursCallFlowMenuOptionsTTSGreetingValue.Length -gt $truncateGreetings) {
     
-                    $afterHoursCallFlowMenuOptionsTTSGreetingValue = $afterHoursCallFlowMenuOptionsTTSGreetingValue.Remove($afterHoursCallFlowMenuOptionsTTSGreetingValue.Length - ($afterHoursCallFlowMenuOptionsTTSGreetingValue.Length -$turncateGreetings)) + "..."
+                    $afterHoursCallFlowMenuOptionsTTSGreetingValue = $afterHoursCallFlowMenuOptionsTTSGreetingValue.Remove($afterHoursCallFlowMenuOptionsTTSGreetingValue.Length - ($afterHoursCallFlowMenuOptionsTTSGreetingValue.Length -$truncateGreetings)) + "..."
                 
                 }
     
@@ -1877,10 +1877,10 @@ function Get-AutoAttendantAfterHoursCallFlow {
     
                 }
     
-                if ($audioFileName.Length -gt $turncateGreetings) {
+                if ($audioFileName.Length -gt $truncateGreetings) {
     
                     $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
-                    $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+                    $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
     
                 }
     
@@ -2018,9 +2018,9 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                     }    
 
         
-                    if ($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length -gt $turncateGreetings) {
+                    if ($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length -gt $truncateGreetings) {
         
-                        $afterHoursCallFlowMenuOptionsTTSAnnouncementValue = $afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Remove($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length - ($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length -$turncateGreetings)) + "..."
+                        $afterHoursCallFlowMenuOptionsTTSAnnouncementValue = $afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Remove($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length - ($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length -$truncateGreetings)) + "..."
                     
                     }
         
@@ -2045,10 +2045,10 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                     }
 
                     
-                    if ($audioFileName.Length -gt $turncateGreetings) {
+                    if ($audioFileName.Length -gt $truncateGreetings) {
         
                         $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
-                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
         
                     }
         
@@ -2168,9 +2168,9 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                                 }    
                 
             
-                                if ($afterHoursCallFlowVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+                                if ($afterHoursCallFlowVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
             
-                                    $afterHoursCallFlowVoicemailSystemGreetingValue = $afterHoursCallFlowVoicemailSystemGreetingValue.Remove($afterHoursCallFlowVoicemailSystemGreetingValue.Length - ($afterHoursCallFlowVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+                                    $afterHoursCallFlowVoicemailSystemGreetingValue = $afterHoursCallFlowVoicemailSystemGreetingValue.Remove($afterHoursCallFlowVoicemailSystemGreetingValue.Length - ($afterHoursCallFlowVoicemailSystemGreetingValue.Length -$truncateGreetings)) + "..."
             
                                 }
             
@@ -2322,10 +2322,10 @@ function Get-CallQueueCallFlow {
 
             }
             
-            if ($audioFileName.Length -gt $turncateGreetings) {
+            if ($audioFileName.Length -gt $truncateGreetings) {
         
                 $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
-                $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+                $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
 
             }
 
@@ -2357,10 +2357,10 @@ function Get-CallQueueCallFlow {
 
             }
             
-            if ($audioFileName.Length -gt $turncateGreetings) {
+            if ($audioFileName.Length -gt $truncateGreetings) {
         
                 $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
-                $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+                $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
 
             }
 
@@ -2557,9 +2557,9 @@ function Get-CallQueueCallFlow {
                     }    
     
 
-                    if ($overFlowVoicemailTTSGreetingValue.Length -gt $turncateGreetings) {
+                    if ($overFlowVoicemailTTSGreetingValue.Length -gt $truncateGreetings) {
 
-                        $overFlowVoicemailTTSGreetingValue = $overFlowVoicemailTTSGreetingValue.Remove($overFlowVoicemailTTSGreetingValue.Length - ($overFlowVoicemailTTSGreetingValue.Length -$turncateGreetings)) + "..."
+                        $overFlowVoicemailTTSGreetingValue = $overFlowVoicemailTTSGreetingValue.Remove($overFlowVoicemailTTSGreetingValue.Length - ($overFlowVoicemailTTSGreetingValue.Length -$truncateGreetings)) + "..."
 
                     }
 
@@ -2586,9 +2586,9 @@ function Get-CallQueueCallFlow {
                         }    
         
 
-                        if ($CQOverFlowVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+                        if ($CQOverFlowVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
 
-                            $CQOverFlowVoicemailSystemGreetingValue = $CQOverFlowVoicemailSystemGreetingValue.Remove($CQOverFlowVoicemailSystemGreetingValue.Length - ($CQOverFlowVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+                            $CQOverFlowVoicemailSystemGreetingValue = $CQOverFlowVoicemailSystemGreetingValue.Remove($CQOverFlowVoicemailSystemGreetingValue.Length - ($CQOverFlowVoicemailSystemGreetingValue.Length -$truncateGreetings)) + "..."
 
                         }
 
@@ -2626,10 +2626,10 @@ function Get-CallQueueCallFlow {
                     }
         
                     
-                    if ($audioFileName.Length -gt $turncateGreetings) {
+                    if ($audioFileName.Length -gt $truncateGreetings) {
                 
                         $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
-                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
         
                     }
         
@@ -2655,9 +2655,9 @@ function Get-CallQueueCallFlow {
                         }    
         
 
-                        if ($CQOverFlowVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+                        if ($CQOverFlowVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
 
-                            $CQOverFlowVoicemailSystemGreetingValue = $CQOverFlowVoicemailSystemGreetingValue.Remove($CQOverFlowVoicemailSystemGreetingValue.Length - ($CQOverFlowVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+                            $CQOverFlowVoicemailSystemGreetingValue = $CQOverFlowVoicemailSystemGreetingValue.Remove($CQOverFlowVoicemailSystemGreetingValue.Length - ($CQOverFlowVoicemailSystemGreetingValue.Length -$truncateGreetings)) + "..."
 
                         }
 
@@ -2819,9 +2819,9 @@ function Get-CallQueueCallFlow {
                     }    
 
 
-                    if ($TimeOutVoicemailTTSGreetingValue.Length -gt $turncateGreetings) {
+                    if ($TimeOutVoicemailTTSGreetingValue.Length -gt $truncateGreetings) {
 
-                        $TimeOutVoicemailTTSGreetingValue = $TimeOutVoicemailTTSGreetingValue.Remove($TimeOutVoicemailTTSGreetingValue.Length - ($TimeOutVoicemailTTSGreetingValue.Length -$turncateGreetings)) + "..."
+                        $TimeOutVoicemailTTSGreetingValue = $TimeOutVoicemailTTSGreetingValue.Remove($TimeOutVoicemailTTSGreetingValue.Length - ($TimeOutVoicemailTTSGreetingValue.Length -$truncateGreetings)) + "..."
 
                     }
 
@@ -2846,9 +2846,9 @@ function Get-CallQueueCallFlow {
             
                         }
 
-                        if ($CQTimeOutVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+                        if ($CQTimeOutVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
 
-                            $CQTimeOutVoicemailSystemGreetingValue = $CQTimeOutVoicemailSystemGreetingValue.Remove($CQTimeOutVoicemailSystemGreetingValue.Length - ($CQTimeOutVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+                            $CQTimeOutVoicemailSystemGreetingValue = $CQTimeOutVoicemailSystemGreetingValue.Remove($CQTimeOutVoicemailSystemGreetingValue.Length - ($CQTimeOutVoicemailSystemGreetingValue.Length -$truncateGreetings)) + "..."
 
                         }
 
@@ -2885,10 +2885,10 @@ function Get-CallQueueCallFlow {
         
                     }
                     
-                    if ($audioFileName.Length -gt $turncateGreetings) {
+                    if ($audioFileName.Length -gt $truncateGreetings) {
                 
                         $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
-                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $turncateGreetings)) + "... $audioFileNameExtension"
+                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
         
                     }
         
@@ -2913,9 +2913,9 @@ function Get-CallQueueCallFlow {
             
                         }
 
-                        if ($CQTimeOutVoicemailSystemGreetingValue.Length -gt $turncateGreetings) {
+                        if ($CQTimeOutVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
 
-                            $CQTimeOutVoicemailSystemGreetingValue = $CQTimeOutVoicemailSystemGreetingValue.Remove($CQTimeOutVoicemailSystemGreetingValue.Length - ($CQTimeOutVoicemailSystemGreetingValue.Length -$turncateGreetings)) + "..."
+                            $CQTimeOutVoicemailSystemGreetingValue = $CQTimeOutVoicemailSystemGreetingValue.Remove($CQTimeOutVoicemailSystemGreetingValue.Length - ($CQTimeOutVoicemailSystemGreetingValue.Length -$truncateGreetings)) + "..."
 
                         }
 
