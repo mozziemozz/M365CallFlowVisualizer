@@ -2,6 +2,8 @@
 . .\Functions\Connect-M365CFV.ps1
 . .\Functions\Get-TeamsUserCallFlow.ps1
 
+. Connect-M365CFV
+
 $allTeamsUsers = Get-CsOnlineUser -Filter {accountEnabled -eq $true}
 
 $teamsUserCounter = 1
