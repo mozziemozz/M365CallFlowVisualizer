@@ -1,5 +1,6 @@
 [CmdletBinding(DefaultParametersetName="None")]
 param(
+    [Parameter(Mandatory=$false)][String]$CallQueueId,
     [Parameter(Mandatory=$false)][ValidateSet("WorkingDir","CustomDir",$null)][String]$Export
 )
 
@@ -165,4 +166,4 @@ function Get-CallQueueAgentsStatus {
     
 }
 
-. Get-CallQueueAgentsStatus -Export $Export
+. Get-CallQueueAgentsStatus -Export $Export -CallQueueId $CallQueueId
