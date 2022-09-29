@@ -1,4 +1,4 @@
-[CmdletBinding(DefaultParametersetName="None")]
+[CmdletBinding()]
 param(
     [Parameter(Mandatory=$false)][String]$CallQueueId,
     [Parameter(Mandatory=$false)][ValidateSet("WorkingDir","CustomDir",$null)][String]$Export
@@ -22,6 +22,13 @@ function Get-CallQueueAgentsStatus {
     }
 
     $callQueue = Get-CsCallQueue -WarningAction SilentlyContinue -Identity $CallQueueId
+
+    if (!$callQueue.Agents) {
+
+        Write-Warning -Message "Call Queue '$($callQueue.Name)' has no agents assigned!"
+        exit
+
+    }
 
     # Check if call queue useses users, group or teams channel as distribution list
     if (!$callQueue.DistributionLists) {
