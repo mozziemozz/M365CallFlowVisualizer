@@ -1,10 +1,15 @@
+[CmdletBinding(DefaultParametersetName="None")]
+param(
+    [Parameter(Mandatory=$false)][ValidateSet("WorkingDir","CustomDir",$null)][String]$Export
+)
+
 function Get-CallQueueAgentsStatus {
     param (
         [Parameter(Mandatory=$false)][String]$CallQueueId,
-        [Parameter(Mandatory=$false)][Switch]$ExportCsvWorkingDir,
-        [Parameter(Mandatory=$false)][Switch]$ExportCsvCustomDir
+        [Parameter(Mandatory=$false)][ValidateSet("WorkingDir","CustomDir",$null)][String]$Export
     )
 
+    # Import Function to Connect to Teams and Graph
     . .\Functions\Connect-M365CFV.ps1
 
     . Connect-M365CFV
@@ -136,13 +141,13 @@ function Get-CallQueueAgentsStatus {
 
     }
 
-    if ($ExportCsvWorkingDir) {
+    if ($Export -eq "WorkingDir") {
 
         $callQueueAgents | Export-Csv -Path ".\$($callQueue.Name)_Agents.csv" -Delimiter ";" -NoTypeInformation
 
     }
 
-    if ($ExportCsvCustomDir) {
+    if ($Export -eq "CustomDir") {
         
         $defaultPath = Get-Location
         Add-Type -AssemblyName System.Windows.Forms
@@ -156,8 +161,8 @@ function Get-CallQueueAgentsStatus {
 
     }
 
-    return $callQueueAgents | Out-GridView
+    return $callQueueAgents | Out-GridView -Title "$($callQueue.Name) - Agents Status"
     
 }
 
-. Get-CallQueueAgentsStatus
+. Get-CallQueueAgentsStatus -Export $Export
