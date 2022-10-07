@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.8.2
+    Version:            2.8.2b
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -3047,10 +3047,10 @@ subgraph subgraphAgents$($cqCallFlowObjectId)[Agents List]
 agentListType$($cqCallFlowObjectId)[(Agent List Type: $CqAgentListType)]
 $mdCqAgentsDisplayNames
 end
-subgraphAgents$($cqCallFlowObjectId) --> cqResult$($cqCallFlowObjectId){Call Connected?}
+subgraphAgents$($cqCallFlowObjectId) --> cqResult$($cqCallFlowObjectId){Agent Answered?}
 end
 
-cqResult$($cqCallFlowObjectId) --> |Yes| cqEnd$($cqCallFlowObjectId)((Call Connected))
+cqResult$($cqCallFlowObjectId) --> |Yes| cqEnd$($cqCallFlowObjectId)((Agent Answered))
 cqResult$($cqCallFlowObjectId) --> |No| timeOut$($cqCallFlowObjectId) --> $CqTimeoutActionFriendly
 
 "@
