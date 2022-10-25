@@ -90,4 +90,7 @@
 |04.09.2022|M365CallFlowVisualizerV2.ps1|2.8.0|Add support to expand members of M365 Groups which are configured for Shared Voicemail on AAs and CQs|
 |04.09.2022|Get-SharedVoicemailGroupMembers.ps1|1.0.0|Initial commit.|
 |06.09.2022|M365CallFlowVisualizerV2.ps1|2.8.1|Fix typo (turncate --> truncate)|
+|07.10.2022|M365CallFlowVisualizerV2.ps1|2.8.2|Add support for Tenants with up to 1000 AAs, CQs and Resource Accounts, general performance improvements.|
+|07.10.2022|Get-TeamsUserCallFlow.ps1|1.0.4|Add support for Tenants with up to 1000 AAs, CQs and Resource Accounts, general performance improvements.|
+|07.10.2022|M365CallFlowVisualizerV2.ps1|2.8.2b|Rename Call Connected Node to Agent Answered.|
 

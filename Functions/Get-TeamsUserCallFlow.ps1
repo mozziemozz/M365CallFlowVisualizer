@@ -6,7 +6,7 @@
     Reads the user calling settings of a Teams user and outputs them in an easy to understand SVG diagram. See the script "ExportAllUserCallFlowsToSVG.ps1" in the root of this repo for an example on how to generate a diagram for each user in a tenant.
 
     Author:             Martin Heusser
-    Version:            1.0.3
+    Version:            1.0.4
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -320,12 +320,12 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                                     switch ($forwardingTargetType) {
                                         "Auto Attendant" {
                     
-                                            $unansweredUserTargetVoiceAppId = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                                            $unansweredUserTargetVoiceAppId = ($allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
                     
                                         }
                                         "Call Queue" {
                     
-                                            $unansweredUserTargetVoiceAppId = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                                            $unansweredUserTargetVoiceAppId = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
                     
                                         }
                                         Default {}
@@ -552,12 +552,12 @@ end
                             switch ($forwardingTargetType) {
                                 "Auto Attendant" {
             
-                                    $immediateForwardingUserTargetVoiceAppId = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                                    $immediateForwardingUserTargetVoiceAppId = ($allAutoAttendants| Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
             
                                 }
                                 "Call Queue" {
             
-                                    $immediateForwardingUserTargetVoiceAppId = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                                    $immediateForwardingUserTargetVoiceAppId = ($allCallQueues| Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
             
                                 }
                                 Default {}
@@ -825,12 +825,12 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                                 switch ($forwardingTargetType) {
                                     "Auto Attendant" {
 
-                                        $unansweredUserTargetVoiceAppId = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                                        $unansweredUserTargetVoiceAppId = ($allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
 
                                     }
                                     "Call Queue" {
 
-                                        $unansweredUserTargetVoiceAppId = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                                        $unansweredUserTargetVoiceAppId = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
 
                                     }
                                     Default {}
@@ -1103,13 +1103,13 @@ userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Conne
                                 switch ($forwardingTargetType) {
                                     "Auto Attendant" {
                 
-                                        $alsoRingUserTargetVoiceAppId = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                                        $alsoRingUserTargetVoiceAppId = ($allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
                                         $mdAlsoRingWarningMessage = "--> warning$alsoRingUserTargetVoiceAppId[[Warning: Also Ring is enabled<br> $forwardingTargetType will answer automatically!]] --> "
                                     }
                                     "Call Queue" {
                 
-                                        $alsoRingUserTargetVoiceAppId = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
-                                        $checkAlsoRingTargetCqOverflowThreshold = (Get-CsCallQueue -Identity $alsoRingUserTargetVoiceAppId).OverflowThreshold
+                                        $alsoRingUserTargetVoiceAppId = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                                        $checkAlsoRingTargetCqOverflowThreshold = ($allCallQueues | Where-Object {$_.Identity -eq $alsoRingUserTargetVoiceAppId}).OverflowThreshold
 
                                         if ($checkAlsoRingTargetCqOverflowThreshold -eq 0) {
                                             $mdAlsoRingWarningMessage = "-.-> "
@@ -1352,13 +1352,13 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                                 switch ($forwardingTargetType) {
                                     "Auto Attendant" {
                 
-                                        $alsoRingUserTargetVoiceAppId = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                                        $alsoRingUserTargetVoiceAppId = ($allAutoAttendants| Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
                                         $mdAlsoRingWarningMessage = "--> warning$alsoRingUserTargetVoiceAppId[[Warning: Also Ring is enabled<br> $forwardingTargetType will answer automatically!]] --> "
                                     }
                                     "Call Queue" {
                 
-                                        $alsoRingUserTargetVoiceAppId = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
-                                        $checkAlsoRingTargetCqOverflowThreshold = (Get-CsCallQueue -Identity $alsoRingUserTargetVoiceAppId).OverflowThreshold
+                                        $alsoRingUserTargetVoiceAppId = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                                        $checkAlsoRingTargetCqOverflowThreshold = ($allCallQueues | Where-Object {$_.Identity -eq $alsoRingUserTargetVoiceAppId}).OverflowThreshold
 
                                         if ($checkAlsoRingTargetCqOverflowThreshold -eq 0) {
                                             $mdAlsoRingWarningMessage = "-.-> "
@@ -1614,12 +1614,12 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                                 switch ($forwardingTargetType) {
                                     "Auto Attendant" {
 
-                                        $unansweredUserTargetVoiceAppId = (Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                                        $unansweredUserTargetVoiceAppId = ($allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
 
                                     }
                                     "Call Queue" {
 
-                                        $unansweredUserTargetVoiceAppId = (Get-CsCallQueue | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
+                                        $unansweredUserTargetVoiceAppId = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $checkUserAccountType.ObjectId}).Identity
 
                                     }
                                     Default {}
