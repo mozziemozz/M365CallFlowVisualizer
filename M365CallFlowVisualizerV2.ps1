@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.8.2b
+    Version:            2.8.3
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -35,6 +35,12 @@
         Required:           false
         Type:               boolean
         Default value:      true
+
+    -ExportPng
+        Specifies if, the mermaid or markdown file should be converted and saved as a PNG file. This requires Node.JS and @mermaid-js/mermaid-cli + mermaid packages.
+        Required:           false
+        Type:               boolean
+        Default value:      false
 
     -PreviewHtml
         Specifies if the exported html file should be opened in default / last active browser (only works on Windows systems)
@@ -222,6 +228,7 @@ param(
     [Parameter(Mandatory=$false)][Bool]$SetClipBoard = $false,
     [Parameter(Mandatory=$false)][Bool]$SaveToFile = $true,
     [Parameter(Mandatory=$false)][Bool]$ExportHtml = $true,
+    [Parameter(Mandatory=$false)][Bool]$ExportPng = $false,
     [Parameter(Mandatory=$false)][Switch]$PreviewHtml,
     [Parameter(Mandatory=$false)][String]$CustomFilePath = ".\Output",
     [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
@@ -274,6 +281,28 @@ if ($SaveToFile -eq $false -and $CustomFilePath -ne ".\Output") {
 if ($ObfuscatePhoneNumbers -eq $true) {
 
     Write-Warning -Message "Obfuscate phone numbers is True. This will only obfuscate phone numbers in node descriptions. The complete phone number will still be included in Markdown, Mermaid and HTML output!"
+
+}
+
+if ($ExportPng -eq $true) {
+
+    try {
+        $ErrorActionPreference = "SilentlyContinue"
+        $checkNPM = npm list -g
+        $ErrorActionPreference = "Continue"
+    }
+    catch {
+        Write-Warning -Message "Node.JS is not installed. Please install Node.JS for PNG or SVG output."
+    }
+
+    try {
+        $ErrorActionPreference = "SilentlyContinue"
+        $checkMmdcPackage = mmdc --version
+        $ErrorActionPreference = "Continue"
+    }
+    catch {
+        Write-Warning -Message "mermaid npm packages is not installed. Please install mermaid npm packages for PNG or SVG output. `nnpm install -g mermaid`nnpm install -g @mermaid-js/mermaid-cli"
+    }
 
 }
 
@@ -607,7 +636,7 @@ subgraph $holidaySubgraphName
                     $holidayTTSGreetingValue = $null
 
                     # Audio File Greeting Name
-                    $audioFileName = ($holidayCallFlow.Greetings.AudioFilePrompt.FileName).Replace("(","").Replace(")","")
+                    $audioFileName = Optimize-DisplayName -String ($holidayCallFlow.Greetings.AudioFilePrompt.FileName)
 
                     if ($ExportAudioFiles) {
 
@@ -785,7 +814,7 @@ subgraph $holidaySubgraphName
             
             }
 
-            $matchingHolidayScheduleName = Optimize-DisplayName (Get-CsOnlineSchedule -Id $holidaySchedule.Id).Name
+            $matchingHolidayScheduleName = Optimize-DisplayName -String (Get-CsOnlineSchedule -Id $holidaySchedule.Id).Name
             
             $nodeElementHolidayDetails =@"
             
@@ -1251,7 +1280,7 @@ function Get-AutoAttendantDefaultCallFlow {
             $defaultTTSGreetingValue = $null
 
             # Audio File Greeting Name
-            $audioFileName = ($defaultCallFlow.Greetings.AudioFilePrompt.FileName).Replace("(","").Replace(")","")
+            $audioFileName = Optimize-DisplayName -String ($defaultCallFlow.Greetings.AudioFilePrompt.FileName)
 
             if ($ExportAudioFiles) {
 
@@ -1336,7 +1365,7 @@ function Get-AutoAttendantDefaultCallFlow {
                 $defaultCallFlowMenuOptionsTTSGreetingValue = $null
     
                 # Audio File Greeting Name
-                $audioFileName = ($defaultCallFlow.Menu.Prompts.AudioFilePrompt.FileName).Replace("(","").Replace(")","")
+                $audioFileName = Optimize-DisplayName -String ($defaultCallFlow.Menu.Prompts.AudioFilePrompt.FileName)
 
                 if ($ExportAudioFiles) {
 
@@ -1360,16 +1389,28 @@ function Get-AutoAttendantDefaultCallFlow {
     
             }
 
+            if ($defaultCallFlow.ForceListenMenuEnabled -eq $true) {
+
+                $defaultCallFlowForceListen = "<br> Force Listen: True"
+
+            }
+
+            else {
+
+                $defaultCallFlowForceListen = "<br> Force Listen: False"
+
+            }
+
             if ($aaIsVoiceResponseEnabled) {
 
-                $defaultCallFlowVoiceResponse = " or <br> Voice Response <br> Language: $($aa.LanguageId)"
+                $defaultCallFlowVoiceResponse = " or <br> Voice Response <br> Language: $($aa.LanguageId)$defaultCallFlowForceListen"
 
 
             }
 
             else {
 
-                $defaultCallFlowVoiceResponse = $null
+                $defaultCallFlowVoiceResponse = "$defaultCallFlowForceListen"
 
             }
 
@@ -1416,6 +1457,12 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                         $voiceResponse = "/ No Voice Response Configured"
 
                     }
+
+                }
+
+                else {
+
+                    $voiceResponse = $null
 
                 }
 
@@ -1502,7 +1549,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                     $defaultCallFlowMenuOptionsTTSAnnouncementValue = $null
         
                     # Audio File Announcement Name
-                    $audioFileName = ($MenuOption.Prompt.AudioFilePrompt.FileName).Replace("(","").Replace(")","")
+                    $audioFileName = Optimize-DisplayName -String ($MenuOption.Prompt.AudioFilePrompt.FileName)
 
                     if ($ExportAudioFiles) {
 
@@ -1785,7 +1832,7 @@ function Get-AutoAttendantAfterHoursCallFlow {
             $afterHoursTTSGreetingValue = $null
 
             # Audio File Greeting Name
-            $audioFileName = ($afterHoursCallFlow.Greetings.AudioFilePrompt.FileName).Replace("(","").Replace(")","")
+            $audioFileName = Optimize-DisplayName -String ($afterHoursCallFlow.Greetings.AudioFilePrompt.FileName)
 
             if ($ExportAudioFiles) {
 
@@ -1872,7 +1919,7 @@ function Get-AutoAttendantAfterHoursCallFlow {
                 $afterHoursCallFlowMenuOptionsTTSGreetingValue = $null
     
                 # Audio File Greeting Name
-                $audioFileName = ($afterHoursCallFlow.Menu.Prompts.AudioFilePrompt.FileName).Replace("(","").Replace(")","")
+                $audioFileName = Optimize-DisplayName -String ($afterHoursCallFlow.Menu.Prompts.AudioFilePrompt.FileName)
 
                 if ($ExportAudioFiles) {
 
@@ -1895,16 +1942,28 @@ function Get-AutoAttendantAfterHoursCallFlow {
     
             }
 
+            if ($afterHoursCallFlow.ForceListenMenuEnabled -eq $true) {
+
+                $afterHoursCallFlowForceListen = "<br> Force Listen: True"
+
+            }
+
+            else {
+
+                $afterHoursCallFlowForceListen = "<br> Force Listen: False"
+
+            }
+
             if ($aaIsVoiceResponseEnabled) {
 
-                $afterHoursCallFlowVoiceResponse = " or <br> Voice Response <br> Language: $($aa.LanguageId)"
+                $afterHoursCallFlowVoiceResponse = " or <br> Voice Response <br> Language: $($aa.LanguageId)$afterHoursCallFlowForceListen"
 
 
             }
 
             else {
 
-                $afterHoursCallFlowVoiceResponse = $null
+                $afterHoursCallFlowVoiceResponse = $afterHoursCallFlowForceListen
 
             }
 
@@ -1952,6 +2011,12 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                         $voiceResponse = "/ No Voice Response Configured"
 
                     }
+
+                }
+
+                else {
+
+                    $voiceResponse = $null
 
                 }
 
@@ -2039,7 +2104,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                     $afterHoursCallFlowMenuOptionsTTSAnnouncementValue = $null
         
                     # Audio File Announcement Name
-                    $audioFileName = ($MenuOption.Prompt.AudioFilePrompt.FileName).Replace("(","").Replace(")","")
+                    $audioFileName = Optimize-DisplayName -String ($MenuOption.Prompt.AudioFilePrompt.FileName)
 
                     if ($ExportAudioFiles) {
 
@@ -2318,7 +2383,7 @@ function Get-CallQueueCallFlow {
 
         if ($ShowAudioFileName) {
 
-            $audioFileName = ($MatchingCQ.MusicOnHoldFileName).Replace("(","").Replace(")","")
+            $audioFileName = Optimize-DisplayName -String ($MatchingCQ.MusicOnHoldFileName)
 
             if ($ExportAudioFiles) {
 
@@ -2353,7 +2418,7 @@ function Get-CallQueueCallFlow {
 
         if ($ShowAudioFileName) {
 
-            $audioFileName = ($CqWelcomeMusicFileName).Replace("(","").Replace(")","")
+            $audioFileName = Optimize-DisplayName -String ($CqWelcomeMusicFileName)
 
             if ($ExportAudioFiles) {
 
@@ -2620,7 +2685,14 @@ function Get-CallQueueCallFlow {
 
                 if ($ShowAudioFileName) {
 
-                    $audioFileName = ($MatchingCQ.OverflowSharedVoicemailAudioFilePromptFileName).Replace("(","").Replace(")","")
+                    $audioFileName = Optimize-DisplayName -String ($MatchingCQ.OverflowSharedVoicemailAudioFilePromptFileName)
+
+                    # If audio file name is not present on call queue properties
+                    if (!$audioFileName) {
+
+                        $audioFileName = Optimize-DisplayName -String (Get-CsOnlineAudioFile -Identity $MatchingCQ.OverflowSharedVoicemailAudioFilePrompt -ApplicationId HuntGroup).FileName
+
+                    }
 
                     if ($ExportAudioFiles) {
 
@@ -2880,7 +2952,14 @@ function Get-CallQueueCallFlow {
 
                 if ($ShowAudioFileName) {
 
-                    $audioFileName = ($MatchingCQ.TimeoutSharedVoicemailAudioFilePromptFileName).Replace("(","").Replace(")","")
+                    $audioFileName = Optimize-DisplayName -String ($MatchingCQ.TimeoutSharedVoicemailAudioFilePromptFileName)
+
+                    # If audio file name is not present on call queue properties
+                    if (!$audioFileName) {
+
+                        $audioFileName = Optimize-DisplayName -String (Get-CsOnlineAudioFile -Identity $MatchingCQ.TimeoutSharedVoicemailAudioFilePrompt -ApplicationId HuntGroup).FileName
+
+                    }
 
                     if ($ExportAudioFiles) {
 
@@ -3567,6 +3646,24 @@ if ($SaveToFile -eq $true) {
     $mermaidCode += $mdEnd
 
     Set-Content -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -Value $mermaidCode -Encoding UTF8
+
+}
+
+if ($ExportPng -eq $true) {
+
+    if ($Theme -eq "custom") {
+
+        $pngTheme = "dark"
+
+    }
+
+    else {
+
+        $pngTheme = $Theme
+
+    }
+
+    mmdc -i "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -o "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png" -b transparent -w "3840" -H "2160" -t "$pngTheme"
 
 }
 

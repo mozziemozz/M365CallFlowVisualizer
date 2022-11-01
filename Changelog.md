@@ -93,4 +93,4 @@
 |07.10.2022|M365CallFlowVisualizerV2.ps1|2.8.2|Add support for Tenants with up to 1000 AAs, CQs and Resource Accounts, general performance improvements.|
 |07.10.2022|Get-TeamsUserCallFlow.ps1|1.0.4|Add support for Tenants with up to 1000 AAs, CQs and Resource Accounts, general performance improvements.|
 |07.10.2022|M365CallFlowVisualizerV2.ps1|2.8.2b|Rename Call Connected Node to Agent Answered.|
-
+|07.10.2022|M365CallFlowVisualizerV2.ps1|2.8.3|Improve robustness of audio file names, add support for PNG export through mermaid-cli, add support for force listen option on auto attendants, fix bug in displaying voice responses|

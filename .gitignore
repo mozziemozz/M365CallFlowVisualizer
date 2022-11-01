@@ -2,9 +2,11 @@
 **/backup
 **/Output
 **/.VSCodeCounter
+**/node_modules
 *.mmd
 *.htm
 *.mp3
 *.txt
 *.wav
+*.json
 EncodeMermaid.py
