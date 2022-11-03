@@ -1,7 +1,7 @@
 # M365CallFlowVisualizer
 
 # Synopsis
-Reads a config from Microsoft 365 Phone System and renders them visually into a mermaid-js flowchart.
+Uses PowerShell to read configurations of Microsoft Teams Auto Attendants, Call Queues and User Settings and renders them visually into a mermaid-js flowchart.
 
 # Changelog
 
@@ -11,8 +11,24 @@ The changelog can be found [here](Changelog.md).
 
 ## Prerequisites
 
-I suggest using Visual Studio Code and the official PowerShell Extension. This script needs the "Microsoft.Graph" and "MicrosoftTeams" PowerShell modules. At least "Microsoft.Graph.Users" and "Microsoft.Graph.Groups" are needed.
-It has been tested with MicrosoftTeams PowerShell version 3.1.1 and Microsoft.Graph 1.9.1.
+### PowerShell Modules
+
+The following PowerShell Modules are required:
+
+|Module|Required Version|Last Tested Version|
+|---|---|---|
+|MicrosoftTeams|4.6.0|4.9.0|
+|Microsoft.Graph.Users|n/a|1.9.6|
+|Microsoft.Graph.Groups|n/a|1.9.6|
+
+### Optional Requirements
+
+If you want to make use of the PNG export feature, you also need the following components.
+
+- Node.JS
+- @mermaid-js/mermaid-cli npm package
+
+Please see [here](#install-nodejs-and-mermaid-cli) how to install them.
 
 ### Install Modules
 
@@ -25,6 +41,21 @@ Install-Module Microsoft.Graph
 ```PowerShell
 Install-Module MicrosoftTeams
 ```
+
+### Install Node.JS and mermaid-cli
+
+Run this in PowerShell.
+
+```PowerShell
+winget install --id=OpenJS.NodeJS  -e
+```
+
+```PowerShell
+npm install -g @mermaid-js/mermaid-cli
+```
+
+Verify that mermaid-cli is installed by running `mmdc --version` in PowerShell.
+
 ## Parameters
 
 Please see the parameter description directly inline in the script.
