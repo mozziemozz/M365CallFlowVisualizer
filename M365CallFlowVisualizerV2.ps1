@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.8.3
+    Version:            2.8.3b
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -292,7 +292,7 @@ if ($ExportPng -eq $true) {
         $ErrorActionPreference = "Continue"
     }
     catch {
-        Write-Warning -Message "Node.JS is not installed. Please install Node.JS for PNG or SVG output."
+        Write-Warning -Message "Node.JS is not installed. Please install Node.JS for PNG output.`nwinget install --id=OpenJS.NodeJS  -e"
     }
 
     try {
@@ -301,7 +301,7 @@ if ($ExportPng -eq $true) {
         $ErrorActionPreference = "Continue"
     }
     catch {
-        Write-Warning -Message "mermaid npm packages is not installed. Please install mermaid npm packages for PNG or SVG output. `nnpm install -g mermaid`nnpm install -g @mermaid-js/mermaid-cli"
+        Write-Warning -Message "mermaid npm packages is not installed. Please install mermaid npm packages for PNG output. `nnpm install -g @mermaid-js/mermaid-cli"
     }
 
 }
@@ -3664,6 +3664,13 @@ if ($ExportPng -eq $true) {
     }
 
     mmdc -i "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -o "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png" -b transparent -w "3840" -H "2160" -t "$pngTheme"
+
+    if ($DocType -eq "Markdown") {
+
+        $createdPng = Get-ChildItem -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow-1.png"
+        Rename-Item -Path $createdPng.FullName -NewName "$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png"
+
+    }
 
 }
 
