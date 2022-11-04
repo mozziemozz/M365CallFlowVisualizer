@@ -15,7 +15,7 @@
 
 #>
 
-#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.1.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
+#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.6.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
 
 . .\Functions\Connect-M365CFV.ps1
 
@@ -23,9 +23,9 @@
 
 $VoiceApps = @()
 
-$AllAutoAttendants = Get-CsAutoAttendant | Where-Object {$_.ApplicationInstances -notlike ""}
+$AllAutoAttendants = Get-CsAutoAttendant -First 1000 | Where-Object {$_.ApplicationInstances -notlike ""}
 
-$AllCallQueues = Get-CsCallQueue | Where-Object {$_.ApplicationInstances -notlike ""}
+$AllCallQueues = Get-CsCallQueue -First 1000 -WarningAction SilentlyContinue | Where-Object {$_.ApplicationInstances -notlike ""}
 
 foreach ($AutoAttendant in $AllAutoAttendants) {
 
@@ -73,7 +73,7 @@ Set-Content -Path ".\Output\TopLevelVoiceApps.md" -Value "# Call Flow Diagrams"
 
 foreach ($VoiceAppIdentity in $VoiceApps) {
 
-    . .\M365CallFlowVisualizerV2.ps1 -Identity $VoiceAppIdentity -Theme dark -CustomFilePath ".\Output" -ShowCqAgentPhoneNumbers -ExportAudioFiles -ExportTTSGreetings -ShowAudioFileName -ShowTTSGreetingText
+    . .\M365CallFlowVisualizerV2.ps1 -Identity $VoiceAppIdentity -Theme dark -CustomFilePath ".\Output" -ShowCqAgentPhoneNumbers -ExportAudioFiles -ExportTTSGreetings -ShowAudioFileName -ShowTTSGreetingText -ExportPng $true
 
     $MarkdownInclude = "[!include[$($VoiceAppFileName)]($(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension)]"
 

@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.8.3b
+    Version:            2.8.4
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -2387,7 +2387,19 @@ function Get-CallQueueCallFlow {
 
             if ($ExportAudioFiles) {
 
-                Invoke-WebRequest -Uri $MatchingCQ.MusicOnHoldFileDownloadUri -OutFile "$FilePath\$audioFileName"
+                if ($MatchingCQ.MusicOnHoldFileDownloadUri) {
+
+                    Invoke-WebRequest -Uri $MatchingCQ.MusicOnHoldFileDownloadUri -OutFile "$FilePath\$audioFileName"
+
+                }
+
+
+                else {
+
+                    $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.MusicOnHoldResourceId -ApplicationId HuntGroup
+                    [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+
+                }
 
                 $audioFileNames += ("click cqSettingsContainer$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
 
@@ -2422,7 +2434,18 @@ function Get-CallQueueCallFlow {
 
             if ($ExportAudioFiles) {
 
-                Invoke-WebRequest -Uri $MatchingCQ.WelcomeMusicFileDownloadUri -OutFile "$FilePath\$audioFileName"
+                if ($MatchingCQ.WelcomeMusicFileDownloadUri) {
+
+                    Invoke-WebRequest -Uri $MatchingCQ.WelcomeMusicFileDownloadUri -OutFile "$FilePath\$audioFileName"
+
+                }
+
+                else {
+
+                    $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.WelcomeMusicResourceId -ApplicationId HuntGroup
+                    [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+
+                }
 
                 $audioFileNames += ("click cqGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
 
@@ -3668,7 +3691,7 @@ if ($ExportPng -eq $true) {
     if ($DocType -eq "Markdown") {
 
         $createdPng = Get-ChildItem -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow-1.png"
-        Rename-Item -Path $createdPng.FullName -NewName "$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png"
+        Rename-Item -Path $createdPng.FullName -NewName "$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png" -Force
 
     }
 
