@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.8.4
+    Version:            2.8.5
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -721,16 +721,7 @@ subgraph $holidaySubgraphName
         
                             $holidayVoicemailSystemGreeting = $holidayVoicemailSystemGreeting.Replace("] "," <br> ''$holidayVoicemailSystemGreetingValue''] ")
         
-                        }
-
-                        if ($ShowSharedVoicemailGroupMembers -eq $true) {
-
-                            . Get-SharedVoicemailGroupMembers -SharedVoicemailGroupId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)
-
-                            $holidayActionTargetName = "$holidayActionTargetName$mdSharedVoicemailGroupMembers"
-
-                        }
-        
+                        }        
 
                         $allMermaidNodes += "elementAAHolidayVoicemailSystemGreeting$($aaObjectId)-$($HolidayCounter)"
 
@@ -739,6 +730,14 @@ subgraph $holidaySubgraphName
                     else {
 
                         $holidayVoicemailSystemGreeting = $null
+
+                    }
+
+                    if ($ShowSharedVoicemailGroupMembers -eq $true) {
+
+                        . Get-SharedVoicemailGroupMembers -SharedVoicemailGroupId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)
+
+                        $holidayActionTargetName = "$holidayActionTargetName$mdSharedVoicemailGroupMembers"
 
                     }
 
@@ -3094,6 +3093,12 @@ function Get-CallQueueCallFlow {
     
             }
 
+            if ($ObfuscatePhoneNumbers -eq $true) {
+
+                $CqAgentPhoneNumber = $CqAgentPhoneNumber.Remove(($CqAgentPhoneNumber.Length -4)) + "****"
+
+            }
+
             $AgentDisplayName = "$AgentDisplayName <br> $CqAgentPhoneNumber"
 
         }
@@ -3152,7 +3157,7 @@ end
 subgraphAgents$($cqCallFlowObjectId) --> cqResult$($cqCallFlowObjectId){Agent Answered?}
 end
 
-cqResult$($cqCallFlowObjectId) --> |Yes| cqEnd$($cqCallFlowObjectId)((Agent Answered))
+cqResult$($cqCallFlowObjectId) --> |Yes| cqEnd$($cqCallFlowObjectId)((Call Connected))
 cqResult$($cqCallFlowObjectId) --> |No| timeOut$($cqCallFlowObjectId) --> $CqTimeoutActionFriendly
 
 "@
@@ -3683,6 +3688,12 @@ if ($ExportPng -eq $true) {
     else {
 
         $pngTheme = $Theme
+
+    }
+
+    if (Test-Path -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png") {
+
+        Remove-Item -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png" -Force
 
     }
 

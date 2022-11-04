@@ -11,6 +11,8 @@ The changelog can be found [here](Changelog.md).
 
 ## Prerequisites
 
+Please not that this script has only been tested on Windows systems. If you don't specify an identity or a name, `Out-GridView` is used which, to my knowledge is limited to Windows. Furthermore, I'm not sure how file operation and file paths behave on other, Non-Windows operating systems.
+
 ### PowerShell Modules
 
 The following PowerShell Modules are required:
@@ -55,6 +57,8 @@ npm install -g @mermaid-js/mermaid-cli
 ```
 
 Verify that mermaid-cli is installed by running `mmdc --version` in PowerShell.
+
+Please see [this](https://github.com/mermaid-js/mermaid-cli#install-locally) site for more information.
 
 ## Parameters
 
@@ -102,28 +106,12 @@ This will run the script for the call queue called "PS Test CQ".
 ### Example 5
 
 ```PowerShell
-.\M365CallFlowVisualizerV2.ps1 -DocType Markdown -SetClipBoard $false
-```
-
-This will run the script, present a list of the available voice apps and save the call flow to a markdown (*.md) file without copying the markdown syntax to the clipboard.
-
-### Example 6
-
-```PowerShell
-.\M365CallFlowVisualizerV2.ps1 -SaveToFile $false
-```
-
-This will run the script without saving the call flow to a file. Make sure to not set SetClipBoard to $false as this would result in no output at all.
-
-### Example 7
-
-```PowerShell
 .\M365CallFlowVisualizerV2.ps1 -CustomFilePath "C:\Temp"
 ```
 
 This will run the script and save the output file to "C:\Temp".
 
-### Example 8
+### Example 6
 
 ```PowerShell
 .\M365CallFlowVisualizerV2.ps1 -VoiceAppName "PS Test AA" -VoiceAppType "Auto Attendant" -DisplayNestedCallFlows $false
@@ -131,15 +119,7 @@ This will run the script and save the output file to "C:\Temp".
 
 This will run the script without expanding and rendering call flows of auto attendants or call queues which are nested behind "PS Test AA". Only the names and types of these voice apps will be displayed.
 
-### Example 9
-
-```PowerShell
-.\M365CallFlowVisualizerV2.ps1 -VoiceAppName "PS Test AA" -VoiceAppType "Auto Attendant" -DocType Mermaid
-```
-
-This will run the script and save the call flow into a Mermaid (*.mmd) file.
-
-### Example 10
+### Example 7
 
 ```PowerShell
 .\M365CallFlowVisualizerV2.ps1 -VoiceAppName "PS Test AA" -VoiceAppType "Auto Attendant" -Theme dark
@@ -153,31 +133,19 @@ The script supports outputting Mermaid-JS code in either a Markdown file (.md) o
 
 To preview Markdown files containing mermaid sections I suggest the following [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=tomoyukim.vscode-mermaid-editor)
 
-To preview Mermaid files I suggest the following [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-mermaid). You can also export to SVG directly from this extension.
+To preview Mermaid files I suggest the following [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=tomoyukim.vscode-mermaid-editor). You can also save an SVG or PNG image with this extension.
 
 # Example Outputs
 
-## Example 1: Auto attendant forwards calls to a Teams user
+## Example 1
 
-![](/Examples/PS_Test_AA_CallFlow_aa_fwd_user.svg)
+![](/Examples/png/Support_Number_AA_CallFlow.png)
 
-## Example 2: Auto attendant checks for business hours and forwards calls to a call queue
+## Example 2
 
-![](/Examples/PS_Test_AA_CallFlow_only_BusinessHours.svg)
+![](/Examples/png/Main_Number_AA_CallFlow.png)
 
-## Example 3: Auto attendant checks for holidays and business hours and forwards calls to a call queue
-
-![](/Examples/PS_Test_AA_CallFlow_Holidays_and_BusinessHours.svg)
-
-## Example 4: Top-level call queue without auto attendant
-
-![](/Examples/CQ_Team_Green_No_AA.svg)
-
-## Example 5: Auto attendant check for holidays and business hours, forwards to nested auto attendant after hours
-
-![](/Examples/USA_Toll_Free_Test_Example.svg)
-
-These are some examples generated from real configurations inside a Microsoft 365 Tenant. Everthing you see has been generated and rendered 100% automatically. With the new V2 Version it's theoretically possible to render nested voice apps indefinitely. Loops should also be reflected correctly, altough the diagram can look a little weird. The logic now detects if multiple voice apps forward to the same target and will render each voice app only one time.
+These are some examples generated from real configurations inside a Microsoft 365 Tenant. Everthing you see has been generated and rendered 100% automatically. With the new V2 Version it's theoretically possible to render nested voice apps and user calling settings indefinitely. Loops should also be reflected correctly, altough the diagram can look a little weird. The logic now detects if multiple voice apps forward to the same target and will render each voice app only one time.
 
 ## Tips & Links
 
@@ -189,7 +157,6 @@ If you want to implement Mermaid Diagrams into your markdown based documentation
 
 # Known limitations
 - The tool has only been tested on Windows systems. Some functionalty might not be available on other platforms.
-- User Calling Settings are not recursive. Only the settings of the current user will be read and drawn. If a user forwards to another user, the diagram stops at the forwarding target's user name.
 - Forwarding Targets in a holiday list are not expanded.
 - IVRs in holiday call handlings are not supported.
 
