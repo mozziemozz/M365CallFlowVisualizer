@@ -97,3 +97,5 @@
 |04.11.2022|M365CallFlowVisualizerV2.ps1|2.8.4|Handle exception when download uri for MoH/Welcome Music were not available on call queue object|
 |04.11.2022|M365CallFlowVisualizerV2.ps1|2.8.5|Add support to also obfuscate phone numbers of CQ agents. Fix filename related bugs for PNG export. Updated Readme and examples. Rename Agent Answered back to Call Connected (same as user calling settings. Fix bug where shared voicemail members were not expanded on AA holidays is skip vm system greeting was enabled.|
 |04.11.2022|Get-SharedVoicemailGroupMembers.ps1|1.0.1|When ObfuscatePhoneNumbers is true, email addresses of shared mailbox members will also be anonymized if ShowSharedVoicemailGroupMembers is true.|
+|06.11.2022|Get-IvrTransferMessage.ps1|1.0.0|Initial creation. This function will provide the text which is synthesized by an auto attendant when transferring from an IVR to operator, user or external PSTN.|
+|06.11.2022|M365CallFlowVisualizerV2.ps1|2.8.6|Add support for accurate display of IVR transfer messages. Optimize Greeting/Transfer order of display for IVRs.|
