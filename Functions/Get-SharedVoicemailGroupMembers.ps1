@@ -4,7 +4,7 @@
     
     .DESCRIPTION
     Author:             Martin Heusser
-    Version:            1.0.0
+    Version:            1.0.1
     Changelog:          .\Changelog.md
 
 #>
@@ -20,7 +20,28 @@ function Get-SharedVoicemailGroupMembers {
 
     foreach ($sharedVoicemailGroupMember in $sharedVoicemailGroupMembers) {
 
-        $currentMember = (Get-MgUser -UserId $sharedVoicemailGroupMember.Id).Mail.Replace("@"," at ")
+        $currentMember = (Get-MgUser -UserId $sharedVoicemailGroupMember.Id).Mail
+
+        if ($ObfuscatePhoneNumbers -eq $true) {
+
+            $domainLength = $currentMember.Split("@")[-1].Length
+            $topLevelDomainLength = $currentMember.Split("@")[-1].Split(".")[-1].Length
+
+            $obfuscatedTopLevelDomain = "*"
+
+            do {
+                $obfuscatedTopLevelDomain += "*"
+            } until (
+                $obfuscatedTopLevelDomain.Length -eq $topLevelDomainLength
+            )
+
+            $emailLength = $currentMember.Split("@")[0].Length
+
+            $currentMember = "$($currentMember.Split("@")[0].Remove($currentMember.Split("@")[0].Length - ($emailLength -2)))*****@$($currentMember.Split("@")[-1].Remove($currentMember.Split("@")[-1].Length - ($domainLength -2)))*****.$obfuscatedTopLevelDomain"
+
+        }
+
+        $currentMember = $currentMember.Replace("@"," at ")
         
         $mdSharedVoicemailGroupMembers += "<br>$currentMember"
 

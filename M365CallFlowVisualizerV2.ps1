@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.8.4
+    Version:            2.8.6
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -268,6 +268,7 @@ $ErrorActionPreference = "Continue"
 . .\Functions\Get-AccountType.ps1
 . .\Functions\New-VoiceAppUserLinkProperties.ps1
 . .\Functions\Get-SharedVoicemailGroupMembers.ps1
+. .\Functions\Get-IvrTransferMessage.ps1
 
 # Connect to MicrosoftTeams and Microsoft.Graph
 . Connect-M365CFV
@@ -623,7 +624,7 @@ subgraph $holidaySubgraphName
 
                     if ($holidayTTSGreetingValue.Length -gt $truncateGreetings) {
 
-                        $holidayTTSGreetingValue = $holidayTTSGreetingValue.Remove($holidayTTSGreetingValue.Length - ($holidayTTSGreetingValue.Length -$truncateGreetings)) + "..."
+                        $holidayTTSGreetingValue = $holidayTTSGreetingValue.Remove($holidayTTSGreetingValue.Length - ($holidayTTSGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
                     
                     }
 
@@ -715,22 +716,13 @@ subgraph $holidaySubgraphName
         
                             if ($holidayVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
         
-                                $holidayVoicemailSystemGreetingValue = $holidayVoicemailSystemGreetingValue.Remove($holidayVoicemailSystemGreetingValue.Length - ($holidayVoicemailSystemGreetingValue.Length -$truncateGreetings)) + "..."
+                                $holidayVoicemailSystemGreetingValue = $holidayVoicemailSystemGreetingValue.Remove($holidayVoicemailSystemGreetingValue.Length - ($holidayVoicemailSystemGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
         
                             }
         
                             $holidayVoicemailSystemGreeting = $holidayVoicemailSystemGreeting.Replace("] "," <br> ''$holidayVoicemailSystemGreetingValue''] ")
         
-                        }
-
-                        if ($ShowSharedVoicemailGroupMembers -eq $true) {
-
-                            . Get-SharedVoicemailGroupMembers -SharedVoicemailGroupId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)
-
-                            $holidayActionTargetName = "$holidayActionTargetName$mdSharedVoicemailGroupMembers"
-
-                        }
-        
+                        }        
 
                         $allMermaidNodes += "elementAAHolidayVoicemailSystemGreeting$($aaObjectId)-$($HolidayCounter)"
 
@@ -739,6 +731,14 @@ subgraph $holidaySubgraphName
                     else {
 
                         $holidayVoicemailSystemGreeting = $null
+
+                    }
+
+                    if ($ShowSharedVoicemailGroupMembers -eq $true) {
+
+                        . Get-SharedVoicemailGroupMembers -SharedVoicemailGroupId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)
+
+                        $holidayActionTargetName = "$holidayActionTargetName$mdSharedVoicemailGroupMembers"
 
                     }
 
@@ -1267,7 +1267,7 @@ function Get-AutoAttendantDefaultCallFlow {
 
             if ($defaultTTSGreetingValue.Length -gt $truncateGreetings) {
 
-                $defaultTTSGreetingValue = $defaultTTSGreetingValue.Remove($defaultTTSGreetingValue.Length - ($defaultTTSGreetingValue.Length -$truncateGreetings)) + "..."
+                $defaultTTSGreetingValue = $defaultTTSGreetingValue.Remove($defaultTTSGreetingValue.Length - ($defaultTTSGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
             
             }
 
@@ -1332,6 +1332,7 @@ function Get-AutoAttendantDefaultCallFlow {
 
         }
 
+        # Auto Attendant has multiple options / voice menu
         else {
 
             $defaultCallFlowMenuOptionsGreeting = "IVR Greeting <br> $($defaultCallFlow.Menu.Prompts.ActiveType)"
@@ -1352,7 +1353,7 @@ function Get-AutoAttendantDefaultCallFlow {
     
                 if ($defaultCallFlowMenuOptionsTTSGreetingValue.Length -gt $truncateGreetings) {
     
-                    $defaultCallFlowMenuOptionsTTSGreetingValue = $defaultCallFlowMenuOptionsTTSGreetingValue.Remove($defaultCallFlowMenuOptionsTTSGreetingValue.Length - ($defaultCallFlowMenuOptionsTTSGreetingValue.Length -$truncateGreetings)) + "..."
+                    $defaultCallFlowMenuOptionsTTSGreetingValue = $defaultCallFlowMenuOptionsTTSGreetingValue.Remove($defaultCallFlowMenuOptionsTTSGreetingValue.Length - ($defaultCallFlowMenuOptionsTTSGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
                 
                 }
     
@@ -1432,6 +1433,10 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
         }
 
+        $defaultCallFlowSharedVoicemailCounter = 1
+        $defaultCallFlowUserOptionCounter = 1
+        $defaultCallFlowPSTNOptionCounter = 1
+
         foreach ($MenuOption in $defaultCallFlowMenuOptions) {
 
             if ($defaultCallFlowMenuOptions.Count -lt 2 -and !$defaultCallFlow.Menu.Prompts.ActiveType) {
@@ -1494,7 +1499,38 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                 }
 
-                $mdAutoAttendantdefaultCallFlow = "$mdDtmfLink defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction) --> $($OperatorIdentity)($OperatorTypeFriendly <br> $OperatorName)`n"
+                if ($ShowTTSGreetingText) {
+
+                    $defaultCallFlowTransferGreetingOperatorValue = (. Get-IvrTransferMessage)[2]
+                    $defaultCallFlowTransferGreetingOperatorValueExport = (. Get-IvrTransferMessage)[3]
+
+                    if ($ExportTTSGreetings) {
+
+                        $defaultCallFlowTransferGreetingOperatorValueExport | Out-File "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowTransferGreetingOperator.txt"
+                        $ttsGreetings += ("click defaultCallFlowTransferGreetingOperator$($aadefaultCallFlowAaObjectId) " + '"' + "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowTransferGreetingOperator.txt" + '"')
+
+                    }
+
+                    if ($defaultCallFlowTransferGreetingOperatorValue.Length -gt $truncateGreetings) {
+
+                        $defaultCallFlowTransferGreetingOperatorValue = $defaultCallFlowTransferGreetingOperatorValue.Remove($defaultCallFlowTransferGreetingOperatorValue.Length - ($defaultCallFlowTransferGreetingOperatorValue.Length -$truncateGreetings)).TrimEnd() + "..."
+            
+                    }
+
+                    $defaultCallFlowTransferGreetingOperatorValue = "defaultCallFlowTransferGreetingOperator$($aaDefaultCallFlowAaObjectId)>Greeting<br>Transfer Message<br>''$defaultCallFlowTransferGreetingOperatorValue''] -->"
+    
+                }
+
+                else {
+
+                    $defaultCallFlowTransferGreetingOperatorValueExport = $null
+                    $defaultCallFlowTransferGreetingOperatorValue = "defaultCallFlowTransferGreetingOperator$($aaDefaultCallFlowAaObjectId)>Greeting<br>Transfer Message] -->"
+
+                }
+
+                $allMermaidNodes += "defaultCallFlowTransferGreetingOperator$($aaDefaultCallFlowAaObjectId)"
+
+                $mdAutoAttendantdefaultCallFlow = "$mdDtmfLink $defaultCallFlowTransferGreetingOperatorValue defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction) --> $($OperatorIdentity)($OperatorTypeFriendly <br> $OperatorName)`n"
 
                 $allMermaidNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey","$($OperatorIdentity)")
 
@@ -1536,7 +1572,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
     
                     if ($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length -gt $truncateGreetings) {
         
-                        $defaultCallFlowMenuOptionsTTSAnnouncementValue = $defaultCallFlowMenuOptionsTTSAnnouncementValue.Remove($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length - ($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length -$truncateGreetings)) + "..."
+                        $defaultCallFlowMenuOptionsTTSAnnouncementValue = $defaultCallFlowMenuOptionsTTSAnnouncementValue.Remove($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length - ($defaultCallFlowMenuOptionsTTSAnnouncementValue.Length -$truncateGreetings)).TrimEnd() + "..."
                     
                     }
         
@@ -1617,6 +1653,40 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                         $defaultCallFlowVoicemailSystemGreeting = $null
 
+                        if ($ShowTTSGreetingText) {
+
+                            $defaultCallFlowTransferGreetingValue = (. Get-IvrTransferMessage)[0]
+                            $defaultCallFlowTransferGreetingValueExport = (. Get-IvrTransferMessage)[1]
+        
+                            if ($ExportTTSGreetings) {
+        
+                                $defaultCallFlowTransferGreetingValueExport | Out-File "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowTransferUserGreeting.txt"
+                                $ttsGreetings += ("click defaultCallFlowTransferUserGreeting$($aadefaultCallFlowAaObjectId)-$defaultCallFlowUserOptionCounter " + '"' + "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowTransferUserGreeting.txt" + '"')
+        
+                            }
+        
+                            if ($defaultCallFlowTransferGreetingValue.Length -gt $truncateGreetings) {
+        
+                                $defaultCallFlowTransferGreetingValue = $defaultCallFlowTransferGreetingValue.Remove($defaultCallFlowTransferGreetingValue.Length - ($defaultCallFlowTransferGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
+                    
+                            }
+        
+                            $defaultCallFlowTransferGreetingValue = "defaultCallFlowTransferUserGreeting$($aadefaultCallFlowAaObjectId)-$defaultCallFlowUserOptionCounter>Greeting<br>Transfer Message<br>''$defaultCallFlowTransferGreetingValue''] -->"
+            
+                        }
+        
+                        else {
+        
+                            $defaultCallFlowTransferGreetingValueExport = $null
+                            $defaultCallFlowTransferGreetingValue = "defaultCallFlowTransferUserGreeting$($aadefaultCallFlowAaObjectId)-$defaultCallFlowUserOptionCounter>Greeting<br>Transfer Message] -->"
+        
+                        }
+        
+                        $allMermaidNodes += "defaultCallFlowTransferUserGreeting$($aadefaultCallFlowAaObjectId)-$defaultCallFlowUserOptionCounter"
+
+                        $defaultCallFlowUserOptionCounter ++
+        
+
                     }
                     ExternalPstn { 
                         $defaultCallFlowTargetTypeFriendly = "External Number"
@@ -1630,6 +1700,39 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                         }        
 
                         $defaultCallFlowVoicemailSystemGreeting = $null
+
+                        if ($ShowTTSGreetingText) {
+
+                            $defaultCallFlowTransferGreetingValue = (. Get-IvrTransferMessage)[0]
+                            $defaultCallFlowTransferGreetingValueExport = (. Get-IvrTransferMessage)[1]
+        
+                            if ($ExportTTSGreetings) {
+        
+                                $defaultCallFlowTransferGreetingValueExport | Out-File "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowTransferPSTNGreeting.txt"
+                                $ttsGreetings += ("click defaultCallFlowTransferPSTNGreeting$($aadefaultCallFlowAaObjectId)-$defaultCallFlowPSTNOptionCounter " + '"' + "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowTransferPSTNGreeting.txt" + '"')
+        
+                            }
+        
+                            if ($defaultCallFlowTransferGreetingValue.Length -gt $truncateGreetings) {
+        
+                                $defaultCallFlowTransferGreetingValue = $defaultCallFlowTransferGreetingValue.Remove($defaultCallFlowTransferGreetingValue.Length - ($defaultCallFlowTransferGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
+                    
+                            }
+        
+                            $defaultCallFlowTransferGreetingValue = "defaultCallFlowTransferPSTNGreeting$($aadefaultCallFlowAaObjectId)-$defaultCallFlowPSTNOptionCounter>Greeting<br>Transfer Message<br>''$defaultCallFlowTransferGreetingValue''] -->"
+            
+                        }
+        
+                        else {
+        
+                            $defaultCallFlowTransferGreetingValueExport = $null
+                            $defaultCallFlowTransferGreetingValue = "defaultCallFlowTransferPSTNGreeting$($aadefaultCallFlowAaObjectId)-$defaultCallFlowPSTNOptionCounter>Greeting<br>Transfer Message] -->"
+        
+                        }
+        
+                        $allMermaidNodes += "defaultCallFlowTransferPSTNGreeting$($aadefaultCallFlowAaObjectId)-$defaultCallFlowPSTNOptionCounter"
+
+                        $defaultCallFlowPSTNOptionCounter ++
 
                     }
                     ApplicationEndpoint {
@@ -1668,7 +1771,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                         if ($MenuOption.CallTarget.EnableSharedVoicemailSystemPromptSuppression -eq $false) {
                             
-                            $defaultCallFlowVoicemailSystemGreeting = "--> defaultCallFlowSystemGreeting$($aaDefaultCallFlowAaObjectId)>Greeting <br> MS System Message]"
+                            $defaultCallFlowVoicemailSystemGreeting = "defaultCallFlowSystemGreeting$($aaDefaultCallFlowAaObjectId)-$defaultCallFlowSharedVoicemailCounter>Greeting <br> MS System Message] -->"
 
                             $defaultCallFlowVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
                             $defaultCallFlowVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
@@ -1679,14 +1782,14 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
             
                                     $defaultCallFlowVoicemailSystemGreetingValueExport | Out-File "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowMsSystemMessage.txt"
                     
-                                    $ttsGreetings += ("click defaultCallFlowSystemGreeting$($aadefaultCallFlowAaObjectId) " + '"' + "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowMsSystemMessage.txt" + '"')
+                                    $ttsGreetings += ("click defaultCallFlowSystemGreeting$($aaDefaultCallFlowAaObjectId)-$defaultCallFlowSharedVoicemailCounter " + '"' + "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowMsSystemMessage.txt" + '"')
                     
                                 }    
                 
             
                                 if ($defaultCallFlowVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
             
-                                    $defaultCallFlowVoicemailSystemGreetingValue = $defaultCallFlowVoicemailSystemGreetingValue.Remove($defaultCallFlowVoicemailSystemGreetingValue.Length - ($defaultCallFlowVoicemailSystemGreetingValue.Length -$truncateGreetings)) + "..."
+                                    $defaultCallFlowVoicemailSystemGreetingValue = $defaultCallFlowVoicemailSystemGreetingValue.Remove($defaultCallFlowVoicemailSystemGreetingValue.Length - ($defaultCallFlowVoicemailSystemGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
             
                                 }
             
@@ -1694,6 +1797,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
             
                             }
             
+                            $defaultCallFlowTransferGreetingValue = $null
 
                         }
 
@@ -1711,7 +1815,41 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                         }
 
-                        $allMermaidNodes += "defaultCallFlowSystemGreeting$($aaDefaultCallFlowAaObjectId)"
+
+                        if ($ShowTTSGreetingText) {
+
+                            $defaultCallFlowTransferGreetingValue = (. Get-IvrTransferMessage)[0]
+                            $defaultCallFlowTransferGreetingValueExport = (. Get-IvrTransferMessage)[1]
+        
+                            if ($ExportTTSGreetings) {
+        
+                                $defaultCallFlowTransferGreetingValueExport | Out-File "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowTransferSharedVoicemailGreeting.txt"
+                                $ttsGreetings += ("click defaultCallFlowTransferSharedVoicemailGreeting$($aadefaultCallFlowAaObjectId)-$defaultCallFlowSharedVoicemailCounter " + '"' + "$FilePath\$($aadefaultCallFlowAaObjectId)_autoAttendantdefaultCallFlowTransferSharedVoicemailGreeting.txt" + '"')
+        
+                            }
+        
+                            if ($defaultCallFlowTransferGreetingValue.Length -gt $truncateGreetings) {
+        
+                                $defaultCallFlowTransferGreetingValue = $defaultCallFlowTransferGreetingValue.Remove($defaultCallFlowTransferGreetingValue.Length - ($defaultCallFlowTransferGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
+                    
+                            }
+        
+                            $defaultCallFlowTransferGreetingValue = "defaultCallFlowTransferSharedVoicemailGreeting$($aadefaultCallFlowAaObjectId)-$defaultCallFlowSharedVoicemailCounter>Greeting<br>Transfer Message<br>''$defaultCallFlowTransferGreetingValue''] -->"
+            
+                        }
+        
+                        else {
+        
+                            $defaultCallFlowTransferGreetingValueExport = $null
+                            $defaultCallFlowTransferGreetingValue = "defaultCallFlowTransferSharedVoicemailGreeting$($aadefaultCallFlowAaObjectId)-$defaultCallFlowSharedVoicemailCounter>Greeting<br>Transfer Message] -->"
+        
+                        }
+        
+                        $allMermaidNodes += "defaultCallFlowTransferSharedVoicemailGreeting$($aadefaultCallFlowAaObjectId)-$defaultCallFlowSharedVoicemailCounter"
+
+                        $allMermaidNodes += "defaultCallFlowSystemGreeting$($aaDefaultCallFlowAaObjectId)-$defaultCallFlowSharedVoicemailCounter"
+
+                        $defaultCallFlowSharedVoicemailCounter ++
 
                     }
                 }
@@ -1751,7 +1889,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                 # Check if default callflow action target is trasnfer call to target but something other than call queue
                 else {
 
-                    $mdAutoAttendantDefaultCallFlow = $mdDtmfLink + "defaultCallFlow$($aaDefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction) $defaultCallFlowVoicemailSystemGreeting --> $($defaultCallFlowTargetIdentity)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)`n"
+                    $mdAutoAttendantDefaultCallFlow = $mdDtmfLink + "$defaultCallFlowTransferGreetingValue defaultCallFlow$($aaDefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction) --> $defaultCallFlowVoicemailSystemGreeting $($defaultCallFlowTargetIdentity)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)`n"
 
                     $allMermaidNodes += @("defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey","$($defaultCallFlowTargetIdentity)")
 
@@ -1819,7 +1957,7 @@ function Get-AutoAttendantAfterHoursCallFlow {
 
             if ($afterHoursTTSGreetingValue.Length -gt $truncateGreetings) {
 
-                $afterHoursTTSGreetingValue = $afterHoursTTSGreetingValue.Remove($afterHoursTTSGreetingValue.Length - ($afterHoursTTSGreetingValue.Length -$truncateGreetings)) + "..."
+                $afterHoursTTSGreetingValue = $afterHoursTTSGreetingValue.Remove($afterHoursTTSGreetingValue.Length - ($afterHoursTTSGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
             
             }
 
@@ -1906,7 +2044,7 @@ function Get-AutoAttendantAfterHoursCallFlow {
     
                 if ($afterHoursCallFlowMenuOptionsTTSGreetingValue.Length -gt $truncateGreetings) {
     
-                    $afterHoursCallFlowMenuOptionsTTSGreetingValue = $afterHoursCallFlowMenuOptionsTTSGreetingValue.Remove($afterHoursCallFlowMenuOptionsTTSGreetingValue.Length - ($afterHoursCallFlowMenuOptionsTTSGreetingValue.Length -$truncateGreetings)) + "..."
+                    $afterHoursCallFlowMenuOptionsTTSGreetingValue = $afterHoursCallFlowMenuOptionsTTSGreetingValue.Remove($afterHoursCallFlowMenuOptionsTTSGreetingValue.Length - ($afterHoursCallFlowMenuOptionsTTSGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
                 
                 }
     
@@ -1986,6 +2124,10 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
         }
 
+        $afterHoursCallFlowSharedVoicemailCounter = 1
+        $afterHoursCallFlowUserOptionCounter = 1
+        $afterHoursCallFlowPSTNOptionCounter = 1
+
         foreach ($MenuOption in $afterHoursCallFlowMenuOptions) {
 
             if ($afterHoursCallFlowMenuOptions.Count -lt 2 -and !$afterHoursCallFlow.Menu.Prompts.ActiveType) {
@@ -2048,7 +2190,38 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                 }
 
-                $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction) --> $($OperatorIdentity)($OperatorTypeFriendly <br> $OperatorName)`n"
+                if ($ShowTTSGreetingText) {
+
+                    $afterHoursCallFlowTransferGreetingOperatorValue = (. Get-IvrTransferMessage)[2]
+                    $afterHoursCallFlowTransferGreetingOperatorValueExport = (. Get-IvrTransferMessage)[3]
+
+                    if ($ExportTTSGreetings) {
+
+                        $afterHoursCallFlowTransferGreetingOperatorValueExport | Out-File "$FilePath\$($aaAfterHoursCallFlowAaObjectId)_autoAttendantafterHoursCallFlowTransferGreetingOperator.txt"
+                        $ttsGreetings += ("click afterHoursCallFlowTransferGreetingOperator$($aaAfterHoursCallFlowAaObjectId) " + '"' + "$FilePath\$($aaAfterHoursCallFlowAaObjectId)_autoAttendantafterHoursCallFlowTransferGreetingOperator.txt" + '"')
+
+                    }
+
+                    if ($afterHoursCallFlowTransferGreetingOperatorValue.Length -gt $truncateGreetings) {
+
+                        $afterHoursCallFlowTransferGreetingOperatorValue = $afterHoursCallFlowTransferGreetingOperatorValue.Remove($afterHoursCallFlowTransferGreetingOperatorValue.Length - ($afterHoursCallFlowTransferGreetingOperatorValue.Length -$truncateGreetings)).TrimEnd() + "..."
+            
+                    }
+
+                    $afterHoursCallFlowTransferGreetingOperatorValue = "afterHoursCallFlowTransferGreetingOperator$($aaAfterHoursCallFlowAaObjectId)>Greeting<br>Transfer Message<br>''$afterHoursCallFlowTransferGreetingOperatorValue''] -->"
+    
+                }
+
+                else {
+
+                    $afterHoursCallFlowTransferGreetingOperatorValueExport = $null
+                    $afterHoursCallFlowTransferGreetingOperatorValue = "afterHoursCallFlowTransferGreetingOperator$($aaAfterHoursCallFlowAaObjectId)>Greeting<br>Transfer Message] -->"
+
+                }
+
+                $allMermaidNodes += "afterHoursCallFlowTransferGreetingOperator$($aaAfterHoursCallFlowAaObjectId)"
+
+                $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink $afterHoursCallFlowTransferGreetingOperatorValue afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction) --> $($OperatorIdentity)($OperatorTypeFriendly <br> $OperatorName)`n"
 
                 $allMermaidNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey","$($OperatorIdentity)")
 
@@ -2091,7 +2264,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
         
                     if ($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length -gt $truncateGreetings) {
         
-                        $afterHoursCallFlowMenuOptionsTTSAnnouncementValue = $afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Remove($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length - ($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length -$truncateGreetings)) + "..."
+                        $afterHoursCallFlowMenuOptionsTTSAnnouncementValue = $afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Remove($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length - ($afterHoursCallFlowMenuOptionsTTSAnnouncementValue.Length -$truncateGreetings)).TrimEnd() + "..."
                     
                     }
         
@@ -2172,6 +2345,39 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                         $afterHoursCallFlowVoicemailSystemGreeting = $null
 
+                        if ($ShowTTSGreetingText) {
+
+                            $afterHoursCallFlowTransferGreetingValue = (. Get-IvrTransferMessage)[0]
+                            $afterHoursCallFlowTransferGreetingValueExport = (. Get-IvrTransferMessage)[1]
+        
+                            if ($ExportTTSGreetings) {
+        
+                                $afterHoursCallFlowTransferGreetingValueExport | Out-File "$FilePath\$($aaafterHoursCallFlowAaObjectId)_autoAttendantafterHoursCallFlowTransferUserGreeting.txt"
+                                $ttsGreetings += ("click afterHoursCallFlowTransferUserGreeting$($aaafterHoursCallFlowAaObjectId)-$afterHoursCallFlowUserOptionCounter " + '"' + "$FilePath\$($aaafterHoursCallFlowAaObjectId)_autoAttendantafterHoursCallFlowTransferUserGreeting.txt" + '"')
+        
+                            }
+        
+                            if ($afterHoursCallFlowTransferGreetingValue.Length -gt $truncateGreetings) {
+        
+                                $afterHoursCallFlowTransferGreetingValue = $afterHoursCallFlowTransferGreetingValue.Remove($afterHoursCallFlowTransferGreetingValue.Length - ($afterHoursCallFlowTransferGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
+                    
+                            }
+        
+                            $afterHoursCallFlowTransferGreetingValue = "afterHoursCallFlowTransferUserGreeting$($aaafterHoursCallFlowAaObjectId)-$afterHoursCallFlowUserOptionCounter>Greeting<br>Transfer Message<br>''$afterHoursCallFlowTransferGreetingValue''] -->"
+            
+                        }
+        
+                        else {
+        
+                            $afterHoursCallFlowTransferGreetingValueExport = $null
+                            $afterHoursCallFlowTransferGreetingValue = "afterHoursCallFlowTransferUserGreeting$($aaafterHoursCallFlowAaObjectId)-$afterHoursCallFlowUserOptionCounter>Greeting<br>Transfer Message] -->"
+        
+                        }
+        
+                        $allMermaidNodes += "afterHoursCallFlowTransferUserGreeting$($aaafterHoursCallFlowAaObjectId)-$afterHoursCallFlowUserOptionCounter"
+
+                        $afterHoursCallFlowUserOptionCounter ++
+
                     }
                     ExternalPstn { 
                         $afterHoursCallFlowTargetTypeFriendly = "External Number"
@@ -2185,6 +2391,39 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                         }        
 
                         $afterHoursCallFlowVoicemailSystemGreeting = $null
+
+                        if ($ShowTTSGreetingText) {
+
+                            $afterHoursCallFlowTransferGreetingValue = (. Get-IvrTransferMessage)[0]
+                            $afterHoursCallFlowTransferGreetingValueExport = (. Get-IvrTransferMessage)[1]
+
+                            if ($ExportTTSGreetings) {
+
+                                $afterHoursCallFlowTransferGreetingValueExport | Out-File "$FilePath\$($aaafterHoursCallFlowAaObjectId)_autoAttendantafterHoursCallFlowTransferPSTNGreeting.txt"
+                                $ttsGreetings += ("click afterHoursCallFlowTransferPSTNGreeting$($aaafterHoursCallFlowAaObjectId)-$afterHoursCallFlowPSTNOptionCounter " + '"' + "$FilePath\$($aaafterHoursCallFlowAaObjectId)_autoAttendantafterHoursCallFlowTransferPSTNGreeting.txt" + '"')
+
+                            }
+
+                            if ($afterHoursCallFlowTransferGreetingValue.Length -gt $truncateGreetings) {
+
+                                $afterHoursCallFlowTransferGreetingValue = $afterHoursCallFlowTransferGreetingValue.Remove($afterHoursCallFlowTransferGreetingValue.Length - ($afterHoursCallFlowTransferGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
+
+                            }
+
+                            $afterHoursCallFlowTransferGreetingValue = "afterHoursCallFlowTransferPSTNGreeting$($aaafterHoursCallFlowAaObjectId)-$afterHoursCallFlowPSTNOptionCounter>Greeting<br>Transfer Message<br>''$afterHoursCallFlowTransferGreetingValue''] -->"
+
+                        }
+
+                        else {
+
+                            $afterHoursCallFlowTransferGreetingValueExport = $null
+                            $afterHoursCallFlowTransferGreetingValue = "afterHoursCallFlowTransferPSTNGreeting$($aaafterHoursCallFlowAaObjectId)-$afterHoursCallFlowPSTNOptionCounter>Greeting<br>Transfer Message] -->"
+
+                        }
+
+                        $allMermaidNodes += "afterHoursCallFlowTransferPSTNGreeting$($aaafterHoursCallFlowAaObjectId)-$afterHoursCallFlowPSTNOptionCounter"
+
+                        $afterHoursCallFlowPSTNOptionCounter ++
 
                     }
                     ApplicationEndpoint {
@@ -2223,7 +2462,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                         if ($MenuOption.CallTarget.EnableSharedVoicemailSystemPromptSuppression -eq $false) {
                             
-                            $afterHoursCallFlowVoicemailSystemGreeting = "--> afterHoursCallFlowSystemGreeting$($aaafterHoursCallFlowAaObjectId)>Greeting <br> MS System Message]"
+                            $afterHoursCallFlowVoicemailSystemGreeting = "afterHoursCallFlowSystemGreeting$($aaafterHoursCallFlowAaObjectId)-$afterHoursCallFlowSharedVoicemailCounter>Greeting <br> MS System Message] -->"
 
                             $afterHoursCallFlowVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
                             $afterHoursCallFlowVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
@@ -2234,21 +2473,22 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
             
                                     $afterHoursCallFlowVoicemailSystemGreetingValueExport | Out-File "$FilePath\$($aaafterHoursCallFlowAaObjectId)_autoAttendantAfterHoursCallFlowMsSystemMessage.txt"
                     
-                                    $ttsGreetings += ("click afterHoursCallFlowSystemGreeting$($aaafterHoursCallFlowAaObjectId) " + '"' + "$FilePath\$($aaafterHoursCallFlowAaObjectId)_autoAttendantAfterHoursCallFlowMsSystemMessage.txt" + '"')
+                                    $ttsGreetings += ("click afterHoursCallFlowSystemGreeting$($aaafterHoursCallFlowAaObjectId)-$afterHoursCallFlowSharedVoicemailCounter " + '"' + "$FilePath\$($aaafterHoursCallFlowAaObjectId)_autoAttendantAfterHoursCallFlowMsSystemMessage.txt" + '"')
                     
                                 }    
                 
             
                                 if ($afterHoursCallFlowVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
             
-                                    $afterHoursCallFlowVoicemailSystemGreetingValue = $afterHoursCallFlowVoicemailSystemGreetingValue.Remove($afterHoursCallFlowVoicemailSystemGreetingValue.Length - ($afterHoursCallFlowVoicemailSystemGreetingValue.Length -$truncateGreetings)) + "..."
+                                    $afterHoursCallFlowVoicemailSystemGreetingValue = $afterHoursCallFlowVoicemailSystemGreetingValue.Remove($afterHoursCallFlowVoicemailSystemGreetingValue.Length - ($afterHoursCallFlowVoicemailSystemGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
             
                                 }
             
                                 $afterHoursCallFlowVoicemailSystemGreeting = $afterHoursCallFlowVoicemailSystemGreeting.Replace("]"," <br> ''$afterHoursCallFlowVoicemailSystemGreetingValue'']")
             
                             }
-            
+
+                            $afterHoursCallFlowTransferGreetingValue = $null            
 
                         }
 
@@ -2266,7 +2506,40 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                         }
 
-                        $allMermaidNodes += "afterHoursCallFlowSystemGreeting$($aaafterHoursCallFlowAaObjectId)"
+                        if ($ShowTTSGreetingText) {
+
+                            $afterHoursCallFlowTransferGreetingValue = (. Get-IvrTransferMessage)[0]
+                            $afterHoursCallFlowTransferGreetingValueExport = (. Get-IvrTransferMessage)[1]
+        
+                            if ($ExportTTSGreetings) {
+        
+                                $afterHoursCallFlowTransferGreetingValueExport | Out-File "$FilePath\$($aaafterHoursCallFlowAaObjectId)_autoAttendantafterHoursCallFlowTransferSharedVoicemailGreeting.txt"
+                                $ttsGreetings += ("click afterHoursCallFlowTransferSharedVoicemailGreeting$($aaafterHoursCallFlowAaObjectId)-$afterHoursCallFlowSharedVoicemailCounter " + '"' + "$FilePath\$($aaafterHoursCallFlowAaObjectId)_autoAttendantafterHoursCallFlowTransferSharedVoicemailGreeting.txt" + '"')
+        
+                            }
+        
+                            if ($afterHoursCallFlowTransferGreetingValue.Length -gt $truncateGreetings) {
+        
+                                $afterHoursCallFlowTransferGreetingValue = $afterHoursCallFlowTransferGreetingValue.Remove($afterHoursCallFlowTransferGreetingValue.Length - ($afterHoursCallFlowTransferGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
+                    
+                            }
+        
+                            $afterHoursCallFlowTransferGreetingValue = "afterHoursCallFlowTransferSharedVoicemailGreeting$($aaafterHoursCallFlowAaObjectId)-$afterHoursCallFlowSharedVoicemailCounter>Greeting<br>Transfer Message<br>''$afterHoursCallFlowTransferGreetingValue''] -->"
+            
+                        }
+        
+                        else {
+        
+                            $afterHoursCallFlowTransferGreetingValueExport = $null
+                            $afterHoursCallFlowTransferGreetingValue = "afterHoursCallFlowTransferSharedVoicemailGreeting$($aaafterHoursCallFlowAaObjectId)-$afterHoursCallFlowSharedVoicemailCounter>Greeting<br>Transfer Message] -->"
+        
+                        }
+        
+                        $allMermaidNodes += "afterHoursCallFlowTransferSharedVoicemailGreeting$($aaafterHoursCallFlowAaObjectId)-$afterHoursCallFlowSharedVoicemailCounter"
+
+                        $allMermaidNodes += "afterHoursCallFlowSystemGreeting$($aaafterHoursCallFlowAaObjectId)-$afterHoursCallFlowSharedVoicemailCounter"
+
+                        $afterHoursCallFlowSharedVoicemailCounter ++
 
                     }
                 }
@@ -2306,7 +2579,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                 # Check if afterHours callflow action target is trasnfer call to target but something other than call queue
                 else {
 
-                    $mdAutoAttendantafterHoursCallFlow = $mdDtmfLink + "afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction) $afterHoursCallFlowVoicemailSystemGreeting --> $($afterHoursCallFlowTargetIdentity)($afterHoursCallFlowTargetTypeFriendly <br> $afterHoursCallFlowTargetName)`n"
+                    $mdAutoAttendantafterHoursCallFlow = $mdDtmfLink + "$afterHoursCallFlowTransferGreetingValue afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction) --> $afterHoursCallFlowVoicemailSystemGreeting $($afterHoursCallFlowTargetIdentity)($afterHoursCallFlowTargetTypeFriendly <br> $afterHoursCallFlowTargetName)`n"
                     
                     $allMermaidNodes += @("afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey","$($afterHoursCallFlowTargetIdentity)")
 
@@ -2653,7 +2926,7 @@ function Get-CallQueueCallFlow {
 
                     if ($overFlowVoicemailTTSGreetingValue.Length -gt $truncateGreetings) {
 
-                        $overFlowVoicemailTTSGreetingValue = $overFlowVoicemailTTSGreetingValue.Remove($overFlowVoicemailTTSGreetingValue.Length - ($overFlowVoicemailTTSGreetingValue.Length -$truncateGreetings)) + "..."
+                        $overFlowVoicemailTTSGreetingValue = $overFlowVoicemailTTSGreetingValue.Remove($overFlowVoicemailTTSGreetingValue.Length - ($overFlowVoicemailTTSGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
 
                     }
 
@@ -2682,7 +2955,7 @@ function Get-CallQueueCallFlow {
 
                         if ($CQOverFlowVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
 
-                            $CQOverFlowVoicemailSystemGreetingValue = $CQOverFlowVoicemailSystemGreetingValue.Remove($CQOverFlowVoicemailSystemGreetingValue.Length - ($CQOverFlowVoicemailSystemGreetingValue.Length -$truncateGreetings)) + "..."
+                            $CQOverFlowVoicemailSystemGreetingValue = $CQOverFlowVoicemailSystemGreetingValue.Remove($CQOverFlowVoicemailSystemGreetingValue.Length - ($CQOverFlowVoicemailSystemGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
 
                         }
 
@@ -2758,7 +3031,7 @@ function Get-CallQueueCallFlow {
 
                         if ($CQOverFlowVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
 
-                            $CQOverFlowVoicemailSystemGreetingValue = $CQOverFlowVoicemailSystemGreetingValue.Remove($CQOverFlowVoicemailSystemGreetingValue.Length - ($CQOverFlowVoicemailSystemGreetingValue.Length -$truncateGreetings)) + "..."
+                            $CQOverFlowVoicemailSystemGreetingValue = $CQOverFlowVoicemailSystemGreetingValue.Remove($CQOverFlowVoicemailSystemGreetingValue.Length - ($CQOverFlowVoicemailSystemGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
 
                         }
 
@@ -2922,7 +3195,7 @@ function Get-CallQueueCallFlow {
 
                     if ($TimeOutVoicemailTTSGreetingValue.Length -gt $truncateGreetings) {
 
-                        $TimeOutVoicemailTTSGreetingValue = $TimeOutVoicemailTTSGreetingValue.Remove($TimeOutVoicemailTTSGreetingValue.Length - ($TimeOutVoicemailTTSGreetingValue.Length -$truncateGreetings)) + "..."
+                        $TimeOutVoicemailTTSGreetingValue = $TimeOutVoicemailTTSGreetingValue.Remove($TimeOutVoicemailTTSGreetingValue.Length - ($TimeOutVoicemailTTSGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
 
                     }
 
@@ -2949,7 +3222,7 @@ function Get-CallQueueCallFlow {
 
                         if ($CQTimeOutVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
 
-                            $CQTimeOutVoicemailSystemGreetingValue = $CQTimeOutVoicemailSystemGreetingValue.Remove($CQTimeOutVoicemailSystemGreetingValue.Length - ($CQTimeOutVoicemailSystemGreetingValue.Length -$truncateGreetings)) + "..."
+                            $CQTimeOutVoicemailSystemGreetingValue = $CQTimeOutVoicemailSystemGreetingValue.Remove($CQTimeOutVoicemailSystemGreetingValue.Length - ($CQTimeOutVoicemailSystemGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
 
                         }
 
@@ -3023,7 +3296,7 @@ function Get-CallQueueCallFlow {
 
                         if ($CQTimeOutVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
 
-                            $CQTimeOutVoicemailSystemGreetingValue = $CQTimeOutVoicemailSystemGreetingValue.Remove($CQTimeOutVoicemailSystemGreetingValue.Length - ($CQTimeOutVoicemailSystemGreetingValue.Length -$truncateGreetings)) + "..."
+                            $CQTimeOutVoicemailSystemGreetingValue = $CQTimeOutVoicemailSystemGreetingValue.Remove($CQTimeOutVoicemailSystemGreetingValue.Length - ($CQTimeOutVoicemailSystemGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
 
                         }
 
@@ -3094,6 +3367,12 @@ function Get-CallQueueCallFlow {
     
             }
 
+            if ($ObfuscatePhoneNumbers -eq $true) {
+
+                $CqAgentPhoneNumber = $CqAgentPhoneNumber.Remove(($CqAgentPhoneNumber.Length -4)) + "****"
+
+            }
+
             $AgentDisplayName = "$AgentDisplayName <br> $CqAgentPhoneNumber"
 
         }
@@ -3152,7 +3431,7 @@ end
 subgraphAgents$($cqCallFlowObjectId) --> cqResult$($cqCallFlowObjectId){Agent Answered?}
 end
 
-cqResult$($cqCallFlowObjectId) --> |Yes| cqEnd$($cqCallFlowObjectId)((Agent Answered))
+cqResult$($cqCallFlowObjectId) --> |Yes| cqEnd$($cqCallFlowObjectId)((Call Connected))
 cqResult$($cqCallFlowObjectId) --> |No| timeOut$($cqCallFlowObjectId) --> $CqTimeoutActionFriendly
 
 "@
@@ -3683,6 +3962,12 @@ if ($ExportPng -eq $true) {
     else {
 
         $pngTheme = $Theme
+
+    }
+
+    if (Test-Path -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png") {
+
+        Remove-Item -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png" -Force
 
     }
 
