@@ -151,7 +151,7 @@ This will run the script and set the Mermaid theme inside Markdown to dark theme
 
 The script supports outputting Mermaid-JS code in either a Markdown file (.md) or a Mermaid file (.mmd).
 
-To preview Markdown files containing mermaid sections I suggest the following [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=tomoyukim.vscode-mermaid-editor)
+To preview Markdown files containing mermaid sections I suggest the following [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-mermaid)
 
 To preview Mermaid files I suggest the following [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-mermaid). You can also export to SVG directly from this extension.
 
