@@ -52,6 +52,8 @@ Run this in PowerShell.
 winget install --id=OpenJS.NodeJS  -e
 ```
 
+Restart PowerShell after installing Node.JS.
+
 ```PowerShell
 npm install -g @mermaid-js/mermaid-cli
 ```
