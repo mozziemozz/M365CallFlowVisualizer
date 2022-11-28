@@ -100,3 +100,4 @@
 |06.11.2022|Get-IvrTransferMessage.ps1|1.0.0|Initial creation. This function will provide the text which is synthesized by an auto attendant when transferring from an IVR to operator, user or external PSTN.|
 |06.11.2022|M365CallFlowVisualizerV2.ps1|2.8.6|Add support for accurate display of IVR transfer messages. Optimize Greeting/Transfer order of display for IVRs.|
 |28.11.2022|M365CallFlowVisualizerV2.ps1|2.8.7|Fix bug / add Optimize-Displayname for auto attendant default and after hours call flow nodes.|
+|28.11.2022|M365CallFlowVisualizerV2.ps1|2.8.7b|Add Optimize-Displayname to more elements to prevent mermaid syntax errors if special characters are used in TAC config elements.|
