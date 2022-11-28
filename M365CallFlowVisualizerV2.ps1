@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.8.6
+    Version:            2.8.7
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -1747,7 +1747,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                             $MatchingAaDefaultCallFlowAa = $allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
 
                             $defaultCallFlowTargetTypeFriendly = "[Auto Attendant"
-                            $defaultCallFlowTargetName = "$($MatchingAaDefaultCallFlowAa.Name)]"
+                            $defaultCallFlowTargetName = (Optimize-DisplayName -String $($MatchingAaDefaultCallFlowAa.Name)) + "]"
 
                         }
 
@@ -1756,7 +1756,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                             $MatchingCqAaDefaultCallFlow = $allCallQueues | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
 
                             $defaultCallFlowTargetTypeFriendly = "[Call Queue"
-                            $defaultCallFlowTargetName = "$($MatchingCqAaDefaultCallFlow.Name)]"
+                            $defaultCallFlowTargetName = (Optimize-DisplayName -String $($MatchingCqAaDefaultCallFlow.Name)) + "]"
 
                         }
 
@@ -2438,7 +2438,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                             $MatchingAaafterHoursCallFlowAa = $allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
 
                             $afterHoursCallFlowTargetTypeFriendly = "[Auto Attendant"
-                            $afterHoursCallFlowTargetName = "$($MatchingAaafterHoursCallFlowAa.Name)]"
+                            $afterHoursCallFlowTargetName = (Optimize-DisplayName -String $($MatchingAaafterHoursCallFlowAa.Name)) + "]"
 
                         }
 
@@ -2447,7 +2447,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                             $MatchingCqAaafterHoursCallFlow = $allCallQueues | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
 
                             $afterHoursCallFlowTargetTypeFriendly = "[Call Queue"
-                            $afterHoursCallFlowTargetName = "$($MatchingCqAaafterHoursCallFlow.Name)]"
+                            $afterHoursCallFlowTargetName = (Optimize-DisplayName -String $($MatchingCqAaafterHoursCallFlow.Name)) + "]"
 
                         }
 
