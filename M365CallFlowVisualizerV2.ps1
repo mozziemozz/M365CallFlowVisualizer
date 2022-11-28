@@ -303,6 +303,7 @@ if ($ExportPng -eq $true) {
     }
     catch {
         Write-Warning -Message "mermaid npm packages is not installed. Please install mermaid npm packages for PNG output. `nnpm install -g @mermaid-js/mermaid-cli"
+        $ExportPng = $false
     }
 
 }
