@@ -230,7 +230,7 @@ param(
     [Parameter(Mandatory=$false)][Bool]$ExportHtml = $true,
     [Parameter(Mandatory=$false)][Bool]$ExportPng = $false,
     [Parameter(Mandatory=$false)][Switch]$PreviewHtml,
-    [Parameter(Mandatory=$false)][String]$CustomFilePath = ".\Output",
+    [Parameter(Mandatory=$false)][String]$CustomFilePath = ".\Output\$(Get-Date -Format "yyyy-MM-dd")",
     [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
     [Parameter(Mandatory=$false)][Bool]$ShowUserCallingSettings = $true,
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentPhoneNumbers,
@@ -343,6 +343,12 @@ switch ($DateFormat) {
 if ($CustomFilePath) {
 
     $FilePath = $CustomFilePath
+
+    if (!(Test-Path -Path $FilePath)) {
+
+        New-Item -Path $FilePath -ItemType Directory
+
+    }
 
 }
 
@@ -612,11 +618,14 @@ subgraph $holidaySubgraphName
 
                     $audioFileName = $null
 
-                    $holidayTTSGreetingValue = $holidayCallFlow.Greetings.TextToSpeechPrompt
+                    # Optmimize-DisplayName for TTS Greetings (needs to be added for every greeting...)
+                    $holidayTTSGreetingValueExport = $holidayCallFlow.Greetings.TextToSpeechPrompt
+                    $holidayTTSGreetingValue = Optimize-DisplayName -String $holidayCallFlow.Greetings.TextToSpeechPrompt
+
 
                     if ($ExportTTSGreetings) {
 
-                        $holidayTTSGreetingValue | Out-File "$FilePath\$($holidayCallFlow.Name)_$($aaObjectId)-$($HolidayCounter)_HolidayGreeting.txt"
+                        $holidayTTSGreetingValueExport | Out-File "$FilePath\$($holidayCallFlow.Name)_$($aaObjectId)-$($HolidayCounter)_HolidayGreeting.txt"
 
                         $ttsGreetings += ("click elementAAHolidayGreeting$($aaObjectId)-$($HolidayCounter) " + '"' + "$FilePath\$($holidayCallFlow.Name)_$($aaObjectId)-$($HolidayCounter)_HolidayGreeting.txt" + '"')
 
@@ -1560,11 +1569,12 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
     
                     $audioFileName = $null
         
-                    $defaultCallFlowMenuOptionsTTSAnnouncementValue = $MenuOption.Prompt.TextToSpeechPrompt
+                    $defaultCallFlowMenuOptionsTTSAnnouncementValueExport = $MenuOption.Prompt.TextToSpeechPrompt
+                    $defaultCallFlowMenuOptionsTTSAnnouncementValue = Optimize-DisplayName -String $MenuOption.Prompt.TextToSpeechPrompt
 
                     if ($ExportTTSGreetings) {
 
-                        $defaultCallFlowMenuOptionsTTSAnnouncementValue | Out-File "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowMenuOptionsAnnouncement$DtmfKey.txt"
+                        $defaultCallFlowMenuOptionsTTSAnnouncementValueExport | Out-File "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowMenuOptionsAnnouncement$DtmfKey.txt"
         
                         $ttsGreetings += ("click defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey " + '"' + "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowMenuOptionsAnnouncement$DtmfKey.txt" + '"')
         
@@ -3913,12 +3923,6 @@ if ($Theme -eq "custom") {
 
 
 if ($SaveToFile -eq $true) {
-
-    if (!(Test-Path -Path $FilePath)) {
-
-        New-Item -Path $FilePath -ItemType Directory
-
-    }
 
     if ($ExportAudioFiles -and $audioFileNames) {
 

@@ -22,5 +22,6 @@ function Optimize-DisplayName {
         -Replace "\|","" `
         -Replace "\~","" `
         -Replace "  "," " `
+        -Replace "@"," at "
         ).Trim()
 }
