@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.8.6
+    Version:            2.8.7b
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -230,7 +230,7 @@ param(
     [Parameter(Mandatory=$false)][Bool]$ExportHtml = $true,
     [Parameter(Mandatory=$false)][Bool]$ExportPng = $false,
     [Parameter(Mandatory=$false)][Switch]$PreviewHtml,
-    [Parameter(Mandatory=$false)][String]$CustomFilePath = ".\Output",
+    [Parameter(Mandatory=$false)][String]$CustomFilePath = ".\Output\$(Get-Date -Format "yyyy-MM-dd")",
     [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
     [Parameter(Mandatory=$false)][Bool]$ShowUserCallingSettings = $true,
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentPhoneNumbers,
@@ -303,6 +303,7 @@ if ($ExportPng -eq $true) {
     }
     catch {
         Write-Warning -Message "mermaid npm packages is not installed. Please install mermaid npm packages for PNG output. `nnpm install -g @mermaid-js/mermaid-cli"
+        $ExportPng = $false
     }
 
 }
@@ -343,6 +344,12 @@ switch ($DateFormat) {
 if ($CustomFilePath) {
 
     $FilePath = $CustomFilePath
+
+    if (!(Test-Path -Path $FilePath)) {
+
+        New-Item -Path $FilePath -ItemType Directory
+
+    }
 
 }
 
@@ -522,6 +529,12 @@ function Find-AfterHours {
     Write-Host "Reading call flow for: $($aa.Name)" -ForegroundColor Magenta
     Write-Host "Voice App Id: $($aa.Identity)" -ForegroundColor Magenta
 
+    if ($($aa.Name -ne (Optimize-DisplayName -String $aa.Name))) {
+
+        Write-Warning -Message "The Auto Attendant '$($aa.Name)' contains special characters which will be removed in the diagram. New Name: '$(Optimize-DisplayName -String $aa.Name)'"
+
+    }
+
     # Create ps object which has no business hours, needed to check if it matches an auto attendants after hours schedule
     $aaDefaultScheduleProperties = New-Object -TypeName psobject
 
@@ -576,6 +589,8 @@ function Get-AutoAttendantHolidaysAndAfterHours {
 
     $languageId = $aa.LanguageId
 
+    $aa.Name = Optimize-DisplayName -String $aa.Name
+
     if ($aaHasHolidays -eq $true) {
 
         $holidaySubgraphName = "subgraphHolidays$($aa.Identity)[Holidays $($aa.Name)]"
@@ -612,11 +627,14 @@ subgraph $holidaySubgraphName
 
                     $audioFileName = $null
 
-                    $holidayTTSGreetingValue = $holidayCallFlow.Greetings.TextToSpeechPrompt
+                    # Optmimize-DisplayName for TTS Greetings (needs to be added for every greeting...)
+                    $holidayTTSGreetingValueExport = $holidayCallFlow.Greetings.TextToSpeechPrompt
+                    $holidayTTSGreetingValue = Optimize-DisplayName -String $holidayCallFlow.Greetings.TextToSpeechPrompt
+
 
                     if ($ExportTTSGreetings) {
 
-                        $holidayTTSGreetingValue | Out-File "$FilePath\$($holidayCallFlow.Name)_$($aaObjectId)-$($HolidayCounter)_HolidayGreeting.txt"
+                        $holidayTTSGreetingValueExport | Out-File "$FilePath\$($holidayCallFlow.Name)_$($aaObjectId)-$($HolidayCounter)_HolidayGreeting.txt"
 
                         $ttsGreetings += ("click elementAAHolidayGreeting$($aaObjectId)-$($HolidayCounter) " + '"' + "$FilePath\$($holidayCallFlow.Name)_$($aaObjectId)-$($HolidayCounter)_HolidayGreeting.txt" + '"')
 
@@ -765,7 +783,7 @@ subgraph $holidaySubgraphName
                             $MatchingAA = $allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $holidayCallFlow.Menu.MenuOptions.CallTarget.Id}
 
                             $holidayActionTargetTypeFriendly = "[Auto Attendant"
-                            $holidayActionTargetName = "$($MatchingAA.Name)]"
+                            $holidayActionTargetName = (Optimize-DisplayName -String $($MatchingAA.Name)) + "]"
 
                         }
 
@@ -774,7 +792,7 @@ subgraph $holidaySubgraphName
                             $MatchingCQ = $allCallQueues | Where-Object {$_.ApplicationInstances -contains $holidayCallFlow.Menu.MenuOptions.CallTarget.Id}
 
                             $holidayActionTargetTypeFriendly = "[Call Queue"
-                            $holidayActionTargetName = "$($MatchingCQ.Name)]"
+                            $holidayActionTargetName = (Optimize-DisplayName -String $($MatchingCQ.Name)) + "]"
 
                         }
 
@@ -1159,6 +1177,7 @@ subgraph $holidaySubgraphName
 
     } # End if aa has after hours
 
+    $aa.Name = Optimize-DisplayName -String $aa.Name
     $nodeElementHolidayLink = "$($aa.Identity)([Auto Attendant <br> $($aa.Name)])"
 
     $allMermaidNodes += "$($aa.Identity)"
@@ -1560,11 +1579,12 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
     
                     $audioFileName = $null
         
-                    $defaultCallFlowMenuOptionsTTSAnnouncementValue = $MenuOption.Prompt.TextToSpeechPrompt
+                    $defaultCallFlowMenuOptionsTTSAnnouncementValueExport = $MenuOption.Prompt.TextToSpeechPrompt
+                    $defaultCallFlowMenuOptionsTTSAnnouncementValue = Optimize-DisplayName -String $MenuOption.Prompt.TextToSpeechPrompt
 
                     if ($ExportTTSGreetings) {
 
-                        $defaultCallFlowMenuOptionsTTSAnnouncementValue | Out-File "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowMenuOptionsAnnouncement$DtmfKey.txt"
+                        $defaultCallFlowMenuOptionsTTSAnnouncementValueExport | Out-File "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowMenuOptionsAnnouncement$DtmfKey.txt"
         
                         $ttsGreetings += ("click defaultCallFlow$($aadefaultCallFlowAaObjectId)$DtmfKey " + '"' + "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowMenuOptionsAnnouncement$DtmfKey.txt" + '"')
         
@@ -1746,7 +1766,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                             $MatchingAaDefaultCallFlowAa = $allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
 
                             $defaultCallFlowTargetTypeFriendly = "[Auto Attendant"
-                            $defaultCallFlowTargetName = "$($MatchingAaDefaultCallFlowAa.Name)]"
+                            $defaultCallFlowTargetName = (Optimize-DisplayName -String $($MatchingAaDefaultCallFlowAa.Name)) + "]"
 
                         }
 
@@ -1755,7 +1775,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                             $MatchingCqAaDefaultCallFlow = $allCallQueues | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
 
                             $defaultCallFlowTargetTypeFriendly = "[Call Queue"
-                            $defaultCallFlowTargetName = "$($MatchingCqAaDefaultCallFlow.Name)]"
+                            $defaultCallFlowTargetName = (Optimize-DisplayName -String $($MatchingCqAaDefaultCallFlow.Name)) + "]"
 
                         }
 
@@ -2437,7 +2457,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                             $MatchingAaafterHoursCallFlowAa = $allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
 
                             $afterHoursCallFlowTargetTypeFriendly = "[Auto Attendant"
-                            $afterHoursCallFlowTargetName = "$($MatchingAaafterHoursCallFlowAa.Name)]"
+                            $afterHoursCallFlowTargetName = (Optimize-DisplayName -String $($MatchingAaafterHoursCallFlowAa.Name)) + "]"
 
                         }
 
@@ -2446,7 +2466,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                             $MatchingCqAaafterHoursCallFlow = $allCallQueues | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
 
                             $afterHoursCallFlowTargetTypeFriendly = "[Call Queue"
-                            $afterHoursCallFlowTargetName = "$($MatchingCqAaafterHoursCallFlow.Name)]"
+                            $afterHoursCallFlowTargetName = (Optimize-DisplayName -String $($MatchingCqAaafterHoursCallFlow.Name)) + "]"
 
                         }
 
@@ -2622,8 +2642,14 @@ function Get-CallQueueCallFlow {
     Write-Host "Reading call flow for: $($MatchingCQ.Name)" -ForegroundColor Magenta
     Write-Host "Voice App Id: $cqCallFlowObjectId" -ForegroundColor Magenta
 
+    if ($($MatchingCQ.Name -ne (Optimize-DisplayName -String $MatchingCQ.Name))) {
+
+        Write-Warning -Message "The Call Queue '$($MatchingCQ.Name)' contains special characters which will be removed in the diagram. New Name: '$(Optimize-DisplayName -String $MatchingCQ.Name)'"
+
+    }
+
     # Store all neccessary call queue properties in variables
-    $CqName = $MatchingCQ.Name
+    $CqName = Optimize-DisplayName -String $MatchingCQ.Name
     $CqOverFlowThreshold = $MatchingCQ.OverflowThreshold
 
     $CqOverFlowAction = $MatchingCQ.OverflowAction
@@ -2847,6 +2873,7 @@ function Get-CallQueueCallFlow {
 
                     $MatchingOverFlowAA = ($allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.OverflowActionTarget.Id})
 
+                    $MatchingOverFlowAA.Name = Optimize-DisplayName -String $MatchingOverFlowAA.Name
                     $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowAA.Identity)([Auto Attendant <br> $($MatchingOverFlowAA.Name)])"
 
                     if ($nestedVoiceApps -notcontains $MatchingOverFlowAA.Identity -and $MatchingCQ.TimeoutThreshold -ge 1) {
@@ -2863,6 +2890,8 @@ function Get-CallQueueCallFlow {
                 else {
 
                     $MatchingOverFlowCQ = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.OverflowActionTarget.Id})
+
+                    $MatchingOverFlowCQ.Name = Optimize-DisplayName -String $MatchingOverFlowCQ.Name
 
                     $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowCQ.Identity)([Call Queue <br> $($MatchingOverFlowCQ.Name)])"
 
@@ -3116,6 +3145,8 @@ function Get-CallQueueCallFlow {
                 if ($matchingApplicationInstanceCheckAa) {
 
                     $MatchingTimeoutAA = ($allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.TimeoutActionTarget.Id})
+
+                    $MatchingTimeoutAA.Name = Optimize-DisplayName -String $MatchingTimeoutAA.Name
     
                     $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingTimeoutAA.Identity)([Auto Attendant <br> $($MatchingTimeoutAA.Name)])"
 
@@ -3132,6 +3163,8 @@ function Get-CallQueueCallFlow {
                 else {
     
                     $MatchingTimeoutCQ = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.TimeoutActionTarget.Id})
+
+                    $MatchingTimeoutCQ.Name = Optimize-DisplayName -String $MatchingTimeoutCQ.Name
 
                     $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingTimeoutCQ.Identity)([Call Queue <br> $($MatchingTimeoutCQ.Name)])"
 
@@ -3655,7 +3688,7 @@ function Get-CallFlow {
         if ($mdNodePhoneNumbersCounter -eq 0) {
 
             $mdPhoneNumberLinkType = "-->"
-            $VoiceAppFileName = $VoiceApp.Name
+            $VoiceAppFileName = Optimize-DisplayName -String $VoiceApp.Name
 
         }
 
@@ -3687,7 +3720,7 @@ function Get-CallFlow {
             
             }
 
-            $mdNodeNumber = "start$($ApplicationInstancePhoneNumber)((Incoming Call at <br> $ApplicationInstancePhoneNumberName)) $mdPhoneNumberLinkType $($VoiceApp.Identity)([$($voiceAppType) <br> $($VoiceApp.Name)])"
+            $mdNodeNumber = "start$($ApplicationInstancePhoneNumber)((Incoming Call at <br> $ApplicationInstancePhoneNumberName)) $mdPhoneNumberLinkType $($VoiceApp.Identity)([$($voiceAppType) <br> $VoiceAppFileName])"
 
             $mdNodePhoneNumbers += $mdNodeNumber
     
@@ -3732,6 +3765,8 @@ function Get-CallFlow {
         else {
     
             . Get-AutoAttendantDefaultCallFlow -VoiceAppId $VoiceApp.Identity
+
+            $aa.Name = Optimize-DisplayName -String $aa.Name
 
             $nodeElementHolidayLink = "$($aa.Identity)([Auto Attendant <br> $($aa.Name)])"
     
@@ -3913,12 +3948,6 @@ if ($Theme -eq "custom") {
 
 
 if ($SaveToFile -eq $true) {
-
-    if (!(Test-Path -Path $FilePath)) {
-
-        New-Item -Path $FilePath -ItemType Directory
-
-    }
 
     if ($ExportAudioFiles -and $audioFileNames) {
 
