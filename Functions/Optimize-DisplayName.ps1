@@ -5,7 +5,7 @@
     .DESCRIPTION
     Author:             Luca Sain (https://github.com/ChocoMilkWithoutSugar)
     Conributors:        Martin Heusser
-    Version:            1.0.1
+    Version:            1.0.2
     Changelog:          .\Changelog.md
 
 #>
@@ -22,6 +22,7 @@ function Optimize-DisplayName {
         -Replace "\|","" `
         -Replace "\~","" `
         -Replace "  "," " `
-        -Replace "@"," at "
+        -Replace "@"," at "`
+        -Replace "call", "Call"
         ).Trim()
 }
