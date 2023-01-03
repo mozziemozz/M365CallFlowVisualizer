@@ -101,3 +101,4 @@
 |06.11.2022|M365CallFlowVisualizerV2.ps1|2.8.6|Add support for accurate display of IVR transfer messages. Optimize Greeting/Transfer order of display for IVRs.|
 |28.11.2022|M365CallFlowVisualizerV2.ps1|2.8.7|Fix bug / add Optimize-Displayname for auto attendant default and after hours call flow nodes.|
 |28.11.2022|M365CallFlowVisualizerV2.ps1|2.8.7b|Add Optimize-Displayname to more elements to prevent mermaid syntax errors if special characters are used in TAC config elements.|
+|03.01.2023|M365CallFlowVisualizerV2.ps1|2.8.8|Add Optimize-Displayname to all TTS greetings.|

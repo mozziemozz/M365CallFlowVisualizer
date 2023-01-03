@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.8.7b
+    Version:            2.8.8
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -627,10 +627,8 @@ subgraph $holidaySubgraphName
 
                     $audioFileName = $null
 
-                    # Optmimize-DisplayName for TTS Greetings (needs to be added for every greeting...)
                     $holidayTTSGreetingValueExport = $holidayCallFlow.Greetings.TextToSpeechPrompt
                     $holidayTTSGreetingValue = Optimize-DisplayName -String $holidayCallFlow.Greetings.TextToSpeechPrompt
-
 
                     if ($ExportTTSGreetings) {
 
@@ -1274,11 +1272,12 @@ function Get-AutoAttendantDefaultCallFlow {
 
             $audioFileName = $null
 
-            $defaultTTSGreetingValue = $defaultCallFlow.Greetings.TextToSpeechPrompt
+            $defaultTTSGreetingValueExport = $defaultCallFlow.Greetings.TextToSpeechPrompt
+            $defaultTTSGreetingValue = Optimize-DisplayName -String $defaultCallFlow.Greetings.TextToSpeechPrompt
 
             if ($ExportTTSGreetings) {
 
-                $defaultTTSGreetingValue | Out-File "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowGreeting.txt"
+                $defaultTTSGreetingValueExport | Out-File "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowGreeting.txt"
 
                 $ttsGreetings += ("click defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId) " + '"' + "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowGreeting.txt" + '"')
 
@@ -1360,11 +1359,12 @@ function Get-AutoAttendantDefaultCallFlow {
 
                 $audioFileName = $null
     
-                $defaultCallFlowMenuOptionsTTSGreetingValue = $defaultCallFlow.Menu.Prompts.TextToSpeechPrompt
+                $defaultCallFlowMenuOptionsTTSGreetingValueExport = $defaultCallFlow.Menu.Prompts.TextToSpeechPrompt
+                $defaultCallFlowMenuOptionsTTSGreetingValue = Optimize-DisplayName -String $defaultCallFlow.Menu.Prompts.TextToSpeechPrompt
 
                 if ($ExportTTSGreetings) {
 
-                    $defaultCallFlowMenuOptionsTTSGreetingValue | Out-File "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowMenuOptionsGreeting.txt"
+                    $defaultCallFlowMenuOptionsTTSGreetingValueExport | Out-File "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowMenuOptionsGreeting.txt"
     
                     $ttsGreetings += ("click defaultCallFlowMenuOptionsGreeting$($aaDefaultCallFlowAaObjectId) " + '"' + "$FilePath\$($aaDefaultCallFlowAaObjectId)_defaultCallFlowMenuOptionsGreeting.txt" + '"')
     
@@ -1964,11 +1964,12 @@ function Get-AutoAttendantAfterHoursCallFlow {
 
             $audioFileName = $null
 
-            $afterHoursTTSGreetingValue = $afterHoursCallFlow.Greetings.TextToSpeechPrompt
+            $afterHoursTTSGreetingValueExport = $afterHoursCallFlow.Greetings.TextToSpeechPrompt
+            $afterHoursTTSGreetingValue = Optimize-DisplayName -String $afterHoursCallFlow.Greetings.TextToSpeechPrompt
 
             if ($ExportTTSGreetings) {
 
-                $afterHoursTTSGreetingValue | Out-File "$FilePath\$($aaDefaultCallFlowAaObjectId)_afterHoursCallFlowGreeting.txt"
+                $afterHoursTTSGreetingValueExport | Out-File "$FilePath\$($aaDefaultCallFlowAaObjectId)_afterHoursCallFlowGreeting.txt"
 
                 $ttsGreetings += ("click afterHoursCallFlowGreeting$($aaDefaultCallFlowAaObjectId) " + '"' + "$FilePath\$($aaDefaultCallFlowAaObjectId)_afterHoursCallFlowGreeting.txt" + '"')
 
@@ -2051,11 +2052,12 @@ function Get-AutoAttendantAfterHoursCallFlow {
 
                 $audioFileName = $null
     
-                $afterHoursCallFlowMenuOptionsTTSGreetingValue = $afterHoursCallFlow.Menu.Prompts.TextToSpeechPrompt
+                $afterHoursCallFlowMenuOptionsTTSGreetingValueExport = $afterHoursCallFlow.Menu.Prompts.TextToSpeechPrompt
+                $afterHoursCallFlowMenuOptionsTTSGreetingValue = Optimize-DisplayName -String $afterHoursCallFlow.Menu.Prompts.TextToSpeechPrompt
 
                 if ($ExportTTSGreetings) {
 
-                    $afterHoursCallFlowMenuOptionsTTSGreetingValue | Out-File "$FilePath\$($aaafterHoursCallFlowAaObjectId)_afterHoursCallFlowMenuOptionsGreeting.txt"
+                    $afterHoursCallFlowMenuOptionsTTSGreetingValueExport | Out-File "$FilePath\$($aaafterHoursCallFlowAaObjectId)_afterHoursCallFlowMenuOptionsGreeting.txt"
     
                     $ttsGreetings += ("click afterHoursCallFlowMenuOptionsGreeting$($aaafterHoursCallFlowAaObjectId) " + '"' + "$FilePath\$($aaafterHoursCallFlowAaObjectId)_afterHoursCallFlowMenuOptionsGreeting.txt" + '"')
     
@@ -2271,11 +2273,12 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
     
                     $audioFileName = $null
         
-                    $afterHoursCallFlowMenuOptionsTTSAnnouncementValue = $MenuOption.Prompt.TextToSpeechPrompt
+                    $afterHoursCallFlowMenuOptionsTTSAnnouncementValueExport = $MenuOption.Prompt.TextToSpeechPrompt
+                    $afterHoursCallFlowMenuOptionsTTSAnnouncementValue = Optimize-DisplayName -String $MenuOption.Prompt.TextToSpeechPrompt
 
                     if ($ExportTTSGreetings) {
 
-                        $afterHoursCallFlowMenuOptionsTTSAnnouncementValue | Out-File "$FilePath\$($aaafterHoursCallFlowAaObjectId)_afterHoursCallFlowMenuOptionsAnnouncement$DtmfKey.txt"
+                        $afterHoursCallFlowMenuOptionsTTSAnnouncementValueExport | Out-File "$FilePath\$($aaafterHoursCallFlowAaObjectId)_afterHoursCallFlowMenuOptionsAnnouncement$DtmfKey.txt"
         
                         $ttsGreetings += ("click afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey " + '"' + "$FilePath\$($aaafterHoursCallFlowAaObjectId)_afterHoursCallFlowMenuOptionsAnnouncement$DtmfKey.txt" + '"')
         
@@ -2942,11 +2945,12 @@ function Get-CallQueueCallFlow {
 
                 if ($ShowTTSGreetingText) {
 
-                    $overFlowVoicemailTTSGreetingValue = $MatchingCQ.OverflowSharedVoicemailTextToSpeechPrompt
+                    $overFlowVoicemailTTSGreetingValueExport = $MatchingCQ.OverflowSharedVoicemailTextToSpeechPrompt
+                    $overFlowVoicemailTTSGreetingValue = Optimize-DisplayName -String $MatchingCQ.OverflowSharedVoicemailTextToSpeechPrompt
 
                     if ($ExportTTSGreetings) {
 
-                        $overFlowVoicemailTTSGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqOverFlowVoicemailGreeting.txt"
+                        $overFlowVoicemailTTSGreetingValueExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqOverFlowVoicemailGreeting.txt"
         
                         $ttsGreetings += ("click cqOverFlowVoicemailGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqOverFlowVoicemailGreeting.txt" + '"')
         
@@ -3215,11 +3219,12 @@ function Get-CallQueueCallFlow {
                 
                 if ($ShowTTSGreetingText) {
 
-                    $TimeOutVoicemailTTSGreetingValue = $MatchingCQ.TimeOutSharedVoicemailTextToSpeechPrompt
+                    $TimeOutVoicemailTTSGreetingValueExport = $MatchingCQ.TimeOutSharedVoicemailTextToSpeechPrompt
+                    $TimeOutVoicemailTTSGreetingValue = Optimize-DisplayName -String $MatchingCQ.TimeOutSharedVoicemailTextToSpeechPrompt
 
                     if ($ExportTTSGreetings) {
 
-                        $TimeOutVoicemailTTSGreetingValue | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeoutVoicemailGreeting.txt"
+                        $TimeOutVoicemailTTSGreetingValueExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeoutVoicemailGreeting.txt"
         
                         $ttsGreetings += ("click cqTimeoutVoicemailGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqTimeoutVoicemailGreeting.txt" + '"')
         
@@ -3449,7 +3454,7 @@ $($MatchingCQIdentity)([Call Queue <br> $($CqName)]) -->$cqGreetingNode overFlow
 overFlow$($cqCallFlowObjectId) --> |Yes| $CqOverFlowActionFriendly
 overFlow$($cqCallFlowObjectId) ---> |No| routingMethod$($cqCallFlowObjectId)
 
-subgraph subgraphCallDistribution$($cqCallFlowObjectId)[Call Distribution: $($MatchingCQ.Name)]
+subgraph subgraphCallDistribution$($cqCallFlowObjectId)[Call Distribution: $CqName]
 subgraph subgraphCqSettings$($cqCallFlowObjectId)[CQ Settings]
 routingMethod$($cqCallFlowObjectId)[(Routing Method: $CqRoutingMethod)] --> agentAlertTime$($cqCallFlowObjectId)
 agentAlertTime$($cqCallFlowObjectId)[(Agent Alert Time: $CqAgentAlertTime)] -.- cqSettingsContainer$($cqCallFlowObjectId)
