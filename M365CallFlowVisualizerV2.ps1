@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.8.8
+    Version:            2.8.9
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -123,6 +123,12 @@
 
     -ShowSharedVoicemailGroupMembers
         Specifies if group members (email) should be shown on a shared voicemail node.
+        Required:           false
+        Type:               bool
+        Default value:      false
+
+    -ShowCqOutboundCallingIds
+        Specifies if outbound calling Ids of call queues should be shown
         Required:           false
         Type:               bool
         Default value:      false
@@ -243,6 +249,7 @@ param(
     [Parameter(Mandatory=$false)][Switch]$FindUserLinks,
     [Parameter(Mandatory=$false)][Bool]$ObfuscatePhoneNumbers = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowSharedVoicemailGroupMembers = $false,
+    [Parameter(Mandatory=$false)][Bool]$ShowCqOutboundCallingIds = $false,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][ValidateSet("EU","US")][String]$DateFormat = "EU",
     [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral","custom")][String]$Theme = "default",
@@ -2672,6 +2679,7 @@ function Get-CallQueueCallFlow {
     $CqDefaultMusicOnHold = $MatchingCQ.UseDefaultMusicOnHold
     $CqWelcomeMusicFileName = $MatchingCQ.WelcomeMusicFileName
     $CqLanguageId = $MatchingCQ.LanguageId
+    $CqOboResourceAccountIds = $MatchingCQ.OboResourceAccountIds.Guid
     
     $languageId = $CqLanguageId
 
@@ -3446,6 +3454,53 @@ function Get-CallQueueCallFlow {
 
     $allMermaidNodes += "$($MatchingCQIdentity)"
 
+    # Add outbound calling IDs if available and if selected
+    if ($ShowCqOutboundCallingIds -eq $true) {
+
+        if ($CqOboResourceAccountIds) {
+
+            $oboResourceAccounts = "Outbound Calling Ids:"
+
+            foreach ($CqOboResourceAccountId in $CqOboResourceAccountIds) {
+
+                $oboResourceAccount = $allResourceAccounts | Where-Object {$_.ObjectId -eq $CqOboResourceAccountId}
+                $oboResourceAccountDisplayName = Optimize-DisplayName -String $oboResourceAccount.DisplayName
+                $oboResourceAccountPhoneNumber = $oboResourceAccount.PhoneNumber.Replace("tel:","")
+
+                if ($ObfuscatePhoneNumbers -eq $true) {
+
+                    $oboResourceAccountPhoneNumber = $oboResourceAccountPhoneNumber.Remove(($oboResourceAccountPhoneNumber.Length -4)) + "****"
+    
+                }
+    
+                
+                $oboResourceAccounts += "<br>$oboResourceAccountDisplayName $oboResourceAccountPhoneNumber"
+
+            }
+
+            $mdOutboundCallingIds = @"
+
+            cqSettingsContainer$($cqCallFlowObjectId) -.- cqOutboundCallingIds$($cqCallFlowObjectId)[($($oboResourceAccounts))] -.- 
+        
+"@
+        
+            $allMermaidNodes += "cqOutboundCallingIds$($cqCallFlowObjectId)"
+
+        }
+
+        else {
+
+            $mdOutboundCallingIds = "cqSettingsContainer$($cqCallFlowObjectId) -.- timeOut$($cqCallFlowObjectId)"
+
+        }
+
+    }
+
+    else {
+
+        $mdOutboundCallingIds = "cqSettingsContainer$($cqCallFlowObjectId) -.- timeOut$($cqCallFlowObjectId)"
+
+    }
     
     # Create default callflow mermaid code
 
@@ -3458,7 +3513,8 @@ subgraph subgraphCallDistribution$($cqCallFlowObjectId)[Call Distribution: $CqNa
 subgraph subgraphCqSettings$($cqCallFlowObjectId)[CQ Settings]
 routingMethod$($cqCallFlowObjectId)[(Routing Method: $CqRoutingMethod)] --> agentAlertTime$($cqCallFlowObjectId)
 agentAlertTime$($cqCallFlowObjectId)[(Agent Alert Time: $CqAgentAlertTime)] -.- cqSettingsContainer$($cqCallFlowObjectId)
-cqSettingsContainer$($cqCallFlowObjectId)[(Music On Hold: $CqMusicOnHold <br> Conference Mode Enabled: $CqConferenceMode <br> Agent Opt Out Allowed: $CqAgentOptOut <br> Presence Based Routing: $CqPresenceBasedRouting <br> TTS Greeting Language: $CqLanguageId)] -.- timeOut$($cqCallFlowObjectId)
+cqSettingsContainer$($cqCallFlowObjectId)[(Music On Hold: $CqMusicOnHold <br> Conference Mode Enabled: $CqConferenceMode <br> Agent Opt Out Allowed: $CqAgentOptOut <br> Presence Based Routing: $CqPresenceBasedRouting <br> TTS Greeting Language: $CqLanguageId)]
+$mdOutboundCallingIds
 timeOut$($cqCallFlowObjectId)[(Timeout: $CqTimeOut Seconds)]
 end
 agentAlertTime$($cqCallFlowObjectId) --> subgraphAgents$($cqCallFlowObjectId)
