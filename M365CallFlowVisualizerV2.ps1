@@ -317,14 +317,22 @@ $audioFileNames = @()
 $ttsGreetings = @()
 
 Write-Host "Retrieving all Auto Attendants (max. 1000)... this can take a while..." -ForegroundColor Magenta
-if ([String]::IsNullOrEmpty($Global:allAutoAttendants)) {$Global:allAutoAttendants = Get-CsAutoAttendant -First 1000}
+if ([String]::IsNullOrEmpty($Global:allAutoAttendants)) {
+    $Global:allAutoAttendants = Get-CsAutoAttendant -First 1000
+}
+
 Write-Host "Retrieving all Call Queues (max. 1000)... this can take a while..." -ForegroundColor Magenta
-if ([String]::IsNullOrEmpty($Global:allCallQueues)) {$Global:allCallQueues = Get-CsCallQueue -WarningAction SilentlyContinue -First 1000}
+if ([String]::IsNullOrEmpty($Global:allCallQueues)) {
+    $Global:allCallQueues = Get-CsCallQueue -WarningAction SilentlyContinue -First 1000
+}
 
 $allAutoAttendantIds = $allAutoAttendants.Identity
 $allCallQueueIds = $allCallQueues.Identity
+
 Write-Host "Retrieving all Resource Accounts (max. 1000)... this can take a while..." -ForegroundColor Magenta
-if ([String]::IsNullOrEmpty($Global:allResourceAccounts)) {$Global:allResourceAccounts = Get-CsOnlineApplicationInstance -ResultSize 1000}
+if ([String]::IsNullOrEmpty($Global:allResourceAccounts)) {
+    $Global:allResourceAccounts = Get-CsOnlineApplicationInstance -ResultSize 1000
+}
 
 $applicationIdAa = "ce933385-9390-45d1-9512-c8d228074e07"
 #$applicationIdCq = "11cd3e2e-fccb-42ad-ad00-878b93575e07" # not in use at the moment
