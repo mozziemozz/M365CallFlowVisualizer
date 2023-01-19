@@ -104,3 +104,4 @@
 |03.01.2023|M365CallFlowVisualizerV2.ps1|2.8.8|Add Optimize-Displayname to all TTS greetings.|
 |03.01.2023|Optimize-DisplayName.ps1|1.0.2|Replace "call" with "Call" in mermaid node text because this breaks mermaid.|
 |07.01.2023|M365CallFlowVisualizerV2.ps1|2.8.9|Add parameter to also include outbound calling Ids of call queues to the diagram.|
+|19.01.2023|M365CallFlowVisualizerV2.ps1|2.9.0|Merge Pull request: use global vars to fasten up parent runner scripts. Thanks to MicheleBomello :) |

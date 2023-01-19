@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.8.9
+    Version:            2.9.0
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
