@@ -40,14 +40,14 @@ function Find-CallQueueAndAutoAttendantUserLinks {
 
     switch ($SearchScope) {
         All {
-            $searchScopeIncludedVoiceApps += (Get-CsCallQueue -WarningAction SilentlyContinue).Identity
-            $searchScopeIncludedVoiceApps += (Get-CsAutoAttendant).Identity
+            $searchScopeIncludedVoiceApps += (Get-CsCallQueue -First 1000 -WarningAction SilentlyContinue).Identity
+            $searchScopeIncludedVoiceApps += (Get-CsAutoAttendant- First 1000).Identity
         }
         CallQueues {
-            $searchScopeIncludedVoiceApps += (Get-CsCallQueue -WarningAction SilentlyContinue).Identity
+            $searchScopeIncludedVoiceApps += (Get-CsCallQueue -First 1000 -WarningAction SilentlyContinue).Identity
         }
         AutoAttendants {
-            $searchScopeIncludedVoiceApps += (Get-CsAutoAttendant).Identity
+            $searchScopeIncludedVoiceApps += (Get-CsAutoAttendant -First 1000).Identity
         }
         Default {}
     }
