@@ -14,6 +14,8 @@ function Get-SharedVoicemailGroupMembers {
         [Parameter(Mandatory=$false)][String]$SharedVoicemailGroupId
     )
 
+    Write-Host "Shared Voicemail Group Id: $SharedVoicemailGroupId" -ForegroundColor Magenta
+
     $sharedVoicemailGroupMembers = Get-MgGroupMember -GroupId $SharedVoicemailGroupId
 
     $mdSharedVoicemailGroupMembers = "<br><br>Members"

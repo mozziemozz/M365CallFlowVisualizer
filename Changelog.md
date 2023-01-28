@@ -105,3 +105,4 @@
 |03.01.2023|Optimize-DisplayName.ps1|1.0.2|Replace "call" with "Call" in mermaid node text because this breaks mermaid.|
 |07.01.2023|M365CallFlowVisualizerV2.ps1|2.8.9|Add parameter to also include outbound calling Ids of call queues to the diagram.|
 |19.01.2023|M365CallFlowVisualizerV2.ps1|2.9.0|Merge Pull request: use global vars to fasten up parent runner scripts. Thanks to MicheleBomello :) |
+|28.01.2023|M365CallFlowVisualizerV2.ps1|2.9.1|Add parameter to enable or disable the global variables. Add maxTextSize to mermaid init to support larger files. Add output for shared voicemail GroupId|

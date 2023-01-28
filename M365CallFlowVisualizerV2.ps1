@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.9.0
+    Version:            2.9.1
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -46,6 +46,12 @@
         Specifies if the exported html file should be opened in default / last active browser (only works on Windows systems)
         Required:           false
         Type:               switch
+        Default value:      false
+
+    -NoCache
+        Specifies if the script should read all auto attendants and call queues in each run. If set to false, the script will read the data from the global variables, if they are not null or empty. If set to true, the script will read the data with each run.
+        Required:           false
+        Type:               boolean
         Default value:      false
 
     -CustomFilePath
@@ -236,6 +242,7 @@ param(
     [Parameter(Mandatory=$false)][Bool]$ExportHtml = $true,
     [Parameter(Mandatory=$false)][Bool]$ExportPng = $false,
     [Parameter(Mandatory=$false)][Switch]$PreviewHtml,
+    [Parameter(Mandatory=$false)][Bool]$NoCache = $true,
     [Parameter(Mandatory=$false)][String]$CustomFilePath = ".\Output\$(Get-Date -Format "yyyy-MM-dd")",
     [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
     [Parameter(Mandatory=$false)][Bool]$ShowUserCallingSettings = $true,
@@ -323,23 +330,50 @@ $allSubgraphs = @()
 $audioFileNames = @()
 $ttsGreetings = @()
 
-Write-Host "Retrieving all Auto Attendants (max. 1000)... this can take a while..." -ForegroundColor Magenta
-if ([String]::IsNullOrEmpty($Global:allAutoAttendants)) {
+if ([String]::IsNullOrEmpty($Global:allAutoAttendants) -or $NoCache -eq $true) {
+
+    Write-Host "Retrieving all Auto Attendants (max. 1000)... this can take a while..." -ForegroundColor Magenta
+
     $Global:allAutoAttendants = Get-CsAutoAttendant -First 1000
+
 }
 
-Write-Host "Retrieving all Call Queues (max. 1000)... this can take a while..." -ForegroundColor Magenta
-if ([String]::IsNullOrEmpty($Global:allCallQueues)) {
+else {
+
+    Write-Warning  "Auto Attendant config is read from memory. If you don't see recent changes reflected in the output, use the -NoCache `$true parameter."
+
+}
+
+if ([String]::IsNullOrEmpty($Global:allCallQueues) -or $NoCache -eq $true) {
+
+    Write-Host "Retrieving all Call Queues (max. 1000)... this can take a while..." -ForegroundColor Magenta
+
     $Global:allCallQueues = Get-CsCallQueue -WarningAction SilentlyContinue -First 1000
+
+}
+
+else {
+
+    Write-Warning "Call Queue config is read from memory. If you don't see recent changes reflected in the output, use the -NoCache `$true parameter."
+
+}
+
+if ([String]::IsNullOrEmpty($Global:allResourceAccounts) -or $NoCache -eq $true) {
+
+    Write-Host "Retrieving all Resource Accounts (max. 1000)... this can take a while..." -ForegroundColor Magenta
+
+    $Global:allResourceAccounts = Get-CsOnlineApplicationInstance -ResultSize 1000
+
+}
+
+else {
+
+    Write-Warning "Reseource Accounts are read from memory. If you don't see recent changes reflected in the output, use the -NoCache `$true parameter."
+
 }
 
 $allAutoAttendantIds = $allAutoAttendants.Identity
 $allCallQueueIds = $allCallQueues.Identity
-
-Write-Host "Retrieving all Resource Accounts (max. 1000)... this can take a while..." -ForegroundColor Magenta
-if ([String]::IsNullOrEmpty($Global:allResourceAccounts)) {
-    $Global:allResourceAccounts = Get-CsOnlineApplicationInstance -ResultSize 1000
-}
 
 $applicationIdAa = "ce933385-9390-45d1-9512-c8d228074e07"
 #$applicationIdCq = "11cd3e2e-fccb-42ad-ad00-878b93575e07" # not in use at the moment
@@ -381,7 +415,10 @@ function Set-Mermaid {
 
     if ($Theme -eq "custom") {
 
-        $MarkdownTheme = ""
+        $MarkdownTheme =@"
+%%{init: {'maxTextSize': 99000, 'flowchart' : { 'curve' : 'basis' } } }%%
+
+"@ 
 
     }
 
@@ -390,7 +427,7 @@ function Set-Mermaid {
         $Theme = $Theme.ToLower()
 
         $MarkdownTheme =@"
-%%{init: {'theme': '$($Theme)', 'flowchart' : { 'curve' : 'basis' } } }%%
+%%{init: {'theme': '$($Theme)', 'maxTextSize': 99000, 'flowchart' : { 'curve' : 'basis' } } }%%
 
 "@ 
 
