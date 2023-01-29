@@ -11,10 +11,16 @@
 
 #Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.9.1" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
 
+[CmdletBinding(DefaultParametersetName="None")]
+param(
+    [Parameter(Mandatory=$false)][String]$CustomFilePath = ".\Output\$(Get-Date -Format "yyyy-MM-dd")"
+)
+
 . .\Functions\Connect-M365CFV.ps1
 
 . Connect-M365CFV
 
+# Read all Auto Attendants, Call Queues and Resource Accounts into memory
 Write-Host "Retrieving all Auto Attendants (max. 1000)... this can take a while..." -ForegroundColor Magenta
 $global:allAutoAttendants = Get-CsAutoAttendant -First 1000
 
@@ -26,9 +32,9 @@ $global:allResourceAccounts = Get-CsOnlineApplicationInstance -ResultSize 1000
 
 $report = @()
 
+# Add Auto Attendants without resource accounts to report
 $autoAttendantsWithoutResourceAccounts = $allAutoAttendants | Where-Object {!$_.ApplicationInstances}
 
-# Add Auto Attendants without resource accounts to report
 foreach ($autoAttendant in $autoAttendantsWithoutResourceAccounts) {
 
     $autoAttendantDetails = New-Object -TypeName psobject
@@ -46,9 +52,9 @@ foreach ($autoAttendant in $autoAttendantsWithoutResourceAccounts) {
 
 }
 
+# Add Call Queues without resource accounts to report
 $callQueuesWithoutResourceAccounts = $allCallQueues | Where-Object {!$_.ApplicationInstances}
 
-# Add Call Queues without resource accounts to report
 foreach ($callQueue in $callQueuesWithoutResourceAccounts) {
 
     $callQueueDetails = New-Object -TypeName psobject
@@ -66,15 +72,17 @@ foreach ($callQueue in $callQueuesWithoutResourceAccounts) {
 
 }
 
+# All Resource Accounts which have a phone number assigned
 $resourceAccountIdsWithPhoneNumber = ($allResourceAccounts | Where-Object {$_.PhoneNumber}).ObjectId
 
+# Auto Attendants and Call Queues which have at least one Resource Account assigned
 $autoAttendantsWithResourceAccounts = $allAutoAttendants | Where-Object {$_.ApplicationInstances}
-
 $callQueuesWithResourceAccounts = $allCallQueues | Where-Object {$_.ApplicationInstances}
 
 $autoAttendantsWithPhoneNumber = @()
 $callQueuesWithPhoneNumber = @()
 
+# Add Auto Attendants and Call Queues which have a Resource Account with a Phone Number to the respective array
 foreach ($resourceAccount in $resourceAccountIdsWithPhoneNumber) {
 
     foreach ($autoAttendant in $autoAttendantsWithResourceAccounts) {
@@ -99,14 +107,17 @@ foreach ($resourceAccount in $resourceAccountIdsWithPhoneNumber) {
 
 }
 
+# Remove duplicate entries
 $autoAttendantsWithPhoneNumber = $autoAttendantsWithPhoneNumber | Sort-Object Name -Unique
 $callQueuesWithPhoneNumber = $callQueueWithPhoneNumber | Sort-Object Name -Unique
 
 $nonTopLevelAutoAttendants = $autoAttendantsWithResourceAccounts | Where-Object {$autoAttendantsWithPhoneNumber -notcontains $_}
 $nonTopLevelCallQueues = $callQueuesWithResourceAccounts | Where-Object {$callQueuesWithPhoneNumber -notcontains $_}
 
+# Store all nested Voice App Ids outside of the M365 CFV script
 $allNestedVoiceAppIds = @()
 
+# Run M365 CFV for all top-level Auto Attendants
 foreach ($autoAttendantWithPhoneNumber in $autoAttendantsWithPhoneNumber) {
 
     . .\M365CallFlowVisualizerV2.ps1 -Identity $autoAttendantWithPhoneNumber.Identity -SaveToFile $false -SetClipBoard $false -ExportHtml $false -ShowNestedCallFlows $true -ShowUserCallingSettings $false -NoCache $false
@@ -115,7 +126,7 @@ foreach ($autoAttendantWithPhoneNumber in $autoAttendantsWithPhoneNumber) {
 
 }
 
-
+# Run M365 CFV for all top-level Call Queues
 foreach ($callQueueWithPhoneNumber in $callQueuesWithPhoneNumber) {
 
     . .\M365CallFlowVisualizerV2.ps1 -Identity $callQueueWithPhoneNumber.Identity -SaveToFile $false -SetClipBoard $false -ExportHtml $false -ShowNestedCallFlows $true -ShowUserCallingSettings $false -NoCache $false
@@ -126,6 +137,7 @@ foreach ($callQueueWithPhoneNumber in $callQueuesWithPhoneNumber) {
 
 $allNestedVoiceAppIds = $allNestedVoiceAppIds | Sort-Object -Unique
 
+# Add Auto Attendants to report if they're not nested behind any other top-level Voice App
 foreach ($autoAttendant in $nonTopLevelAutoAttendants) {
 
     if ($allNestedVoiceAppIds -notcontains $autoAttendant.Identity) {
@@ -146,6 +158,7 @@ foreach ($autoAttendant in $nonTopLevelAutoAttendants) {
 
 }
 
+# Add Call Queues to report if they're not nested behind any other top-level Voice App
 foreach ($callQueue in $nonTopLevelcallQueues) {
 
     if ($allNestedVoiceAppIds -notcontains $callQueue.Identity) {
@@ -166,10 +179,11 @@ foreach ($callQueue in $nonTopLevelcallQueues) {
 
 }
 
+# Check for all Resource Accounts which are not assigned to any Voice App
 $allAssociatedVoiceApps = $allAutoAttendants.ApplicationInstances + $allCallQueues.ApplicationInstances
-
 $unassignedResourceAccounts = $allResourceAccounts.ObjectId | Where-Object {$allAssociatedVoiceApps -notcontains $_}
 
+# Add all unassigned Resource Accounts to report
 foreach ($resourceAccount in $unassignedResourceAccounts) {
 
     $resourceAccountDetails = New-Object -TypeName psobject
@@ -223,4 +237,10 @@ foreach ($resourceAccount in $unassignedResourceAccounts) {
 
 }
 
-$report | Export-Csv -Path ".\UnusedVoiceAppsAndResourceAccountsReport.csv" -NoTypeInformation -Delimiter ";" -Encoding UTF8 -Force
+if (!(Test-Path -Path $CustomFilePath)) {
+
+    New-Item -Path $CustomFilePath -ItemType Directory
+
+}
+
+$report | Export-Csv -Path "$CustomFilePath\UnusedVoiceAppsAndResourceAccountsReport.csv" -NoTypeInformation -Delimiter ";" -Encoding UTF8 -Force
