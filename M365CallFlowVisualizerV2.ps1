@@ -368,7 +368,7 @@ if ([String]::IsNullOrEmpty($Global:allResourceAccounts) -or $NoCache -eq $true)
 
 else {
 
-    Write-Warning "Reseource Accounts are read from memory. If you don't see recent changes reflected in the output, use the -NoCache `$true parameter."
+    Write-Warning "Resource Accounts are read from memory. If you don't see recent changes reflected in the output, use the -NoCache `$true parameter."
 
 }
 
