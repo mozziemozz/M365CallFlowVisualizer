@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.9.1
+    Version:            2.9.2
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -66,6 +66,12 @@
         Required:           false
         Type:               boolean
         Default value:      true
+
+    -ShowNestedHolidayCallFlows
+        Specifies whether or not to also display the call flows of nested call queues or auto attendants of holiday call handlings. Call flows will be expanded and linked to the holiday subgraph. To use this parameter, -ShowNestedCallFlows must be true.
+        Required:           false
+        Type:               boolean
+        Default value:      false
 
     -ShowUserCallingSettings
         Specifies whether or not to also display the user calling settings of a Teams user. If set to false, only the name of a user will be rendered.
@@ -246,6 +252,7 @@ param(
     [Parameter(Mandatory=$false)][String]$CustomFilePath = ".\Output\$(Get-Date -Format "yyyy-MM-dd")",
     [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
     [Parameter(Mandatory=$false)][Bool]$ShowUserCallingSettings = $true,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedHolidayCallFlows = $true,
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentPhoneNumbers,
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentOptInStatus,
     [Parameter(Mandatory=$false)][Switch]$ShowTTSGreetingText,
@@ -660,6 +667,8 @@ subgraph $holidaySubgraphName
 
         $aaHolidays = $aa.CallHandlingAssociations | Where-Object {$_.Type -match "Holiday" -and $_.Enabled -eq $true}
 
+        $mdHolidayNestedCallFlowLinks = ""
+
         foreach ($HolidayCallHandling in $aaHolidays) {
 
             $holidayCallFlow = $aa.CallFlows | Where-Object {$_.Id -eq $HolidayCallHandling.CallFlowId}
@@ -835,6 +844,18 @@ subgraph $holidaySubgraphName
                             $holidayActionTargetTypeFriendly = "[Auto Attendant"
                             $holidayActionTargetName = (Optimize-DisplayName -String $($MatchingAA.Name)) + "]"
 
+                            if ($ShowNestedHolidayCallFlows) {
+
+                                if ($nestedVoiceApps -notcontains $MatchingAA.Identity) {
+    
+                                    $nestedVoiceApps += $MatchingAA.Identity
+        
+                                }
+
+                                $holidayActionTargetVoiceAppId = $MatchingAA.Identity
+    
+                            }
+
                         }
 
                         else {
@@ -843,6 +864,18 @@ subgraph $holidaySubgraphName
 
                             $holidayActionTargetTypeFriendly = "[Call Queue"
                             $holidayActionTargetName = (Optimize-DisplayName -String $($MatchingCQ.Name)) + "]"
+
+                            if ($ShowNestedHolidayCallFlows) {
+
+                                if ($nestedVoiceApps -notcontains $MatchingCQ.Identity) {
+    
+                                    $nestedVoiceApps += $MatchingCQ.Identity
+        
+                                }
+
+                                $holidayActionTargetVoiceAppId = $MatchingCQ.Identity
+    
+                            }
 
                         }
 
@@ -903,6 +936,12 @@ subgraph $holidaySubgraphName
 
             }
 
+            if ($ShowNestedHolidayCallFlows -and $holidayActionTargetType -eq "ApplicationEndpoint") {
+
+                $mdHolidayNestedCallFlowLinks += "$holidaySubgraphName -. Holiday: $mermaidFriendlyHolidayName .- $holidayActionTargetVoiceAppId`n"
+
+            }
+
             # Increase the counter by 1
             $HolidayCounter ++
 
@@ -918,6 +957,12 @@ subgraph $holidaySubgraphName
 
     end
 "@
+
+        if ($ShowNestedHolidayCallFlows -and $mdHolidayNestedCallFlowLinks -ne "") {
+
+            $mdSubGraphHolidaysEnd += "`n$mdHolidayNestedCallFlowLinks"
+
+        }
             
         # Add the end to the holiday subgraph mermaid code
         $mdSubGraphHolidays += $mdSubGraphHolidaysEnd
@@ -1475,7 +1520,7 @@ function Get-AutoAttendantDefaultCallFlow {
 
             if ($aaIsVoiceResponseEnabled) {
 
-                $defaultCallFlowVoiceResponse = " or <br> Voice Response <br> Language: $($aa.LanguageId)$defaultCallFlowForceListen"
+                $defaultCallFlowVoiceResponse = " or <br> Voice Response <br> Language: $($aa.LanguageId)<br>Voice Style: $($aa.VoiceId)$defaultCallFlowForceListen"
 
 
             }
@@ -1977,16 +2022,15 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
             $mdDefaultCallFlowGreeting += $mdAutoAttendantDefaultCallFlowMenuOptions
             $mdAutoAttendantDefaultCallFlow = $mdDefaultCallFlowGreeting
-
-            # Remove Greeting node, if none is configured
-            if ($defaultCallFlowGreeting -eq "Greeting <br> None") {
-
-                $mdAutoAttendantDefaultCallFlow = ($mdAutoAttendantDefaultCallFlow.Replace("defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting] --> ","")).TrimStart()
-
-            }
     
     }
-    
+
+    # Remove Greeting node, if none is configured
+    if ($defaultCallFlowGreeting -eq "Greeting <br> None") {
+
+        $mdAutoAttendantDefaultCallFlow = ($mdAutoAttendantDefaultCallFlow.Replace("defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting] --> ","")).TrimStart()
+
+    }
     
 }
 
@@ -2168,8 +2212,7 @@ function Get-AutoAttendantAfterHoursCallFlow {
 
             if ($aaIsVoiceResponseEnabled) {
 
-                $afterHoursCallFlowVoiceResponse = " or <br> Voice Response <br> Language: $($aa.LanguageId)$afterHoursCallFlowForceListen"
-
+                $afterHoursCallFlowVoiceResponse = " or <br> Voice Response <br> Language: $($aa.LanguageId)<br>Voice Style: $($aa.VoiceId)$afterHoursCallFlowForceListen"
 
             }
 
@@ -2669,18 +2712,16 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
         # Greeting can only exist once. Add greeting before call flow and set mdAutoAttendantafterHoursCallFlow to the new variable.
 
         $mdafterHoursCallFlowGreeting += $mdAutoAttendantafterHoursCallFlowMenuOptions
-        $mdAutoAttendantafterHoursCallFlow = $mdafterHoursCallFlowGreeting
-
-        # Remove Greeting node, if none is configured
-        if ($afterHoursCallFlowGreeting -eq "Greeting <br> None") {
-
-            $mdAutoAttendantafterHoursCallFlow = ($mdAutoAttendantafterHoursCallFlow.Replace("afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlowGreeting] --> ","")).TrimStart()
-
-        }
-        
+        $mdAutoAttendantafterHoursCallFlow = $mdafterHoursCallFlowGreeting        
     
     }
 
+    # Remove Greeting node, if none is configured
+    if ($afterHoursCallFlowGreeting -eq "Greeting <br> None") {
+
+        $mdAutoAttendantafterHoursCallFlow = ($mdAutoAttendantafterHoursCallFlow.Replace("afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlowGreeting] --> ","")).TrimStart()
+
+    }
 
 }
 
@@ -4004,7 +4045,7 @@ function Set-CustomMermaidTheme {
     }
 
     $mermaidString = ($mermaidCode | Out-String)
-    $NumberOfMermaidLinks = (Select-String -InputObject $mermaidString -Pattern '(--)|(-.-)' -AllMatches).Matches.Count
+    $NumberOfMermaidLinks = (Select-String -InputObject $mermaidString -Pattern '(--)|(-.-)|( -. )' -AllMatches).Matches.Count
 
     $themedNodes = ($themedNodes += " customTheme").Replace(", customTheme", " customTheme")
 
