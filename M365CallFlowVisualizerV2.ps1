@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.9.2
+    Version:            2.9.3
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -69,6 +69,12 @@
 
     -ShowNestedHolidayCallFlows
         Specifies whether or not to also display the call flows of nested call queues or auto attendants of holiday call handlings. Call flows will be expanded and linked to the holiday subgraph. To use this parameter, -ShowNestedCallFlows must be true.
+        Required:           false
+        Type:               boolean
+        Default value:      false
+
+    -ShowNestedHolidayIVRs
+        Specifies whether or not to also display nested IVRs on Holiday Call Handlings. They will render in the main diagram and not in the Holiday subgraph.
         Required:           false
         Type:               boolean
         Default value:      false
@@ -252,7 +258,8 @@ param(
     [Parameter(Mandatory=$false)][String]$CustomFilePath = ".\Output\$(Get-Date -Format "yyyy-MM-dd")",
     [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
     [Parameter(Mandatory=$false)][Bool]$ShowUserCallingSettings = $true,
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedHolidayCallFlows = $true,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedHolidayCallFlows = $false,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedHolidayIVRs = $false,
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentPhoneNumbers,
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentOptInStatus,
     [Parameter(Mandatory=$false)][Switch]$ShowTTSGreetingText,
@@ -676,7 +683,7 @@ subgraph $holidaySubgraphName
 
             if (!$holidayCallFlow.Greetings) {
 
-                $holidayGreeting = "Greeting <br> None"
+                $holidayGreeting = "Greeting <br> None"  
 
             }
 
@@ -740,161 +747,195 @@ subgraph $holidaySubgraphName
 
             }
 
+            $mermaidFriendlyHolidayName = Optimize-DisplayName -String $($holidayCallFlow.Name)
+
             $holidayAction = $holidayCallFlow.Menu.MenuOptions.Action
 
-            # Check if holiday call handling is disconnect call
-            if ($holidayAction -eq "DisconnectCall") {
+            if ($holidayCallFlow.Menu.Prompts.ActiveType) {
 
-                $nodeElementHolidayAction = "elementAAHolidayAction$($aaObjectId)-$($HolidayCounter)(($holidayAction))"
+                $holidayCallHandlingName = Optimize-DisplayName -String $holidayCallFlow.Name
 
-                $holidayVoicemailSystemGreeting = $null
+                $nodeElementHolidayAction = "elementAAHolidayAction$($aaObjectId)-$($HolidayCounter){IVR<br>$holidayCallHandlingName} $holidayVoicemailSystemGreeting"
 
-                $allMermaidNodes += "elementAAHolidayAction$($aaObjectId)-$($HolidayCounter)"
+                if ($ShowNestedHolidayIVRs) {
+
+                    . .\Functions\Get-AutoAttendantHolidayCallFlow.ps1
+
+                    . Get-AutoAttendantHolidayCallFlow
+
+                    if ($holidayCallFlow.Menu.Prompts.ActiveType -and $holidayCallFlow.Menu.MenuOptions[0].DtmfResponse -ne "Automatic") {
+
+                        # $mermaidCode += "$holidaySubgraphName -. Holiday: $mermaidFriendlyHolidayName .- elementAAHolidayIvr$($aaObjectId)-$($HolidayCounter)"
+                        $mermaidCode += "$holidaySubgraphName -.- elementAAHolidayIvr$($aaObjectId)-$($HolidayCounter)"
+
+
+                    }
+
+                    $mermaidCode += $mdAutoAttendantHolidayCallFlow
+
+                    $allMermaidNodes += @("elementAAHolidayIvr$($aaObjectId)-$($HolidayCounter)")
+
+                }
+
+                $allMermaidNodes += @("elementAAHolidayAction$($aaObjectId)-$($HolidayCounter)")
 
             }
 
             else {
 
-                $holidayActionTargetType = $holidayCallFlow.Menu.MenuOptions.CallTarget.Type
+                # Check if holiday call handling is disconnect call
+                if ($holidayAction -eq "DisconnectCall") {
 
-                # Switch through different transfer call to target types
-                switch ($holidayActionTargetType) {
-                    User { $holidayActionTargetTypeFriendly = "User" 
-                    $holidayActionTargetName = Optimize-DisplayName -String (Get-MgUser -UserId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
+                    $nodeElementHolidayAction = "elementAAHolidayAction$($aaObjectId)-$($HolidayCounter)(($holidayAction))"
 
                     $holidayVoicemailSystemGreeting = $null
 
-                    if ($FindUserLinks -eq $true) {
-         
-                        . New-VoiceAppUserLinkProperties -userLinkUserId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id) -userLinkUserName $holidayActionTargetName -userLinkVoiceAppType "Auto Attendant" -userLinkVoiceAppActionType "HolidayActionTarget" -userLinkVoiceAppName $aa.Name -userLinkVoiceAppId $aa.Identity
-                    
-                    }            
+                    $allMermaidNodes += "elementAAHolidayAction$($aaObjectId)-$($HolidayCounter)"
 
                 }
-                    SharedVoicemail { $holidayActionTargetTypeFriendly = "Shared Voicemail"
-                    $holidayActionTargetName = Optimize-DisplayName -String (Get-MgGroup -GroupId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
 
-                    if ($holidayCallFlow.Menu.MenuOptions.CallTarget.EnableSharedVoicemailSystemPromptSuppression -eq $false) {
+                else {
 
-                        $holidayVoicemailSystemGreeting = "--> elementAAHolidayVoicemailSystemGreeting$($aaObjectId)-$($HolidayCounter)>Greeting <br> MS System Message] "
+                    $holidayActionTargetType = $holidayCallFlow.Menu.MenuOptions.CallTarget.Type
 
-                        $holidayVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
-                        $holidayVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
-
-                        if ($ShowTTSGreetingText) {
-        
-                            if ($ExportTTSGreetings) {
-        
-                                $holidayVoicemailSystemGreetingValueExport | Out-File "$FilePath\$($aaObjectId)_autoAttendantHolidayVoicemailMsSystemMessage.txt"
-                
-                                $ttsGreetings += ("click elementAAHolidayVoicemailSystemGreeting$($aaObjectId)-$($HolidayCounter) " + '"' + "$FilePath\$($aaObjectId)_autoAttendantHolidayVoicemailMsSystemMessage.txt" + '"')
-                
-                            }
-        
-                            if ($holidayVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
-        
-                                $holidayVoicemailSystemGreetingValue = $holidayVoicemailSystemGreetingValue.Remove($holidayVoicemailSystemGreetingValue.Length - ($holidayVoicemailSystemGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
-        
-                            }
-        
-                            $holidayVoicemailSystemGreeting = $holidayVoicemailSystemGreeting.Replace("] "," <br> ''$holidayVoicemailSystemGreetingValue''] ")
-        
-                        }        
-
-                        $allMermaidNodes += "elementAAHolidayVoicemailSystemGreeting$($aaObjectId)-$($HolidayCounter)"
-
-                    }
-
-                    else {
+                    # Switch through different transfer call to target types
+                    switch ($holidayActionTargetType) {
+                        User { $holidayActionTargetTypeFriendly = "User" 
+                        $holidayActionTargetName = Optimize-DisplayName -String (Get-MgUser -UserId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
 
                         $holidayVoicemailSystemGreeting = $null
 
-                    }
-
-                    if ($ShowSharedVoicemailGroupMembers -eq $true) {
-
-                        . Get-SharedVoicemailGroupMembers -SharedVoicemailGroupId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)
-
-                        $holidayActionTargetName = "$holidayActionTargetName$mdSharedVoicemailGroupMembers"
-
-                    }
-
-                }
-                    ExternalPstn { $holidayActionTargetTypeFriendly = "External Number" 
-                    $holidayActionTargetName =  ($holidayCallFlow.Menu.MenuOptions.CallTarget.Id).Replace("tel:","")
-
-                    if ($ObfuscatePhoneNumbers -eq $true) {
-
-                        $holidayActionTargetName = $holidayActionTargetName.Remove(($holidayActionTargetName.Length -4)) + "****"
-    
-                    }    
-
-                    $holidayVoicemailSystemGreeting = $null
-
-                }
-                    # Check if the application endpoint is an auto attendant or a call queue
-                    ApplicationEndpoint {
+                        if ($FindUserLinks -eq $true) {
+            
+                            . New-VoiceAppUserLinkProperties -userLinkUserId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id) -userLinkUserName $holidayActionTargetName -userLinkVoiceAppType "Auto Attendant" -userLinkVoiceAppActionType "HolidayActionTarget" -userLinkVoiceAppName $aa.Name -userLinkVoiceAppId $aa.Identity
                         
-                        $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $holidayCallFlow.Menu.MenuOptions.CallTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
+                        }            
 
-                        if ($matchingApplicationInstanceCheckAa) {
+                    }
+                        SharedVoicemail { $holidayActionTargetTypeFriendly = "Shared Voicemail"
+                        $holidayActionTargetName = Optimize-DisplayName -String (Get-MgGroup -GroupId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)).DisplayName
 
-                            $MatchingAA = $allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $holidayCallFlow.Menu.MenuOptions.CallTarget.Id}
+                        if ($holidayCallFlow.Menu.MenuOptions.CallTarget.EnableSharedVoicemailSystemPromptSuppression -eq $false) {
 
-                            $holidayActionTargetTypeFriendly = "[Auto Attendant"
-                            $holidayActionTargetName = (Optimize-DisplayName -String $($MatchingAA.Name)) + "]"
+                            $holidayVoicemailSystemGreeting = "--> elementAAHolidayVoicemailSystemGreeting$($aaObjectId)-$($HolidayCounter)>Greeting <br> MS System Message] "
 
-                            if ($ShowNestedHolidayCallFlows) {
+                            $holidayVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
+                            $holidayVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
 
-                                if ($nestedVoiceApps -notcontains $MatchingAA.Identity) {
-    
-                                    $nestedVoiceApps += $MatchingAA.Identity
-        
+                            if ($ShowTTSGreetingText) {
+            
+                                if ($ExportTTSGreetings) {
+            
+                                    $holidayVoicemailSystemGreetingValueExport | Out-File "$FilePath\$($aaObjectId)_autoAttendantHolidayVoicemailMsSystemMessage.txt"
+                    
+                                    $ttsGreetings += ("click elementAAHolidayVoicemailSystemGreeting$($aaObjectId)-$($HolidayCounter) " + '"' + "$FilePath\$($aaObjectId)_autoAttendantHolidayVoicemailMsSystemMessage.txt" + '"')
+                    
                                 }
+            
+                                if ($holidayVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
+            
+                                    $holidayVoicemailSystemGreetingValue = $holidayVoicemailSystemGreetingValue.Remove($holidayVoicemailSystemGreetingValue.Length - ($holidayVoicemailSystemGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
+            
+                                }
+            
+                                $holidayVoicemailSystemGreeting = $holidayVoicemailSystemGreeting.Replace("] "," <br> ''$holidayVoicemailSystemGreetingValue''] ")
+            
+                            }        
 
-                                $holidayActionTargetVoiceAppId = $MatchingAA.Identity
-    
-                            }
+                            $allMermaidNodes += "elementAAHolidayVoicemailSystemGreeting$($aaObjectId)-$($HolidayCounter)"
 
                         }
 
                         else {
 
-                            $MatchingCQ = $allCallQueues | Where-Object {$_.ApplicationInstances -contains $holidayCallFlow.Menu.MenuOptions.CallTarget.Id}
-
-                            $holidayActionTargetTypeFriendly = "[Call Queue"
-                            $holidayActionTargetName = (Optimize-DisplayName -String $($MatchingCQ.Name)) + "]"
-
-                            if ($ShowNestedHolidayCallFlows) {
-
-                                if ($nestedVoiceApps -notcontains $MatchingCQ.Identity) {
-    
-                                    $nestedVoiceApps += $MatchingCQ.Identity
-        
-                                }
-
-                                $holidayActionTargetVoiceAppId = $MatchingCQ.Identity
-    
-                            }
+                            $holidayVoicemailSystemGreeting = $null
 
                         }
+
+                        if ($ShowSharedVoicemailGroupMembers -eq $true) {
+
+                            . Get-SharedVoicemailGroupMembers -SharedVoicemailGroupId $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)
+
+                            $holidayActionTargetName = "$holidayActionTargetName$mdSharedVoicemailGroupMembers"
+
+                        }
+
+                    }
+                        ExternalPstn { $holidayActionTargetTypeFriendly = "External Number" 
+                        $holidayActionTargetName =  ($holidayCallFlow.Menu.MenuOptions.CallTarget.Id).Replace("tel:","")
+
+                        if ($ObfuscatePhoneNumbers -eq $true) {
+
+                            $holidayActionTargetName = $holidayActionTargetName.Remove(($holidayActionTargetName.Length -4)) + "****"
+        
+                        }    
 
                         $holidayVoicemailSystemGreeting = $null
 
                     }
-                
-                }
+                        # Check if the application endpoint is an auto attendant or a call queue
+                        ApplicationEndpoint {
+                            
+                            $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $holidayCallFlow.Menu.MenuOptions.CallTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
+
+                            if ($matchingApplicationInstanceCheckAa) {
+
+                                $MatchingAA = $allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $holidayCallFlow.Menu.MenuOptions.CallTarget.Id}
+
+                                $holidayActionTargetTypeFriendly = "[Auto Attendant"
+                                $holidayActionTargetName = (Optimize-DisplayName -String $($MatchingAA.Name)) + "]"
+
+                                if ($ShowNestedHolidayCallFlows) {
+
+                                    if ($nestedVoiceApps -notcontains $MatchingAA.Identity) {
+        
+                                        $nestedVoiceApps += $MatchingAA.Identity
+            
+                                    }
+
+                                    $holidayActionTargetVoiceAppId = $MatchingAA.Identity
+        
+                                }
+
+                            }
+
+                            else {
+
+                                $MatchingCQ = $allCallQueues | Where-Object {$_.ApplicationInstances -contains $holidayCallFlow.Menu.MenuOptions.CallTarget.Id}
+
+                                $holidayActionTargetTypeFriendly = "[Call Queue"
+                                $holidayActionTargetName = (Optimize-DisplayName -String $($MatchingCQ.Name)) + "]"
+
+                                if ($ShowNestedHolidayCallFlows) {
+
+                                    if ($nestedVoiceApps -notcontains $MatchingCQ.Identity) {
+        
+                                        $nestedVoiceApps += $MatchingCQ.Identity
+            
+                                    }
+
+                                    $holidayActionTargetVoiceAppId = $MatchingCQ.Identity
+        
+                                }
+
+                            }
+
+                            $holidayVoicemailSystemGreeting = $null
+
+                        }
+                    
+                    }
 
                 # Create mermaid code for the holiday action node based on the variables created in the switch statemenet
                 $nodeElementHolidayAction = "elementAAHolidayAction$($aaObjectId)-$($HolidayCounter)($holidayAction) $holidayVoicemailSystemGreeting--> elementAAHolidayActionTargetType$($aaObjectId)-$($HolidayCounter)($holidayActionTargetTypeFriendly <br> $holidayActionTargetName)"
 
                 $allMermaidNodes += @("elementAAHolidayAction$($aaObjectId)-$($HolidayCounter)","elementAAHolidayActionTargetType$($aaObjectId)-$($HolidayCounter)")
 
+                }
+
             }
 
             # Create subgraph per holiday call handling inside the Holidays subgraph
-
-            $mermaidFriendlyHolidayName = Optimize-DisplayName -String $($holidayCallFlow.Name)
 
             $holidayScheduleSorted = $holidaySchedule.FixedSchedule.DateTimeRanges | Sort-Object Start
 
@@ -936,9 +977,10 @@ subgraph $holidaySubgraphName
 
             }
 
-            if ($ShowNestedHolidayCallFlows -and $holidayActionTargetType -eq "ApplicationEndpoint") {
+            if ($ShowNestedHolidayCallFlows -and !$holidayCallFlow.Menu.Prompts.ActiveType -and $holidayCallFlow.Menu.MenuOptions.CallTarget.Type -eq "ApplicationEndpoint") {
 
-                $mdHolidayNestedCallFlowLinks += "$holidaySubgraphName -. Holiday: $mermaidFriendlyHolidayName .- $holidayActionTargetVoiceAppId`n"
+                # $mdHolidayNestedCallFlowLinks += "$holidaySubgraphName -. Holiday: $mermaidFriendlyHolidayName .- $holidayActionTargetVoiceAppId`n"
+                $mdHolidayNestedCallFlowLinks += "$holidaySubgraphName -.- $holidayActionTargetVoiceAppId`n"
 
             }
 

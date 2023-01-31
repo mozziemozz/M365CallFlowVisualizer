@@ -159,8 +159,8 @@ If you want to implement Mermaid Diagrams into your markdown based documentation
 
 # Known limitations
 - The tool has only been tested on Windows systems. Some functionalty might not be available on other platforms.
-- Forwarding Targets in a holiday list are not expanded.
-- IVRs in holiday call handlings are not supported.
+- Forwarding Targets in a holiday list are not expanded. --> Implemented in V 2.9.3
+- IVRs in holiday call handlings are not supported. --> Implemented in V 2.9.3
 
 # Planned feature updates
 - Reflect if voicemail transcription or suppress system greeting is on --> Suppress system message was implemented in V 2.4.2

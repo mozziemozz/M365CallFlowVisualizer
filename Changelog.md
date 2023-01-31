@@ -107,3 +107,4 @@
 |19.01.2023|M365CallFlowVisualizerV2.ps1|2.9.0|Merge Pull request: use global vars to fasten up parent runner scripts. Thanks to MicheleBomello :) |
 |28.01.2023|M365CallFlowVisualizerV2.ps1|2.9.1|Add parameter to enable or disable the global variables. Add maxTextSize to mermaid init to support larger files. Add output for shared voicemail GroupId|
 |30.01.2023|M365CallFlowVisualizerV2.ps1|2.9.2|Add parameter to expand/show nested AAs and CQs of holiday call handlings, fix greeting which was shown on AA call flows when none was configured with DisconnectCall action. Show voice stlye (Male/Female) on voice response enabled AA.|
+|01.02.2023|M365CallFlowVisualizerV2.ps1|2.9.3|Add parameter to display IVRs of Holiday Call Handlings. Fix links when multiple holidays pointed to a Voice App.|
