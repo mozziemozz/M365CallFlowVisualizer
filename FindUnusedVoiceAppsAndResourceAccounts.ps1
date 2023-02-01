@@ -120,7 +120,7 @@ $allNestedVoiceAppIds = @()
 # Run M365 CFV for all top-level Auto Attendants
 foreach ($autoAttendantWithPhoneNumber in $autoAttendantsWithPhoneNumber) {
 
-    . .\M365CallFlowVisualizerV2.ps1 -Identity $autoAttendantWithPhoneNumber.Identity -SaveToFile $false -SetClipBoard $false -ExportHtml $false -ShowNestedCallFlows $true -ShowUserCallingSettings $false -NoCache $false
+    . .\M365CallFlowVisualizerV2.ps1 -Identity $autoAttendantWithPhoneNumber.Identity -SaveToFile $false -SetClipBoard $false -ExportHtml $false -ShowNestedCallFlows $true -ShowUserCallingSettings $true -ShowNestedHolidayCallFlows $true -ShowNestedHolidayIVRs $true -CacheResults $true
 
     $allNestedVoiceAppIds += $nestedVoiceApps
 
@@ -129,7 +129,7 @@ foreach ($autoAttendantWithPhoneNumber in $autoAttendantsWithPhoneNumber) {
 # Run M365 CFV for all top-level Call Queues
 foreach ($callQueueWithPhoneNumber in $callQueuesWithPhoneNumber) {
 
-    . .\M365CallFlowVisualizerV2.ps1 -Identity $callQueueWithPhoneNumber.Identity -SaveToFile $false -SetClipBoard $false -ExportHtml $false -ShowNestedCallFlows $true -ShowUserCallingSettings $false -NoCache $false
+    . .\M365CallFlowVisualizerV2.ps1 -Identity $callQueueWithPhoneNumber.Identity -SaveToFile $false -SetClipBoard $false -ExportHtml $false -ShowNestedCallFlows $true -ShowUserCallingSettings $true -ShowNestedHolidayCallFlows $true -ShowNestedHolidayIVRs $true -CacheResults $true
 
     $allNestedVoiceAppIds += $nestedVoiceApps
 

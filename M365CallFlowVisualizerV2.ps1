@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.9.3
+    Version:            2.9.4
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -48,8 +48,8 @@
         Type:               switch
         Default value:      false
 
-    -NoCache
-        Specifies if the script should read all auto attendants and call queues in each run. If set to false, the script will read the data from the global variables, if they are not null or empty. If set to true, the script will read the data with each run.
+    -CacheResults
+        Specifies if the script should read all auto attendants and call queues in each run. If set to true, the script will read the data from the global variables, if they are not null or empty. If set to false, the script will read the data with each run.
         Required:           false
         Type:               boolean
         Default value:      false
@@ -254,7 +254,7 @@ param(
     [Parameter(Mandatory=$false)][Bool]$ExportHtml = $true,
     [Parameter(Mandatory=$false)][Bool]$ExportPng = $false,
     [Parameter(Mandatory=$false)][Switch]$PreviewHtml,
-    [Parameter(Mandatory=$false)][Bool]$NoCache = $true,
+    [Parameter(Mandatory=$false)][Bool]$CacheResults = $false,
     [Parameter(Mandatory=$false)][String]$CustomFilePath = ".\Output\$(Get-Date -Format "yyyy-MM-dd")",
     [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
     [Parameter(Mandatory=$false)][Bool]$ShowUserCallingSettings = $true,
@@ -344,7 +344,7 @@ $allSubgraphs = @()
 $audioFileNames = @()
 $ttsGreetings = @()
 
-if ([String]::IsNullOrEmpty($Global:allAutoAttendants) -or $NoCache -eq $true) {
+if ([String]::IsNullOrEmpty($Global:allAutoAttendants) -or $CacheResults -eq $false) {
 
     Write-Host "Retrieving all Auto Attendants (max. 1000)... this can take a while..." -ForegroundColor Magenta
 
@@ -354,11 +354,11 @@ if ([String]::IsNullOrEmpty($Global:allAutoAttendants) -or $NoCache -eq $true) {
 
 else {
 
-    Write-Warning  "Auto Attendant config is read from memory. If you don't see recent changes reflected in the output, use the -NoCache `$true parameter."
+    Write-Warning  "Auto Attendant config is read from memory. If you don't see recent changes reflected in the output, use the -CacheResults `$false parameter."
 
 }
 
-if ([String]::IsNullOrEmpty($Global:allCallQueues) -or $NoCache -eq $true) {
+if ([String]::IsNullOrEmpty($Global:allCallQueues) -or $CacheResults -eq $false) {
 
     Write-Host "Retrieving all Call Queues (max. 1000)... this can take a while..." -ForegroundColor Magenta
 
@@ -368,11 +368,11 @@ if ([String]::IsNullOrEmpty($Global:allCallQueues) -or $NoCache -eq $true) {
 
 else {
 
-    Write-Warning "Call Queue config is read from memory. If you don't see recent changes reflected in the output, use the -NoCache `$true parameter."
+    Write-Warning "Call Queue config is read from memory. If you don't see recent changes reflected in the output, use the -CacheResults `$false parameter."
 
 }
 
-if ([String]::IsNullOrEmpty($Global:allResourceAccounts) -or $NoCache -eq $true) {
+if ([String]::IsNullOrEmpty($Global:allResourceAccounts) -or $CacheResults -eq $false) {
 
     Write-Host "Retrieving all Resource Accounts (max. 1000)... this can take a while..." -ForegroundColor Magenta
 
@@ -382,7 +382,7 @@ if ([String]::IsNullOrEmpty($Global:allResourceAccounts) -or $NoCache -eq $true)
 
 else {
 
-    Write-Warning "Resource Accounts are read from memory. If you don't see recent changes reflected in the output, use the -NoCache `$true parameter."
+    Write-Warning "Resource Accounts are read from memory. If you don't see recent changes reflected in the output, use the -CacheResults `$false parameter."
 
 }
 
