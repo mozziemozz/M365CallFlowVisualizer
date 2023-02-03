@@ -9,7 +9,7 @@
 
 #>
 
-#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.9.1" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
+#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.9.3" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
 
 [CmdletBinding(DefaultParametersetName="None")]
 param(

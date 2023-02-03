@@ -109,3 +109,4 @@
 |30.01.2023|M365CallFlowVisualizerV2.ps1|2.9.2|Add parameter to expand/show nested AAs and CQs of holiday call handlings, fix greeting which was shown on AA call flows when none was configured with DisconnectCall action. Show voice stlye (Male/Female) on voice response enabled AA.|
 |01.02.2023|M365CallFlowVisualizerV2.ps1|2.9.3|Add parameter to display IVRs of Holiday Call Handlings. Fix links when multiple holidays pointed to a Voice App.|
 |01.02.2023|M365CallFlowVisualizerV2.ps1|2.9.4|Rename -NoCache to -CacheResults as it's easier to not to think about a double negative value.|
+|03.02.2023|M365CallFlowVisualizerV2.ps1|2.9.5|Add support for Call Queue Welcome Text-To-Speech Greetings. Requires MicrosoftTeams PowerShell 4.9.3.|

@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.9.4
+    Version:            2.9.5
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -244,7 +244,7 @@
     
 #>
 
-#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.6.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
+#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.9.3" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
 
 [CmdletBinding(DefaultParametersetName="None")]
 param(
@@ -2806,6 +2806,7 @@ function Get-CallQueueCallFlow {
     $CqDistributionLists = $MatchingCQ.DistributionLists
     $CqDefaultMusicOnHold = $MatchingCQ.UseDefaultMusicOnHold
     $CqWelcomeMusicFileName = $MatchingCQ.WelcomeMusicFileName
+    $CqWelcomeTTSGreeting = $MatchingCQ.WelcomeTextToSpeechPrompt
     $CqLanguageId = $MatchingCQ.LanguageId
     $CqOboResourceAccountIds = $MatchingCQ.OboResourceAccountIds.Guid
     
@@ -2857,46 +2858,81 @@ function Get-CallQueueCallFlow {
     }
 
     # Check if call queue uses a greeting
-    if (!$CqWelcomeMusicFileName) {
+    if (!$CqWelcomeMusicFileName -and !$CqWelcomeTTSGreeting) {
         $CqGreeting = "None"
 
         $cqGreetingNode = $null
     }
 
     else {
-        $CqGreeting = "AudioFile"
 
-        if ($ShowAudioFileName) {
+        if ($CqWelcomeMusicFileName) {
 
-            $audioFileName = Optimize-DisplayName -String ($CqWelcomeMusicFileName)
+            $CqGreeting = "AudioFile"
 
-            if ($ExportAudioFiles) {
+            if ($ShowAudioFileName) {
 
-                if ($MatchingCQ.WelcomeMusicFileDownloadUri) {
+                $audioFileName = Optimize-DisplayName -String ($CqWelcomeMusicFileName)
 
-                    Invoke-WebRequest -Uri $MatchingCQ.WelcomeMusicFileDownloadUri -OutFile "$FilePath\$audioFileName"
+                if ($ExportAudioFiles) {
+
+                    if ($MatchingCQ.WelcomeMusicFileDownloadUri) {
+
+                        Invoke-WebRequest -Uri $MatchingCQ.WelcomeMusicFileDownloadUri -OutFile "$FilePath\$audioFileName"
+
+                    }
+
+                    else {
+
+                        $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.WelcomeMusicResourceId -ApplicationId HuntGroup
+                        [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+
+                    }
+
+                    $audioFileNames += ("click cqGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
 
                 }
-
-                else {
-
-                    $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.WelcomeMusicResourceId -ApplicationId HuntGroup
-                    [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
-
-                }
-
-                $audioFileNames += ("click cqGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
-
-            }
+                
+                if ($audioFileName.Length -gt $truncateGreetings) {
             
-            if ($audioFileName.Length -gt $truncateGreetings) {
-        
-                $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
-                $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
+                    $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
+                    $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
+
+                }
+
+                $CqGreeting += " <br> $audioFileName"
 
             }
 
-            $CqGreeting += " <br> $audioFileName"
+        }
+
+        else {
+
+            $CqGreeting = "TextToSpeech"
+
+            if ($ShowTTSGreetingText) {
+
+                $welcomeTTSGreetingValueExport = $MatchingCQ.WelcomeTextToSpeechPrompt
+                $welcomeTTSGreetingValue = Optimize-DisplayName -String $MatchingCQ.WelcomeTextToSpeechPrompt
+
+                if ($ExportTTSGreetings) {
+
+                    $welcomeTTSGreetingValueExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqWelcomeGreeting.txt"
+    
+                    $ttsGreetings += ("click cqGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqWelcomeGreeting.txt" + '"')
+    
+                }    
+
+
+                if ($welcomeTTSGreetingValue.Length -gt $truncateGreetings) {
+
+                    $welcomeTTSGreetingValue = $welcomeTTSGreetingValue.Remove($welcomeTTSGreetingValue.Length - ($welcomeTTSGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
+
+                }
+
+                $cqGreeting += " <br> ''$welcomeTTSGreetingValue''"
+
+            }
 
         }
 

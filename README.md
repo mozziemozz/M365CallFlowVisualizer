@@ -19,7 +19,7 @@ The following PowerShell Modules are required:
 
 |Module|Required Version|Last Tested Version|
 |---|---|---|
-|MicrosoftTeams|4.6.0|4.9.0|
+|MicrosoftTeams|4.9.3|4.9.3|
 |Microsoft.Graph.Users|n/a|1.9.6|
 |Microsoft.Graph.Groups|n/a|1.9.6|
 
