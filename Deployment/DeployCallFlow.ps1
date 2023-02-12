@@ -1,33 +1,39 @@
 #Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.8.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups", "Microsoft.Graph.Identity.DirectoryManagement"
 
-$tenantName = "domain.com"
-$departmentName = "Marketing"
-$phoneNumber = "+1234567890"
-$voiceRoutingPolicyName = ""
-$usageLocation = "CH"
-$agentAlertTime = 30
-$timeoutThreshold = 30
-$promptLanguage = "en-GB"
-$timeoutSharedVoicemailPrompt = "Unfortunately, we can't take your call at the moment. Please leave a message after the tone."
-$channelName = "Call Queue"
+[CmdletBinding(DefaultParametersetName="None")]
+param(
+    [Parameter(Mandatory=$true)][String]$tenantName,
+    [Parameter(Mandatory=$true)][String]$departmentName,
+    [Parameter(Mandatory=$false)][String]$topLevelNumber,
+    [Parameter(Mandatory=$false)][ValidateSet("CallingPlan","OperatorConnect","DirectRouting")][String]$numberType,
+    [Parameter(Mandatory=$false)][String]$voiceRoutingPolicyName,
+    [Parameter(Mandatory=$true)][String]$usageLocation,
+    [Parameter(Mandatory=$false)][single]$agentAlertTime = 30,
+    [Parameter(Mandatory=$false)][single]$timeoutThreshold = 30,
+    [Parameter(Mandatory=$false)][String]$promptLanguage = "en-GB",
+    [Parameter(Mandatory=$true)][String]$timeoutSharedVoicemailPrompt,
+    [Parameter(Mandatory=$true)][String]$afterHoursDisconnectPrompt
+
+)
 
 # Auto Attendant Details
 $tr1 = New-CsOnlineTimeRange -Start 08:15 -End 12:00
 $tr2 = New-CsOnlineTimeRange -Start 13:30 -End 17:45
 $timeZone = "W. Europe Standard Time"
 
-$resourceAccounts = (@{
-    1 = [PSCustomObject]@{Name=$departmentName;Type="AutoAttendant";TypeShort="AA";PhoneNumber=$phoneNumber;AppId="ce933385-9390-45d1-9512-c8d228074e07";UpnPrefix="ra_aa_";TimeOutTargetNumber=""}
-    2 = [PSCustomObject]@{Name=$departmentName;Type="CallQueue";TypeShort="CQ";PhoneNumber="";AppId="11cd3e2e-fccb-42ad-ad00-878b93575e07";UpnPrefix="ra_cq_";TimeOutTargetNumber=$timeOutTargetNumber}    
-}).Values | Sort-Object -Descending
-
 . .\Functions\Connect-M365CFV.ps1
 
 . Connect-M365CFV
 . Connect-MgGraph -Scopes "User.ReadWrite.All","Group.ReadWrite.All","Domain.ReadWrite.All","Organization.ReadWrite.All","Directory.ReadWrite.All" -TenantId $msTeamsTenantId
 
-
 . Connect-ExchangeOnline
+
+$resourceAccounts = (@{
+    1 = [PSCustomObject]@{Name=$departmentName;Type="AutoAttendant";TypeShort="AA";PhoneNumber=$topLevelNumber;AppId="ce933385-9390-45d1-9512-c8d228074e07";UpnPrefix="ra_aa_";TimeOutTargetNumber=""}
+    2 = [PSCustomObject]@{Name=$departmentName;Type="CallQueue";TypeShort="CQ";PhoneNumber="";AppId="11cd3e2e-fccb-42ad-ad00-878b93575e07";UpnPrefix="ra_cq_";TimeOutTargetNumber=$timeOutTargetNumber}    
+}).Values | Sort-Object -Descending
+
+$channelName = "$departmentName CQ"
 
 # Start Logging
 $ScriptName = $MyInvocation.MyCommand.Name
@@ -169,7 +175,7 @@ $defaultMenuOptions = New-CsAutoAttendantMenuOption -Action TransferCallToTarget
 $defaultMenu = New-CsAutoAttendantMenu -Name "Default menu" -MenuOptions @($defaultMenuOptions)
 $defaultCallFlow = New-CsAutoAttendantCallFlow -Name "Default call flow" -Menu $defaultMenu
 
-$afterHoursGreetingPrompt = New-CsAutoAttendantPrompt -TextToSpeechPrompt $timeoutSharedVoicemailPrompt
+$afterHoursGreetingPrompt = New-CsAutoAttendantPrompt -TextToSpeechPrompt $afterHoursDisconnectPrompt
 $automaticMenuOption = New-CsAutoAttendantMenuOption -Action Disconnect -DtmfResponse Automatic
 $afterHoursMenu = New-CsAutoAttendantMenu -Name "After Hours menu" -MenuOptions @($automaticMenuOption)
 $afterHoursCallFlow = New-CsAutoAttendantCallFlow -Name "After Hours call flow" -Greetings @($afterHoursGreetingPrompt) -Menu $afterHoursMenu

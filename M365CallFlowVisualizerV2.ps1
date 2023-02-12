@@ -7,8 +7,9 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.9.5
+    Version:            2.9.6
     Changelog:          Moved to repository at .\Changelog.md
+    Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
 
     .PARAMETER Name
     -Identity
@@ -93,6 +94,12 @@
 
     -ShowCqAgentOptInStatus
         Specifies whether or not the current opt in status of agents should be displayed.
+        Required:           false
+        Type:               switch
+        Default value:      false
+
+    -ShowPhoneNumberType
+        Specifies whether or not the phone number type of phone numbers should be displayed. (CallingPlan, OperatorConnect, DirectRouting)
         Required:           false
         Type:               switch
         Default value:      false   
@@ -262,6 +269,7 @@ param(
     [Parameter(Mandatory=$false)][Bool]$ShowNestedHolidayIVRs = $false,
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentPhoneNumbers,
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentOptInStatus,
+    [Parameter(Mandatory=$false)][Switch]$ShowPhoneNumberType,
     [Parameter(Mandatory=$false)][Switch]$ShowTTSGreetingText,
     [Parameter(Mandatory=$false)][Switch]$ShowAudioFileName,
     [Parameter(Mandatory=$false)][Single]$TruncateGreetings = 20,
@@ -868,7 +876,7 @@ subgraph $holidaySubgraphName
 
                             $holidayActionTargetName = $holidayActionTargetName.Remove(($holidayActionTargetName.Length -4)) + "****"
         
-                        }    
+                        }
 
                         $holidayVoicemailSystemGreeting = $null
 
@@ -1856,7 +1864,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                             $defaultCallFlowTargetName = $defaultCallFlowTargetName.Remove(($defaultCallFlowTargetName.Length -4)) + "****"
         
-                        }        
+                        }
 
                         $defaultCallFlowVoicemailSystemGreeting = $null
 
@@ -2548,7 +2556,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                             $afterHoursCallFlowTargetName = $afterHoursCallFlowTargetName.Remove(($afterHoursCallFlowTargetName.Length -4)) + "****"
         
-                        }        
+                        }
 
                         $afterHoursCallFlowVoicemailSystemGreeting = $null
 
@@ -3563,6 +3571,12 @@ function Get-CallQueueCallFlow {
 
             else {
 
+                if ($ShowPhoneNumberType -eq $true) {
+
+                    $CqAgentPhoneNumberType = (Get-CsPhoneNumberAssignment -TelephoneNumber $CqAgentPhoneNumber.Replace("tel:","")).NumberType
+                
+                }
+
                 if ($CqAgentPhoneNumber -match "tel:") {
 
                     $CqAgentPhoneNumber = $CqAgentPhoneNumber.Replace("tel:","")
@@ -3580,6 +3594,12 @@ function Get-CallQueueCallFlow {
             if ($ObfuscatePhoneNumbers -eq $true) {
 
                 $CqAgentPhoneNumber = $CqAgentPhoneNumber.Remove(($CqAgentPhoneNumber.Length -4)) + "****"
+
+            }
+
+            if ($ShowPhoneNumberType -eq $true) {
+
+                $CqAgentPhoneNumber = $CqAgentPhoneNumber + "<br>$CqAgentPhoneNumberType"
 
             }
 
@@ -3631,13 +3651,24 @@ function Get-CallQueueCallFlow {
                 $oboResourceAccountDisplayName = Optimize-DisplayName -String $oboResourceAccount.DisplayName
                 $oboResourceAccountPhoneNumber = $oboResourceAccount.PhoneNumber.Replace("tel:","")
 
+                if ($ShowPhoneNumberType -eq $true) {
+
+                    $oboResourceAccountPhoneNumberPhoneNumberType = (Get-CsPhoneNumberAssignment -TelephoneNumber $oboResourceAccount.PhoneNumber.Replace("tel:","")).NumberType
+                
+                }
+
                 if ($ObfuscatePhoneNumbers -eq $true) {
 
                     $oboResourceAccountPhoneNumber = $oboResourceAccountPhoneNumber.Remove(($oboResourceAccountPhoneNumber.Length -4)) + "****"
     
                 }
+
+                if ($ShowPhoneNumberType -eq $true) {
+
+                    $oboResourceAccountPhoneNumber = $oboResourceAccountPhoneNumber + "<br>$oboResourceAccountPhoneNumberPhoneNumberType"
+
+                }
     
-                
                 $oboResourceAccounts += "<br>$oboResourceAccountDisplayName $oboResourceAccountPhoneNumber"
 
             }
@@ -3763,7 +3794,7 @@ function Get-CallFlow {
 
             foreach ($ResourceAccount in $VoiceApp.ApplicationInstances) {
 
-                $ResourceAccountPhoneNumber = ((Get-CsOnlineApplicationInstance -Identity $ResourceAccount).PhoneNumber)
+                $ResourceAccountPhoneNumber = ($allResourceAccounts | Where-Object {$_.ObjectId -eq $ResourceAccount}).PhoneNumber
 
                 if ($ResourceAccountPhoneNumber) {
 
@@ -3814,7 +3845,7 @@ function Get-CallFlow {
 
             foreach ($ResourceAccount in $VoiceApp.ApplicationInstances) {
 
-                $ResourceAccountPhoneNumber = ((Get-CsOnlineApplicationInstance -Identity $ResourceAccount).PhoneNumber)
+                $ResourceAccountPhoneNumber = ($allResourceAccounts | Where-Object {$_.ObjectId -eq $ResourceAccount}).PhoneNumber
 
                 if ($ResourceAccountPhoneNumber) {
 
@@ -3853,7 +3884,48 @@ function Get-CallFlow {
 
         }
 
-        $VoiceAppSelection = $VoiceApps | Out-GridView -Title "Choose an Auto Attendant or Call Queue from the list." -PassThru
+        do {
+
+            $VoiceAppSelection = $VoiceApps | Out-GridView -Title "Choose an Auto Attendant or Call Queue from the list." -PassThru
+
+            if (!$VoiceAppSelection) {
+
+                Write-Warning -Message "No voice app was selected. The script cannot work it's magic until you select a top-level voice app."
+
+                do {
+
+                    $abortPrompt = Read-Host -Prompt "Do you want to abort the script? yes/no"
+
+                    if ($abortPrompt -ne "yes" -and $abortPrompt -ne "no") {
+
+                        Write-Warning "Invalid input. Please enter either 'yes' or 'no'."
+
+                        $continueScript = $false
+
+                    }
+
+                    else {
+                    
+                        $continueScript = $true
+                    
+                    }
+
+                } until (
+                    $continueScript -eq $true
+                )
+
+                if ($abortPrompt -eq "yes") {
+
+                    Write-Host "Script aborted!" -ForegroundColor Red
+                    exit
+
+                }
+            
+            }
+
+        } until (
+            $VoiceAppSelection
+        )
 
         if ($VoiceAppSelection.Type -eq "Auto Attendant") {
 
@@ -3923,7 +3995,21 @@ function Get-CallFlow {
 
         }
 
-        $ApplicationInstancePhoneNumber = ((Get-CsOnlineApplicationInstance -Identity $ApplicationInstance).PhoneNumber) -replace ("tel:","")
+        $ApplicationInstancePhoneNumber = ($allResourceAccounts | Where-Object {$_.ObjectId -eq $ApplicationInstance}).PhoneNumber -replace ("tel:","")
+
+        if ($ShowPhoneNumberType -eq $true) {
+
+            $ApplicationInstancePhoneNumberType = (Get-CsPhoneNumberAssignment -TelephoneNumber $ApplicationInstancePhoneNumber).NumberType
+
+            $ApplicationInstancePhoneNumberName = $ApplicationInstancePhoneNumberName + "<br>"
+
+        }
+
+        else {
+
+            $ApplicationInstancePhoneNumberType = $null
+
+        }
 
         if ($ApplicationInstancePhoneNumber) {
 
@@ -3944,6 +4030,12 @@ function Get-CallFlow {
                 $ApplicationInstancePhoneNumberName = $ApplicationInstancePhoneNumber
             
             }
+
+            if ($ShowPhoneNumberType -eq $true) {
+    
+                $ApplicationInstancePhoneNumberName = $ApplicationInstancePhoneNumberName + "<br>$ApplicationInstancePhoneNumberType"
+    
+            }    
 
             $mdNodeNumber = "start$($ApplicationInstancePhoneNumber)((Incoming Call at <br> $ApplicationInstancePhoneNumberName)) $mdPhoneNumberLinkType $($VoiceApp.Identity)([$($voiceAppType) <br> $VoiceAppFileName])"
 
