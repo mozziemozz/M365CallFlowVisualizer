@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.9.7
+    Version:            2.9.8
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
 
@@ -305,6 +305,7 @@ $ErrorActionPreference = "Continue"
 . .\Functions\New-VoiceAppUserLinkProperties.ps1
 . .\Functions\Get-SharedVoicemailGroupMembers.ps1
 . .\Functions\Get-IvrTransferMessage.ps1
+. .\Functions\Get-AutoAttendantDirectorySearchConfig.ps1
 
 # Connect to MicrosoftTeams and Microsoft.Graph
 . Connect-M365CFV
@@ -354,9 +355,9 @@ $ttsGreetings = @()
 
 if ([String]::IsNullOrEmpty($Global:allAutoAttendants) -or $CacheResults -eq $false) {
 
-    Write-Host "Retrieving all Auto Attendants (max. 1000)... this can take a while..." -ForegroundColor Magenta
+    Write-Host "Retrieving all Auto Attendants (max. 9999)... this can take a while..." -ForegroundColor Magenta
 
-    $Global:allAutoAttendants = Get-CsAutoAttendant -First 1000
+    $Global:allAutoAttendants = Get-CsAutoAttendant -First 9999
 
 }
 
@@ -368,9 +369,9 @@ else {
 
 if ([String]::IsNullOrEmpty($Global:allCallQueues) -or $CacheResults -eq $false) {
 
-    Write-Host "Retrieving all Call Queues (max. 1000)... this can take a while..." -ForegroundColor Magenta
+    Write-Host "Retrieving all Call Queues (max. 9999)... this can take a while..." -ForegroundColor Magenta
 
-    $Global:allCallQueues = Get-CsCallQueue -WarningAction SilentlyContinue -First 1000
+    $Global:allCallQueues = Get-CsCallQueue -WarningAction SilentlyContinue -First 9999
 
 }
 
@@ -382,9 +383,9 @@ else {
 
 if ([String]::IsNullOrEmpty($Global:allResourceAccounts) -or $CacheResults -eq $false) {
 
-    Write-Host "Retrieving all Resource Accounts (max. 1000)... this can take a while..." -ForegroundColor Magenta
+    Write-Host "Retrieving all Resource Accounts (max. 9999)... this can take a while..." -ForegroundColor Magenta
 
-    $Global:allResourceAccounts = Get-CsOnlineApplicationInstance -ResultSize 1000
+    $Global:allResourceAccounts = Get-CsOnlineApplicationInstance -ResultSize 9999
 
 }
 
@@ -826,6 +827,8 @@ subgraph $holidaySubgraphName
                                 $nestedVoiceApps += $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)
     
                             }
+
+                            $allMermaidNodes += $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)
 
                         }
 
@@ -1416,6 +1419,8 @@ function Get-AutoAttendantDefaultCallFlow {
     $defaultCallFlow = $aa.DefaultCallFlow
     $defaultCallFlowAction = $aa.DefaultCallFlow.Menu.MenuOptions.Action
 
+    . Get-AutoAttendantDirectorySearchConfig -CallFlowType "defaultCallFlow"
+
     # Get the current auto attentans default call flow greeting
     if (!$defaultCallFlow.Greetings.ActiveType){
         $defaultCallFlowGreeting = "Greeting <br> None"
@@ -1581,7 +1586,6 @@ function Get-AutoAttendantDefaultCallFlow {
             if ($aaIsVoiceResponseEnabled) {
 
                 $defaultCallFlowVoiceResponse = " or <br> Voice Response <br> Language: $($aa.LanguageId)<br>Voice Style: $($aa.VoiceId)$defaultCallFlowForceListen"
-
 
             }
 
@@ -2140,6 +2144,8 @@ function Get-AutoAttendantAfterHoursCallFlow {
     $afterHoursCallFlow = ($aa.CallFlows | Where-Object {$_.Id -eq $afterHoursAssociatedCallFlowId})
     $afterHoursCallFlowAction = ($aa.CallFlows | Where-Object {$_.Id -eq $afterHoursAssociatedCallFlowId}).Menu.MenuOptions.Action
 
+    . Get-AutoAttendantDirectorySearchConfig -CallFlowType "afterHoursCallFlow"
+
     # Get after hours greeting
     if (!$afterHoursCallFlow.Greetings.ActiveType){
         $afterHoursCallFlowGreeting = "Greeting <br> None"
@@ -2339,6 +2345,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
         foreach ($MenuOption in $afterHoursCallFlowMenuOptions) {
 
+            # Check if auto attendant has no IVR / menu options configured
             if ($afterHoursCallFlowMenuOptions.Count -lt 2 -and !$afterHoursCallFlow.Menu.Prompts.ActiveType) {
 
                 $mdDtmfLink = $null
@@ -2347,6 +2354,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
             }
 
+            # Auto attendant has an IVR menu options
             else {
 
                 if ($aaIsVoiceResponseEnabled) {

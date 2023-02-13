@@ -11,6 +11,8 @@ function Get-AutoAttendantHolidayCallFlow {
     $holidayCallFlow = $aa.CallFlows | Where-Object {$_.Id -eq $HolidayCallHandling.CallFlowId}
     $holidayCallFlowAction = $aa.Schedules | Where-Object {$_.Id -eq $HolidayCallHandling.ScheduleId}
 
+    . Get-AutoAttendantDirectorySearchConfig -CallFlowType "holidayCallFlow"
+
     # Get the current auto attentans holiday call flow greeting
     if (!$holidayCallFlow.Greetings.ActiveType){
         $holidayCallFlowGreeting = "Greeting <br> None"
