@@ -111,3 +111,4 @@
 |01.02.2023|M365CallFlowVisualizerV2.ps1|2.9.4|Rename -NoCache to -CacheResults as it's easier to not to think about a double negative value.|
 |03.02.2023|M365CallFlowVisualizerV2.ps1|2.9.5|Add support for Call Queue Welcome Text-To-Speech Greetings. Requires MicrosoftTeams PowerShell 4.9.3.|
 |12.02.2023|M365CallFlowVisualizerV2.ps1|2.9.6|Performance improvements (reduce number of Get-Cs*), Add parameter to show number type for CQ Agents, outbound calling Ids, Loop until a top level voice app is selected.|
+|13.02.2023|M365CallFlowVisualizerV2.ps1|2.9.6|Fix bug where transfer message was displayed in AA default/after hours call flow without IVR. Add user calling settings to nested holiday call flows.|
