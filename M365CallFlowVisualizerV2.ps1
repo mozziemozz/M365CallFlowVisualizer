@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.9.9
+    Version:            2.9.9b
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
 
@@ -788,7 +788,10 @@ subgraph $holidaySubgraphName
 
                     if ($holidayCallFlow.Menu.Prompts.ActiveType -and $holidayCallFlow.Menu.MenuOptions[0].DtmfResponse -ne "Automatic") {
 
-                        $mermaidCode += "$holidaySubgraphName -.- elementAAHolidayIvr$($aaObjectId)-$($HolidayCounter)"
+                        # Display holiday name on link text
+                        $mermaidCode += "$holidaySubgraphName -. Holiday: $mermaidFriendlyHolidayName .- elementAAHolidayIvr$($aaObjectId)-$($HolidayCounter)"
+                        # No holiday name on link text
+                        # $mermaidCode += "$holidaySubgraphName -.- elementAAHolidayIvr$($aaObjectId)-$($HolidayCounter)"
 
                     }
 
@@ -834,7 +837,10 @@ subgraph $holidaySubgraphName
 
                         if ($ShowUserCallingSettings -eq $true -and $ShowNestedHolidayCallFlows -eq $true) {
 
-                            $mermaidCode += "$holidaySubgraphName -.- $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)(User <br> $holidayActionTargetName)"
+                            # Display holiday name on link text
+                            $mermaidCode += "$holidaySubgraphName -. Holiday: $mermaidFriendlyHolidayName .- $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)(User <br> $holidayActionTargetName)"
+                            # No holiday name on link text
+                            # $mermaidCode += "$holidaySubgraphName -.- $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)(User <br> $holidayActionTargetName)"
                             
                             if ($nestedVoiceApps -notcontains $($holidayCallFlow.Menu.MenuOptions.CallTarget.Id)) {
 
@@ -1014,8 +1020,10 @@ subgraph $holidaySubgraphName
 
             if ($ShowNestedHolidayCallFlows -and !$holidayCallFlow.Menu.Prompts.ActiveType -and $holidayCallFlow.Menu.MenuOptions.CallTarget.Type -eq "ApplicationEndpoint") {
 
-                # $mdHolidayNestedCallFlowLinks += "$holidaySubgraphName -. Holiday: $mermaidFriendlyHolidayName .- $holidayActionTargetVoiceAppId`n"
-                $mdHolidayNestedCallFlowLinks += "$holidaySubgraphName -.- $holidayActionTargetVoiceAppId`n"
+                # Display holiday name on link text
+                $mdHolidayNestedCallFlowLinks += "$holidaySubgraphName -. Holiday: $mermaidFriendlyHolidayName .- $holidayActionTargetVoiceAppId`n"
+                # No holiday name on link name
+                #$mdHolidayNestedCallFlowLinks += "$holidaySubgraphName -.- $holidayActionTargetVoiceAppId`n"
 
             }
 
