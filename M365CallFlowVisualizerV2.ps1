@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.9.8
+    Version:            2.9.9
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
 
@@ -85,6 +85,18 @@
         Required:           false
         Type:               boolean
         Default value:      true
+
+    -CombineDisconnectCallNodes
+        Specifies whether or not to only display one mermaid node for all disconnect actions. If this is enabled, diagrams are most likely less readable. This does not apply to "DisconnectCall" actions in holiday call handlings.
+        Required:           false
+        Type:               boolean
+        Default value:      false
+
+    -CombineCallConnectedNodes
+        Specifies whether or not to only display one mermaid node for all call connected noed. If this is enabled, diagrams are most likely less readable.
+        Required:           false
+        Type:               boolean
+        Default value:      false
 
     -ShowCqAgentPhoneNumbers
         Specifies whether or not the agent subgraphs of call queues should include a users direct number.
@@ -267,6 +279,8 @@ param(
     [Parameter(Mandatory=$false)][Bool]$ShowUserCallingSettings = $true,
     [Parameter(Mandatory=$false)][Bool]$ShowNestedHolidayCallFlows = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowNestedHolidayIVRs = $false,
+    [Parameter(Mandatory=$false)][Bool]$CombineDisconnectCallNodes = $false,
+    [Parameter(Mandatory=$false)][Bool]$CombineCallConnectedNodes = $false,
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentPhoneNumbers,
     [Parameter(Mandatory=$false)][Switch]$ShowCqAgentOptInStatus,
     [Parameter(Mandatory=$false)][Switch]$ShowPhoneNumberType,
@@ -1489,9 +1503,21 @@ function Get-AutoAttendantDefaultCallFlow {
     # Check if default callflow action is disconnect call
     if ($defaultCallFlowAction -eq "DisconnectCall") {
 
-        $mdAutoAttendantDefaultCallFlow = "defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting] --> defaultCallFlow$($aaDefaultCallFlowAaObjectId)(($defaultCallFlowAction))`n"
+        if ($CombineDisconnectCallNodes -eq $true) {
 
-        $allMermaidNodes += @("defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)","defaultCallFlow$($aaDefaultCallFlowAaObjectId)")
+            $mdAutoAttendantDefaultCallFlow = "defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting] --> disconnectCall(($defaultCallFlowAction))`n"
+
+            $allMermaidNodes += @("defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)","disconnectCall")
+
+        }
+
+        else {
+
+            $mdAutoAttendantDefaultCallFlow = "defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting] --> defaultCallFlow$($aaDefaultCallFlowAaObjectId)(($defaultCallFlowAction))`n"
+
+            $allMermaidNodes += @("defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)","defaultCallFlow$($aaDefaultCallFlowAaObjectId)")
+
+        }
 
     }
 
@@ -2214,9 +2240,21 @@ function Get-AutoAttendantAfterHoursCallFlow {
     # Check if the after hours callflow action is disconnect call
     if ($afterHoursCallFlowAction -eq "DisconnectCall") {
 
-        $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)>$AfterHoursCallFlowGreeting] --> afterHoursCallFlow$($aaAfterHoursCallFlowAaObjectId)(($afterHoursCallFlowAction))`n"
+        if ($CombineDisconnectCallNodes -eq $true) {
 
-        $allMermaidNodes += @("afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)","afterHoursCallFlow$($aaAfterHoursCallFlowAaObjectId)")
+            $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)>$AfterHoursCallFlowGreeting] --> disconnectCall(($afterHoursCallFlowAction))`n"
+
+            $allMermaidNodes += @("afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)","disconnectCall")
+
+        }
+
+        else {
+
+            $mdAutoAttendantAfterHoursCallFlow = "afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)>$AfterHoursCallFlowGreeting] --> afterHoursCallFlow$($aaAfterHoursCallFlowAaObjectId)(($afterHoursCallFlowAction))`n"
+
+            $allMermaidNodes += @("afterHoursCallFlowGreeting$($aaAfterHoursCallFlowAaObjectId)","afterHoursCallFlow$($aaAfterHoursCallFlowAaObjectId)")
+    
+        }
 
     }
     
@@ -3084,9 +3122,22 @@ function Get-CallQueueCallFlow {
     # Switch through call queue overflow action target
     switch ($CqOverFlowAction) {
         DisconnectWithBusy {
-            $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)((DisconnectCall))"
 
-            $allMermaidNodes += "cqOverFlowAction$($cqCallFlowObjectId)"
+            if ($CombineDisconnectCallNodes -eq $true) {
+
+                $CqOverFlowActionFriendly = "disconnectCall((DisconnectCall))"
+
+                $allMermaidNodes += "disconnectCall"
+    
+            }
+    
+            else {
+    
+                $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)((DisconnectCall))"
+
+                $allMermaidNodes += "cqOverFlowAction$($cqCallFlowObjectId)"
+            
+            }
 
         }
         Forward {
@@ -3358,9 +3409,22 @@ function Get-CallQueueCallFlow {
     # Switch through call queue timeout overflow action
     switch ($CqTimeoutAction) {
         Disconnect {
-            $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)((DisconnectCall))"
 
-            $allMermaidNodes += "cqTimeoutAction$($cqCallFlowObjectId)"
+            if ($CombineDisconnectCallNodes -eq $true) {
+
+                $CqTimeoutActionFriendly = "disconnectCall((DisconnectCall))"
+
+                $allMermaidNodes += "disconnectCall"
+    
+            }
+    
+            else {
+    
+                $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)((DisconnectCall))"
+
+                $allMermaidNodes += "cqTimeoutAction$($cqCallFlowObjectId)"
+                
+            }
 
         }
         Forward {
@@ -3782,6 +3846,22 @@ function Get-CallQueueCallFlow {
     
     # Create default callflow mermaid code
 
+    if ($CombineCallConnectedNodes -eq $true) {
+
+        $mdCallSuccess = "callSuccess((Call Connected))"
+
+        $allMermaidNodes += "cqEnd"
+
+    }
+
+    else {
+
+        $mdCallSuccess = "cqEnd$($cqCallFlowObjectId)((Call Connected))"
+
+        $allMermaidNodes += "cqEnd$($cqCallFlowObjectId)"
+
+    }
+
 $mdCallQueueCallFlow =@"
 $($MatchingCQIdentity)([Call Queue <br> $($CqName)]) -->$cqGreetingNode overFlow$($cqCallFlowObjectId){More than $CqOverFlowThreshold <br> Active Calls?}
 overFlow$($cqCallFlowObjectId) --> |Yes| $CqOverFlowActionFriendly
@@ -3803,7 +3883,7 @@ end
 subgraphAgents$($cqCallFlowObjectId) --> cqResult$($cqCallFlowObjectId){Agent Answered?}
 end
 
-cqResult$($cqCallFlowObjectId) --> |Yes| cqEnd$($cqCallFlowObjectId)((Call Connected))
+cqResult$($cqCallFlowObjectId) --> |Yes| $mdCallSuccess
 cqResult$($cqCallFlowObjectId) --> |No| timeOut$($cqCallFlowObjectId) --> $CqTimeoutActionFriendly
 
 "@
@@ -3839,7 +3919,7 @@ timeOut$($cqCallFlowObjectId) --> $CqTimeoutActionFriendly
             }
         }
 
-        $allMermaidNodes += @("cqGreeting$($cqCallFlowObjectId)","overFlow$($cqCallFlowObjectId)","routingMethod$($cqCallFlowObjectId)","agentAlertTime$($cqCallFlowObjectId)","cqSettingsContainer$($cqCallFlowObjectId)","timeOut$($cqCallFlowObjectId)","agentListType$($cqCallFlowObjectId)","cqResult$($cqCallFlowObjectId)","cqEnd$($cqCallFlowObjectId)")
+        $allMermaidNodes += @("cqGreeting$($cqCallFlowObjectId)","overFlow$($cqCallFlowObjectId)","routingMethod$($cqCallFlowObjectId)","agentAlertTime$($cqCallFlowObjectId)","cqSettingsContainer$($cqCallFlowObjectId)","timeOut$($cqCallFlowObjectId)","agentListType$($cqCallFlowObjectId)","cqResult$($cqCallFlowObjectId)")
         $allSubgraphs += @("subgraphCallDistribution$($cqCallFlowObjectId)","subgraphCqSettings$($cqCallFlowObjectId)","subgraphAgents$($cqCallFlowObjectId)")
 
     }

@@ -114,3 +114,5 @@
 |13.02.2023|M365CallFlowVisualizerV2.ps1|2.9.7|Fix bug where transfer message was displayed in AA default/after hours call flow without IVR. Add user calling settings to nested holiday call flows. Extend -MaxResults from 1000 to 9999.|
 |13.02.2023|Get-AutoAttendantDirectorySearchConfig.ps1|1.0.0|Initial development to read search scope configurations from AAs.|
 |13.02.2023|M365CallFlowVisualizerV2.ps1|2.9.8|Include directory search scope for AAs with voice menus.|
+|14.02.2023|M365CallFlowVisualizerV2.ps1|2.9.9|Add params to combine all "Call Connected" and "DisconnectCall" nodes.|
+|14.02.2023|Get-TeamsUserCallFlow.ps1|1.0.5|Add param to combine all "Call Connected" and "DisconnectCall" nodes.|

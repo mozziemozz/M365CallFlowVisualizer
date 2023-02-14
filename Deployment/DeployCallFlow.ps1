@@ -1,4 +1,4 @@
-#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.8.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups", "Microsoft.Graph.Identity.DirectoryManagement"
+#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.8.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups", "Microsoft.Graph.Identity.DirectoryManagement", "ExchangeOnlineManagement"
 
 [CmdletBinding(DefaultParametersetName="None")]
 param(
@@ -12,14 +12,10 @@ param(
     [Parameter(Mandatory=$false)][single]$timeoutThreshold = 30,
     [Parameter(Mandatory=$false)][String]$promptLanguage = "en-GB",
     [Parameter(Mandatory=$true)][String]$timeoutSharedVoicemailPrompt,
-    [Parameter(Mandatory=$true)][String]$afterHoursDisconnectPrompt
+    [Parameter(Mandatory=$true)][String]$afterHoursDisconnectPrompt,
+    [Parameter(Mandatory=$false)][String]$timeZone = "W. Europe Standard Time"
 
 )
-
-# Auto Attendant Details
-$tr1 = New-CsOnlineTimeRange -Start 08:15 -End 12:00
-$tr2 = New-CsOnlineTimeRange -Start 13:30 -End 17:45
-$timeZone = "W. Europe Standard Time"
 
 . .\Functions\Connect-M365CFV.ps1
 
@@ -27,6 +23,10 @@ $timeZone = "W. Europe Standard Time"
 . Connect-MgGraph -Scopes "User.ReadWrite.All","Group.ReadWrite.All","Domain.ReadWrite.All","Organization.ReadWrite.All","Directory.ReadWrite.All" -TenantId $msTeamsTenantId
 
 . Connect-ExchangeOnline
+
+# Auto Attendant Details
+$tr1 = New-CsOnlineTimeRange -Start 08:15 -End 12:00
+$tr2 = New-CsOnlineTimeRange -Start 13:30 -End 17:45
 
 $resourceAccounts = (@{
     1 = [PSCustomObject]@{Name=$departmentName;Type="AutoAttendant";TypeShort="AA";PhoneNumber=$topLevelNumber;AppId="ce933385-9390-45d1-9512-c8d228074e07";UpnPrefix="ra_aa_";TimeOutTargetNumber=""}
@@ -53,7 +53,7 @@ if (!$MCOVU) {
 
 # Create Team
 
-$newTeam = New-Team -DisplayName "$departmentName $($resourceAccounts[-1].TypeShort)" -Description "Call Queue Team for $departmentName" -MailNickName "cq_$($departmentName)"  -Visibility Private
+$newTeam = New-Team -DisplayName "$departmentName $($resourceAccounts[-1].TypeShort)" -Description "Call Queue Team for $departmentName" -MailNickName "cq_$($mailNickName)"  -Visibility Private
 $newChannel = New-TeamChannel -GroupId $newTeam.GroupId -DisplayName $channelName -Description "Channel for calls to $departmentName" -MembershipType Standard
 $newChannelOwner = (Get-TeamChannelUser -GroupId $newTeam.GroupId -DisplayName $channelName | Where-Object {$_.Role -eq "Owner"}[0]).UserId
 Set-UnifiedGroup -Identity $newTeam.GroupId -HiddenFromExchangeClientsEnabled:$false -AutoSubscribeNewMembers:$true
@@ -62,6 +62,7 @@ Set-UnifiedGroup -Identity $newTeam.GroupId -HiddenFromExchangeClientsEnabled:$f
 foreach ($resourceAccount in $resourceAccounts) {
 
     $upn = $resourceAccount.UpnPrefix + $resourceAccount.Name.Replace(" ","_") + "@" + $defaultDomain
+    $mailNickName = $departmentName.Replace(" ","_")
 
     # Create new resource account
     Write-Host "Creating resource account for '$upn'..." -ForegroundColor Cyan

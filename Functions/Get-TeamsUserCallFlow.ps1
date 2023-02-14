@@ -6,7 +6,7 @@
     Reads the user calling settings of a Teams user and outputs them in an easy to understand SVG diagram. See the script "ExportAllUserCallFlowsToSVG.ps1" in the root of this repo for an example on how to generate a diagram for each user in a tenant.
 
     Author:             Martin Heusser
-    Version:            1.0.4
+    Version:            1.0.5
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -411,6 +411,22 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                     Default {}
                 }
 
+                if ($CombineCallConnectedNodes -eq $true) {
+
+                    $mdCallSuccess = "callSuccess((Call Connected))"
+            
+                    $allMermaidNodes += "callSuccess"
+            
+                }
+            
+                else {
+            
+                    $mdCallSuccess = "userForwardingConnected$UserId((Call Connected))"
+            
+                    $allMermaidNodes += "userForwardingConnected$UserId"
+            
+                }
+            
                 $mdUserCallingSettingsAddition = @"
 end
 userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
@@ -418,7 +434,7 @@ subgraphDelegates$UserId --> userForwardingResult$UserId{Call Answered?}
 $subgraphUnansweredSettings
 end
 userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
-userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
+userForwardingResult$UserId --> |Yes| $mdCallSuccess
 
 "@
 
@@ -957,6 +973,22 @@ $allSubgraphs += "subgraphDelegates$UserId"
                     }
     
                     $mdUserCallingSettings += $mdSubgraphDelegates
+
+                    if ($CombineCallConnectedNodes -eq $true) {
+
+                        $mdCallSuccess = "callSuccess((Call Connected))"
+                
+                        $allMermaidNodes += "callSuccess"
+                
+                    }
+                
+                    else {
+                
+                        $mdCallSuccess = "userForwardingConnected$UserId((Call Connected))"
+                
+                        $allMermaidNodes += "userForwardingConnected$UserId"
+                
+                    }    
         
                     $mdUserCallingSettingsAddition = @"
 end
@@ -965,7 +997,7 @@ subgraphDelegates$UserId --> userForwardingResult$UserId{Call Answered?}
 $subgraphUnansweredSettings
 end
 userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
-userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
+userForwardingResult$UserId --> |Yes| $mdCallSuccess
 
 "@
     
@@ -1049,6 +1081,22 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                     }
     
                     $mdUserCallingSettings += $mdSubgraphcallGroups
+
+                    if ($CombineCallConnectedNodes -eq $true) {
+
+                        $mdCallSuccess = "callSuccess((Call Connected))"
+                
+                        $allMermaidNodes += "callSuccess"
+                
+                    }
+                
+                    else {
+                
+                        $mdCallSuccess = "userForwardingConnected$UserId((Call Connected))"
+                
+                        $allMermaidNodes += "userForwardingConnected$UserId"
+                
+                    }    
     
                     $mdUserCallingSettingsAddition = @"
 end
@@ -1057,7 +1105,7 @@ $subgraphUnansweredSettings
 userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
 end
 userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
-userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
+userForwardingResult$UserId --> |Yes| $mdCallSuccess
 
 "@
     
@@ -1214,13 +1262,29 @@ $mdSubGraphUnansweredSettingsAddition1
 $allMermaidNodes += @("userForwarding$UserId","userParallelRing$userId","userForwardingResult$UserId","userForwardingTarget$UserId")
 $allSubgraphs += "subgraphSettings$UserId"
 
+                    if ($CombineCallConnectedNodes -eq $true) {
+
+                        $mdCallSuccess = "callSuccess((Call Connected))"
+
+                        $allMermaidNodes += "callSuccess"
+
+                    }
+
+                    else {
+
+                        $mdCallSuccess = "userForwardingConnected$UserId((Call Connected))"
+
+                        $allMermaidNodes += "userForwardingConnected$UserId"
+
+                    }
+
                     $mdUserCallingSettingsAddition = @"
 $mdSubGraphUnansweredSettingsAddition2 userForwardingResult$UserId{Call Answered?}
 $subgraphUnansweredSettings
 userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
 end
 userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
-userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
+userForwardingResult$UserId --> |Yes| $mdCallSuccess
 
 "@
 
@@ -1705,6 +1769,22 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                 Default {}
             }
 
+            if ($CombineCallConnectedNodes -eq $true) {
+
+                $mdCallSuccess = "callSuccess((Call Connected))"
+        
+                $allMermaidNodes += "callSuccess"
+        
+            }
+        
+            else {
+        
+                $mdCallSuccess = "userForwardingConnected$UserId((Call Connected))"
+        
+                $allMermaidNodes += "userForwardingConnected$UserId"
+        
+            }
+
             $mdUserCallingSettings = @"
     
 $userNode --> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName))
@@ -1721,7 +1801,7 @@ userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $use
 $subgraphUnansweredSettings
 end
 userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
-userForwardingResult$UserId --> |Yes| userForwardingConnected$UserId((Call Connected))
+userForwardingResult$UserId --> |Yes| $mdCallSuccess
 
 "@
 
