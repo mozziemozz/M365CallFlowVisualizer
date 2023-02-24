@@ -117,3 +117,4 @@
 |14.02.2023|M365CallFlowVisualizerV2.ps1|2.9.9|Add params to combine all "Call Connected" and "DisconnectCall" nodes.|
 |14.02.2023|Get-TeamsUserCallFlow.ps1|1.0.5|Add param to combine all "Call Connected" and "DisconnectCall" nodes.|
 |15.02.2023|M365CallFlowVisualizerV2.ps1|2.9.9b|Add holiday name on link text for holiday IVRs and nested call flows.|
+|24.02.2023|HtmlTemplate.html|1.0.1|Add support for Mermaid Version 10.0.0.|

@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Version 1.0.1 -->
 <html>
 <head>
 <title>VoiceAppNamePlaceHolder</title>
@@ -354,17 +355,19 @@ code {
 
 </style>
 
-<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
-</head>
-<body>
-  <script>
-    mermaid.initialize({
-      startOnLoad: true,
-      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+<script type="module">
+	import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+	mermaid.initialize({
+		startOnLoad: true,
+		theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
           ? 'dark'
           : 'default'
-    });
-  </script>
+		});
+</script>
+
+</head>
+<body>
+
 <h1 id="VoiceAppNameHtmlIdPlaceHolder">VoiceAppNamePlaceHolder</h1>
 <pre><code class="language-mermaid"><div class="mermaid">ThemePlaceHolder
 
