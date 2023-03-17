@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            2.9.9b
+    Version:            3.0.0
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
 
@@ -367,11 +367,35 @@ $allSubgraphs = @()
 $audioFileNames = @()
 $ttsGreetings = @()
 
+$queryResultSize = 100
+
 if ([String]::IsNullOrEmpty($Global:allAutoAttendants) -or $CacheResults -eq $false) {
 
-    Write-Host "Retrieving all Auto Attendants (max. 9999)... this can take a while..." -ForegroundColor Magenta
+    Write-Host "Retrieving all Auto Attendants... this can take a while..." -ForegroundColor Magenta
 
-    $Global:allAutoAttendants = Get-CsAutoAttendant -First 9999
+    $Global:allAutoAttendants = Get-CsAutoAttendant -First $queryResultSize
+
+    if ($allAutoAttendants.Count -ge $queryResultSize) {
+
+        Write-Host "This tenant has at least $queryResultSize or more Auto Attendants. Querrying additional AAs..." -ForegroundColor Cyan
+
+        $skipCounter = $queryResultSize
+
+        do {
+    
+            $querriedAAs = Get-CsAutoAttendant -Skip $skipCounter
+    
+            $allAutoAttendants += $querriedAAs
+
+            $skipCounter += $querriedAAs.Count
+
+        } until (
+            $querriedAAs.Count -eq 0
+        )
+
+    }
+
+    Write-Host "Finished getting all Auto Attendants. Number of Auto Attendants found: $($allAutoAttendants.Count)"
 
 }
 
@@ -383,9 +407,31 @@ else {
 
 if ([String]::IsNullOrEmpty($Global:allCallQueues) -or $CacheResults -eq $false) {
 
-    Write-Host "Retrieving all Call Queues (max. 9999)... this can take a while..." -ForegroundColor Magenta
+    Write-Host "Retrieving all Call Queues... this can take a while..." -ForegroundColor Magenta
 
-    $Global:allCallQueues = Get-CsCallQueue -WarningAction SilentlyContinue -First 9999
+    $Global:allCallQueues = Get-CsCallQueue -WarningAction SilentlyContinue -First $queryResultSize
+
+    if ($allCallQueues.Count -ge $queryResultSize) {
+
+        Write-Host "This tenant has at least $queryResultSize or more Call Queues. Querrying additional CQs..." -ForegroundColor Cyan
+
+        $skipCounter = $queryResultSize
+
+        do {
+    
+            $querriedCQs = Get-CsCallQueue -WarningAction SilentlyContinue -Skip $skipCounter
+    
+            $allCallQueues += $querriedCQs
+
+            $skipCounter += $querriedCQs.Count
+
+        } until (
+            $querriedCQs.Count -eq 0
+        )
+
+    }
+
+    Write-Host "Finished getting all Call Queues. Number of Call Queues found: $($allCallQueues.Count)"
 
 }
 
@@ -397,9 +443,36 @@ else {
 
 if ([String]::IsNullOrEmpty($Global:allResourceAccounts) -or $CacheResults -eq $false) {
 
-    Write-Host "Retrieving all Resource Accounts (max. 9999)... this can take a while..." -ForegroundColor Magenta
+    Write-Host "Retrieving all Resource Accounts... this can take a while..." -ForegroundColor Magenta
 
     $Global:allResourceAccounts = Get-CsOnlineApplicationInstance -ResultSize 9999
+
+    # -ResultSize not working in MicrosoftTeams PowerShell 5.0.0
+
+    # $Global:allResourceAccounts = Get-CsOnlineApplicationInstance -ResultSize $queryResultSize
+
+    # if ($allResourceAccounts.Count -ge $queryResultSize) {
+
+    #     Write-Host "This tenant has at least $queryResultSize or more Resource Accounts. Querrying additional RAs..." -ForegroundColor Cyan
+
+    #     $skipCounter = $queryResultSize
+
+    #     do {
+    
+    #         $querriedRAs = Get-CsOnlineApplicationInstance -Skip $skipCounter
+    
+    #         $allResourceAccounts += $querriedRAs
+
+    #         $skipCounter += $querriedRAs.Count
+
+    #     } until (
+    #         $querriedRAs.Count -eq 0
+    #     )
+
+    # }
+
+    Write-Host "Finished getting all Resource Accounts. Number of Resource Accounts found: $($allResourceAccounts.Count)"
+
 
 }
 
@@ -4065,11 +4138,11 @@ function Get-CallFlow {
 
                 do {
 
-                    $abortPrompt = Read-Host -Prompt "Do you want to abort the script? yes/no"
+                    $abortPrompt = Read-Host -Prompt "Do you want to abort the script? [Y] = Yes or [N] = No"
 
-                    if ($abortPrompt -ne "yes" -and $abortPrompt -ne "no") {
+                    if ($abortPrompt -ne "y" -and $abortPrompt -ne "n") {
 
-                        Write-Warning "Invalid input. Please enter either 'yes' or 'no'."
+                        Write-Warning "Invalid input. Please enter either [Y] = Yes or [N] = No"
 
                         $continueScript = $false
 
@@ -4085,7 +4158,7 @@ function Get-CallFlow {
                     $continueScript -eq $true
                 )
 
-                if ($abortPrompt -eq "yes") {
+                if ($abortPrompt -eq "y") {
 
                     Write-Host "Script aborted!" -ForegroundColor Red
                     exit
