@@ -120,3 +120,6 @@
 |24.02.2023|HtmlTemplate.html|1.0.1|Add support for Mermaid Version 10.0.0.|
 |28.02.2023|Optimize-DisplayName.ps1|1.0.3|Replace ’ with ' and re-save file as UTF-8 with BOM.|
 |17.03.2023|M365CallFlowVisualizerV2.ps1|3.0.0|Make retrieving all AAs and CQs more robust. Minor changes to outputs/inputs.|
+|04.04.2023|M365CallFlowVisualizerV2.ps1|3.0.1|Move retrieving all AAs, CQs and RAs into separate function. Change Markdown title from H1 to H2.|
+|04.04.2023|Get-AllVoiceAppsAndResourceAccounts.ps1|1.0.0|Move retrieving all AAs, CQs and RAs into separate function.|
+|04.04.2023|AllTopLevelVoiceAppsToMarkdown.ps1|1.0.3|Move retrieving all AAs, CQs and RAs into separate function. Set Output to `.\Output\AllTopLevelVoiceApps.`|

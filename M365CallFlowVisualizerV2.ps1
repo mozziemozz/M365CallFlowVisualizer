@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.0.0
+    Version:            3.0.1
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
 
@@ -320,6 +320,7 @@ $ErrorActionPreference = "Continue"
 . .\Functions\Get-SharedVoicemailGroupMembers.ps1
 . .\Functions\Get-IvrTransferMessage.ps1
 . .\Functions\Get-AutoAttendantDirectorySearchConfig.ps1
+. .\Functions\Get-AllVoiceAppsAndResourceAccounts.ps1
 
 # Connect to MicrosoftTeams and Microsoft.Graph
 . Connect-M365CFV
@@ -367,120 +368,8 @@ $allSubgraphs = @()
 $audioFileNames = @()
 $ttsGreetings = @()
 
-$queryResultSize = 100
-
-if ([String]::IsNullOrEmpty($Global:allAutoAttendants) -or $CacheResults -eq $false) {
-
-    Write-Host "Retrieving all Auto Attendants... this can take a while..." -ForegroundColor Magenta
-
-    $Global:allAutoAttendants = Get-CsAutoAttendant -First $queryResultSize
-
-    if ($allAutoAttendants.Count -ge $queryResultSize) {
-
-        Write-Host "This tenant has at least $queryResultSize or more Auto Attendants. Querrying additional AAs..." -ForegroundColor Cyan
-
-        $skipCounter = $queryResultSize
-
-        do {
-    
-            $querriedAAs = Get-CsAutoAttendant -Skip $skipCounter
-    
-            $allAutoAttendants += $querriedAAs
-
-            $skipCounter += $querriedAAs.Count
-
-        } until (
-            $querriedAAs.Count -eq 0
-        )
-
-    }
-
-    Write-Host "Finished getting all Auto Attendants. Number of Auto Attendants found: $($allAutoAttendants.Count)"
-
-}
-
-else {
-
-    Write-Warning  "Auto Attendant config is read from memory. If you don't see recent changes reflected in the output, use the -CacheResults `$false parameter."
-
-}
-
-if ([String]::IsNullOrEmpty($Global:allCallQueues) -or $CacheResults -eq $false) {
-
-    Write-Host "Retrieving all Call Queues... this can take a while..." -ForegroundColor Magenta
-
-    $Global:allCallQueues = Get-CsCallQueue -WarningAction SilentlyContinue -First $queryResultSize
-
-    if ($allCallQueues.Count -ge $queryResultSize) {
-
-        Write-Host "This tenant has at least $queryResultSize or more Call Queues. Querrying additional CQs..." -ForegroundColor Cyan
-
-        $skipCounter = $queryResultSize
-
-        do {
-    
-            $querriedCQs = Get-CsCallQueue -WarningAction SilentlyContinue -Skip $skipCounter
-    
-            $allCallQueues += $querriedCQs
-
-            $skipCounter += $querriedCQs.Count
-
-        } until (
-            $querriedCQs.Count -eq 0
-        )
-
-    }
-
-    Write-Host "Finished getting all Call Queues. Number of Call Queues found: $($allCallQueues.Count)"
-
-}
-
-else {
-
-    Write-Warning "Call Queue config is read from memory. If you don't see recent changes reflected in the output, use the -CacheResults `$false parameter."
-
-}
-
-if ([String]::IsNullOrEmpty($Global:allResourceAccounts) -or $CacheResults -eq $false) {
-
-    Write-Host "Retrieving all Resource Accounts... this can take a while..." -ForegroundColor Magenta
-
-    $Global:allResourceAccounts = Get-CsOnlineApplicationInstance -ResultSize 9999
-
-    # -ResultSize not working in MicrosoftTeams PowerShell 5.0.0
-
-    # $Global:allResourceAccounts = Get-CsOnlineApplicationInstance -ResultSize $queryResultSize
-
-    # if ($allResourceAccounts.Count -ge $queryResultSize) {
-
-    #     Write-Host "This tenant has at least $queryResultSize or more Resource Accounts. Querrying additional RAs..." -ForegroundColor Cyan
-
-    #     $skipCounter = $queryResultSize
-
-    #     do {
-    
-    #         $querriedRAs = Get-CsOnlineApplicationInstance -Skip $skipCounter
-    
-    #         $allResourceAccounts += $querriedRAs
-
-    #         $skipCounter += $querriedRAs.Count
-
-    #     } until (
-    #         $querriedRAs.Count -eq 0
-    #     )
-
-    # }
-
-    Write-Host "Finished getting all Resource Accounts. Number of Resource Accounts found: $($allResourceAccounts.Count)"
-
-
-}
-
-else {
-
-    Write-Warning "Resource Accounts are read from memory. If you don't see recent changes reflected in the output, use the -CacheResults `$false parameter."
-
-}
+# Get all voice apps and resource accounts from external function
+. Get-AllVoiceAppsAndResourceAccounts
 
 $allAutoAttendantIds = $allAutoAttendants.Identity
 $allCallQueueIds = $allCallQueues.Identity
@@ -4435,7 +4324,7 @@ else {
 $mermaidCode = $mermaidCode.Replace(";",",")
 
 #Add H1 Title to Markdown code
-$mermaidCode = $mermaidCode.Replace("## CallFlowNamePlaceHolder","# Call Flow $VoiceAppFileName")
+$mermaidCode = $mermaidCode.Replace("## CallFlowNamePlaceHolder","## Call Flow $VoiceAppFileName")
 
 # Custom Mermaid Color Themes
 function Set-CustomMermaidTheme {
@@ -4575,7 +4464,7 @@ if ($ExportPng -eq $true) {
 if ($SetClipBoard -eq $true) {
     $mermaidCode -Replace('```mermaid','') `
     -Replace('```','') `
-    -Replace("# Call Flow $VoiceAppFileName","") `
+    -Replace("## Call Flow $VoiceAppFileName","") `
     -Replace($MarkdownTheme,"") | Set-Clipboard
 
     Write-Host "Mermaid code copied to clipboard. Paste it on https://mermaid.live" -ForegroundColor Cyan
@@ -4605,7 +4494,7 @@ if ($ExportHtml -eq $true) {
         -Replace "VoiceAppNameHtmlIdPlaceHolder",($($VoiceAppFileName).Replace(" ","-")) `
         -Replace '<div class="mermaid">ThemePlaceHolder',$MarkdownThemeHtml `
         -Replace "MermaidPlaceHolder",($mermaidCode | Out-String).Replace($MarkdownTheme,"") `
-        -Replace "# Call Flow $VoiceAppFileName","" `
+        -Replace "## Call Flow $VoiceAppFileName","" `
         -Replace('```mermaid','') `
         -Replace('```','') | Set-Content -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.htm" -Encoding UTF8
 

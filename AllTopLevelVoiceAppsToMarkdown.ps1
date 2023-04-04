@@ -7,25 +7,27 @@
     single Markdown file so that all call flows can be rendered on one page.
 
     Author:             Martin Heusser
-    Version:            1.0.2
+    Version:            1.0.3
     Revision:
         05.01.2022      1.0.0: Creation
         12.01.2022      1.0.1: Migrate from MSOnline to Microsoft.Graph
         08.04.2022      1.0.2: Move Connect-M365CFV function to sepearate file, default output folder set to .\Output
+        04.04.2022      1.0.3: Import external function to retrieve all AAs, CQs and RAs, set -CacheResults to $true
 
 #>
 
-#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.6.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
+#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "5.0.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
 
+# Import external functions via dot sourcing
 . .\Functions\Connect-M365CFV.ps1
+. .\Functions\Get-AllVoiceAppsAndResourceAccounts.ps1
 
 . Connect-M365CFV
 
 $VoiceApps = @()
 
-$AllAutoAttendants = Get-CsAutoAttendant -First 1000 | Where-Object {$_.ApplicationInstances -notlike ""}
-
-$AllCallQueues = Get-CsCallQueue -First 1000 -WarningAction SilentlyContinue | Where-Object {$_.ApplicationInstances -notlike ""}
+# Get all voice apps and resource accounts from external function
+. Get-AllVoiceAppsAndResourceAccounts
 
 foreach ($AutoAttendant in $AllAutoAttendants) {
 
@@ -69,14 +71,14 @@ if (!(Test-Path -Path .\Output)) {
 
 }
 
-Set-Content -Path ".\Output\TopLevelVoiceApps.md" -Value "# Call Flow Diagrams"
+Set-Content -Path ".\Output\AllTopLevelVoiceApps\TopLevelVoiceApps.md" -Value "# Call Flow Diagrams"
 
 foreach ($VoiceAppIdentity in $VoiceApps) {
 
-    . .\M365CallFlowVisualizerV2.ps1 -Identity $VoiceAppIdentity -Theme dark -CustomFilePath ".\Output" -ShowCqAgentPhoneNumbers -ExportAudioFiles -ExportTTSGreetings -ShowAudioFileName -ShowTTSGreetingText -ExportPng $true
+    . .\M365CallFlowVisualizerV2.ps1 -Identity $VoiceAppIdentity -Theme dark -CustomFilePath ".\Output\AllTopLevelVoiceApps" -ShowCqAgentPhoneNumbers -ExportAudioFiles -ExportTTSGreetings -ShowAudioFileName -ShowTTSGreetingText -ExportPng $true -CacheResults $true
 
     $MarkdownInclude = "[!include[$($VoiceAppFileName)]($(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension)]"
 
-    Add-Content -Path ".\Output\TopLevelVoiceApps.md" -Value $MarkdownInclude
+    Add-Content -Path ".\Output\AllTopLevelVoiceApps\TopLevelVoiceApps.md" -Value $MarkdownInclude
 
 }
