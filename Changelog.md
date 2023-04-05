@@ -123,3 +123,4 @@
 |04.04.2023|M365CallFlowVisualizerV2.ps1|3.0.1|Move retrieving all AAs, CQs and RAs into separate function. Change Markdown title from H1 to H2.|
 |04.04.2023|Get-AllVoiceAppsAndResourceAccounts.ps1|1.0.0|Move retrieving all AAs, CQs and RAs into separate function.|
 |04.04.2023|AllTopLevelVoiceAppsToMarkdown.ps1|1.0.3|Move retrieving all AAs, CQs and RAs into separate function. Set Output to `.\Output\AllTopLevelVoiceApps.`|
+|05.04.2023|M365CallFlowVisualizerV2.ps1|3.0.2|Add support to display outbound caller Ids of individual CQ agents. Add "HardcoreMode" to easily enable all parameters which show additional information on the diagram.|

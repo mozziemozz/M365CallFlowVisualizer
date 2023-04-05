@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.0.1
+    Version:            3.0.2
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
 
@@ -170,6 +170,12 @@
         Type:               bool
         Default value:      false
 
+    -ShowUserOutboundCallingIds
+        Specifies if outbound calling Ids of individual call queue agents should be shown. This only works if -ShowCqAgentPhoneNumbers is $true
+        Required:           false
+        Type:               bool
+        Default value:      false
+
     -DocType
         Specifies the document type.
         Required:           false
@@ -247,6 +253,13 @@
         Accepted values:    Auto Attendant, Call Queue
         Default value:      none
 
+    -HardcoreMode
+        When this switch is enabled, all parameters which will gather and display additional data are enabled. This will overwrite any other parameters you might have set. Use it to easily explore the scripts capabilities.
+        Required:           false
+        Type:               switch
+        Default value:      false
+
+
     .INPUTS
         None.
 
@@ -293,6 +306,7 @@ param(
     [Parameter(Mandatory=$false)][Bool]$ObfuscatePhoneNumbers = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowSharedVoicemailGroupMembers = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowCqOutboundCallingIds = $false,
+    [Parameter(Mandatory=$false)][Bool]$ShowUserOutboundCallingIds = $false,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][ValidateSet("EU","US")][String]$DateFormat = "EU",
     [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral","custom")][String]$Theme = "default",
@@ -303,7 +317,8 @@ param(
     [Parameter(Mandatory=$false)][String]$LinkTextColor = "#000000",
     [Parameter(Mandatory=$false)][String]$SubgraphColor = "#7B83EB",
     [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$false)][String]$VoiceAppName,
-    [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$true)][ValidateSet("Auto Attendant","Call Queue")][String]$VoiceAppType
+    [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$true)][ValidateSet("Auto Attendant","Call Queue")][String]$VoiceAppType,
+    [Parameter(Mandatory=$false)][Switch]$HardcoreMode
 )
 
 $ErrorActionPreference = "Continue"
@@ -324,6 +339,28 @@ $ErrorActionPreference = "Continue"
 
 # Connect to MicrosoftTeams and Microsoft.Graph
 . Connect-M365CFV
+
+if ($HardcoreMode -eq $true) {
+
+    Write-Host "Hardcore Mode is enabled. This means that all options will be enabled and included in the output. This may overwrite individual values you set in other parameters!" -ForegroundColor Magenta
+
+    $ShowNestedHolidayCallFlows = $true
+    $ShowNestedHolidayIVRs = $true
+    $ShowCqAgentPhoneNumbers = $true
+    $ShowCqAgentOptInStatus = $true
+    $ShowPhoneNumberType = $true
+    $ShowTTSGreetingText = $true
+    $ShowAudioFileName = $true
+    $TruncateGreetings = 999
+    $ExportAudioFiles = $true
+    $ExportTTSGreetings = $true
+    $ShowSharedVoicemailGroupMembers = $true
+    $ShowCqOutboundCallingIds = $true
+    $ShowUserOutboundCallingIds = $true
+    $PreviewHtml = $true
+    $Theme = "dark"
+
+}
 
 if ($SaveToFile -eq $false -and $CustomFilePath -ne ".\Output") {
 
@@ -3678,7 +3715,8 @@ function Get-CallQueueCallFlow {
 
         if ($ShowCqAgentPhoneNumbers -eq $true) {
 
-            $CqAgentPhoneNumber = ((Get-CsOnlineUser -Identity $($CqAgent.ObjectId)).LineUri)
+            $CqAgentCsOnlineUser = (Get-CsOnlineUser -Identity $($CqAgent.ObjectId))
+            $CqAgentPhoneNumber = $CqAgentCsOnlineUser.LineUri
 
             if (!$CqAgentPhoneNumber) {
 
@@ -3721,6 +3759,60 @@ function Get-CallQueueCallFlow {
             }
 
             $AgentDisplayName = "$AgentDisplayName <br> $CqAgentPhoneNumber"
+
+        }
+
+        if ($ShowUserOutboundCallingIds -eq $true){
+
+            if ($CqAgentCsOnlineUser.CallingLineIdentity.Name) {
+
+                $checkCallingLineId = Get-CsCallingLineIdentity -Identity $CqAgentCsOnlineUser.CallingLineIdentity.Name
+
+                if ($checkCallingLineId.CallingIDSubstitute -ne "LineUri") {
+
+                    switch ($checkCallingLineId.CallingIDSubstitute) {
+                        Service {
+
+                            Write-Warning -Message "Service Number Calling Line Identities are going to be deprecated soon. Migrate to Resource Account substitute soon. (MC505122)"
+
+                            $serviceNumber = "+$($checkCallingLineId.ServiceNumber)"
+
+                            if ($ObfuscatePhoneNumbers -eq $true) {
+
+                                $serviceNumber = $serviceNumber.Remove(($serviceNumber.Length -4)) + "****"
+                
+                            }
+
+                            $cqAgentCallingLineId = "Outbound Calling Id:<br>" + $($checkCallingLineId.Identity).Replace("Tag:","") + " $serviceNumber<br>Type: $($checkCallingLineId.CallingIDSubstitute)"
+
+                        }
+                        Resource {
+
+                            $resourceAccountNumber = ($allResourceAccounts | Where-Object {$_.ObjectId -eq $($checkCallingLineId.ResourceAccount)}).PhoneNumber.Replace("tel:","")
+
+                            if ($ObfuscatePhoneNumbers -eq $true) {
+
+                                $resourceAccountNumber = $resourceAccountNumber.Remove(($resourceAccountNumber.Length -4)) + "****"
+                
+                            }
+
+                            $cqAgentCallingLineId = "Outbound Calling Id:<br>" + $($checkCallingLineId.Identity).Replace("Tag:","") + " $resourceAccountNumber<br>Type: $($checkCallingLineId.CallingIDSubstitute)"
+
+                        }
+
+                        Anonymous {
+
+                            $cqAgentCallingLineId = "Outbound Calling Id:<br>Anonymous"
+
+                        }
+                        Default {}
+                    } 
+
+                }
+
+                $AgentDisplayName = "$AgentDisplayName<br>$cqAgentCallingLineId"
+
+            }
 
         }
 
