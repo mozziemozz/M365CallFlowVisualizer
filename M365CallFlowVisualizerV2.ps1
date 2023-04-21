@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.0.2
+    Version:            3.0.3
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
 
@@ -45,6 +45,12 @@
 
     -PreviewHtml
         Specifies if the exported html file should be opened in default / last active browser (only works on Windows systems)
+        Required:           false
+        Type:               switch
+        Default value:      false
+    
+    -DocFxMode
+        This switch adds a subfolder in the relative file path of click actions for exported audio file or TTS greetings. It can only be used with a script from another repository. Do not use this manually.
         Required:           false
         Type:               switch
         Default value:      false
@@ -286,6 +292,7 @@ param(
     [Parameter(Mandatory=$false)][Bool]$ExportHtml = $true,
     [Parameter(Mandatory=$false)][Bool]$ExportPng = $false,
     [Parameter(Mandatory=$false)][Switch]$PreviewHtml,
+    [Parameter(Mandatory=$false)][Switch]$DocFxMode,
     [Parameter(Mandatory=$false)][Bool]$CacheResults = $false,
     [Parameter(Mandatory=$false)][String]$CustomFilePath = ".\Output\$(Get-Date -Format "yyyy-MM-dd")",
     [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
@@ -4518,7 +4525,19 @@ if ($SaveToFile -eq $true) {
 
     $mermaidCode += $mdEnd
 
-    Set-Content -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -Value $mermaidCode -Encoding UTF8
+    if ($ExportAudioFiles -eq $true -or $ExportTTSGreetings -eq $true -and $DocFxMode -eq $true) {
+
+        $docFxFriendlyMermaidCode = $mermaidCode.Replace('".\',"`"$voiceAppIdentity\")
+
+        Set-Content -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -Value $docFxFriendlyMermaidCode -Encoding UTF8
+
+    }
+
+    else {
+
+        Set-Content -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -Value $mermaidCode -Encoding UTF8
+
+    }
 
 }
 
@@ -4542,7 +4561,7 @@ if ($ExportPng -eq $true) {
 
     }
 
-    mmdc -i "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -o "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png" -b transparent -w "3840" -H "2160" -t "$pngTheme"
+    mmdc -i "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -o "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png" -b transparent -w "16900" -H "15000" -t "$pngTheme"
 
     if ($DocType -eq "Markdown") {
 
