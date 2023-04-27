@@ -65,7 +65,7 @@ foreach ($VoiceAppIdentity in $VoiceApps) {
 
     . .\M365CallFlowVisualizerV2.ps1 -Identity $VoiceAppIdentity -Theme dark -CustomFilePath "$localRepoPath\Docs\articles\callflows\$voiceAppIdentity" -ShowCqAgentPhoneNumbers -ExportAudioFiles -ExportTTSGreetings -ShowAudioFileName -ShowTTSGreetingText -ExportPng $true -CacheResults $true -ExportHtml $true -DocFxMode
 
-    $markdownInclude = "&nbsp;`n[!include[$($VoiceAppFileName)]($voiceAppIdentity/$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension)]`n[Enlarge View]($voiceAppIdentity/$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.htm)`n[PNG Download]($voiceAppIdentity/$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png) `n&nbsp;`n"
+    $markdownInclude = "&nbsp;`n[!include[$($VoiceAppFileName)]($voiceAppIdentity/$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension)]`n- [Enlarge View]($voiceAppIdentity/$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.htm)`n- [PNG Download]($voiceAppIdentity/$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png) `n&nbsp;`n"
 
     Add-Content -Path "$localRepoPath\Docs\articles\callflows\callflows.md" -Value $markdownInclude
 
