@@ -6,7 +6,7 @@
     Reads the user calling settings of a Teams user and outputs them in an easy to understand SVG diagram. See the script "ExportAllUserCallFlowsToSVG.ps1" in the root of this repo for an example on how to generate a diagram for each user in a tenant.
 
     Author:             Martin Heusser
-    Version:            1.0.6
+    Version:            1.0.7
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -208,11 +208,11 @@ $allSubgraphs += "subgraphDelegates$UserId"
 
                     $delegateUserObject = (Get-CsOnlineUser -Identity $delegate.Id)
 
-                    $delegateRing = "                ringType$UserId -.-> delegate$UserId-$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
+                    $delegateRing = "                ringType$UserId -.-> delegateMember$UserId-$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
 
                     $mdSubgraphDelegates += $delegateRing
 
-                    $allMermaidNodes += "delegate$UserId-$($delegateUserObject.Identity)$delegateCounter"
+                    $allMermaidNodes += "delegateMember$UserId-$($delegateUserObject.Identity)$delegateCounter"
 
                     # Add delegate to nested voice apps if nested user call flows are enabled
                     if ($nestedVoiceApps -notcontains $($delegateUserObject.Identity) -and $ShowNestedUserDelegates -eq $true) {
@@ -225,6 +225,8 @@ $allSubgraphs += "subgraphDelegates$UserId"
                     if ($ShowNestedUserDelegates -eq $true) {
 
                         $mermaidCode += "subgraphDelegates$UserId --> $($delegateUserObject.Identity)(User<br>$($delegateUserObject.DisplayName))"
+
+                        $allMermaidNodes += "$($delegateUserObject.Identity)"
 
                     }
 
@@ -298,6 +300,8 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                             if ($ShowNestedUserCallGroups -eq $true) {
 
                                 $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+
+                                $allMermaidNodes += "$($callGroupUserObject.Identity)"
 
                             }
 
@@ -554,6 +558,8 @@ $allSubgraphs += "subgraphCallGroups$UserId"
 
                         $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
 
+                        $allMermaidNodes += "$($callGroupUserObject.Identity)"
+
                     }
 
                     $callGroupMemberCounter ++
@@ -754,11 +760,11 @@ $allSubgraphs += "subgraphdelegates$UserId"
 
                         }
 
-                        $delegateRing = "delegateRingType$UserId -.->$linkNumber delegateMember$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
+                        $delegateRing = "delegateRingType$UserId -.->$linkNumber delegateMember$UserId-$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
 
                         $subgraphUnansweredSettings += $delegateRing
 
-                        $allMermaidNodes += "delegateMember$($delegateUserObject.Identity)$delegateCounter"
+                        $allMermaidNodes += "delegateMember$UserId-$($delegateUserObject.Identity)$delegateCounter"
 
                         # Add delegate to nested voice apps if nested user call flows are enabled
                         if ($nestedVoiceApps -notcontains $($delegateUserObject.Identity) -and $ShowNestedUserDelegates -eq $true) {
@@ -771,6 +777,8 @@ $allSubgraphs += "subgraphdelegates$UserId"
                         if ($ShowNestedUserDelegates -eq $true) {
 
                             $mermaidCode += "subgraphDelegates$UserId --> $($delegateUserObject.Identity)(User<br>$($delegateUserObject.DisplayName))"
+
+                            $allMermaidNodes += "$($delegateUserObject.Identity)"
 
                         }
 
@@ -860,9 +868,11 @@ $allSubgraphs += "subgraphCallGroups$UserId"
 
                                 $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
 
+                                $allMermaidNodes += "$($callGroupUserObject.Identity)"
+
                             }
     
-                            $callGroupCounter ++
+                            $callGroupMemberCounter ++
 
                         }
     
@@ -1034,11 +1044,11 @@ $allSubgraphs += "subgraphDelegates$UserId"
     
                         $delegateUserObject = (Get-CsOnlineUser -Identity $delegate.Id)
     
-                        $delegateRing = "                ringType$UserId -.-> delegate$UserId-$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
+                        $delegateRing = "                ringType$UserId -.-> delegateMember$UserId-$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
     
                         $mdSubgraphDelegates += $delegateRing
 
-                        $allMermaidNodes += "delegate$UserId-$($delegateUserObject.Identity)$delegateCounter"
+                        $allMermaidNodes += "delegateMember$UserId-$($delegateUserObject.Identity)$delegateCounter"
 
                         # Add delegate to nested voice apps if nested user call flows are enabled
                         if ($nestedVoiceApps -notcontains $($delegateUserObject.Identity) -and $ShowNestedUserDelegates -eq $true) {
@@ -1051,6 +1061,8 @@ $allSubgraphs += "subgraphDelegates$UserId"
                         if ($ShowNestedUserDelegates -eq $true) {
 
                             $mermaidCode += "subgraphDelegates$UserId --> $($delegateUserObject.Identity)(User<br>$($delegateUserObject.DisplayName))"
+
+                            $allMermaidNodes += "$($delegateUserObject.Identity)"
 
                         }
     
@@ -1173,6 +1185,8 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                         if ($ShowNestedUserCallGroups -eq $true) {
 
                             $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+
+                            $allMermaidNodes += "$($callGroupUserObject.Identity)"
 
                         }
     
@@ -1473,6 +1487,8 @@ $allSubgraphs += "subgraphCallGroups$UserId"
 
                             $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
 
+                            $allMermaidNodes += "$($callGroupUserObject.Identity)"
+
                         }
     
                         $callGroupMemberCounter ++
@@ -1677,11 +1693,11 @@ $allSubgraphs += "subgraphdelegates$UserId"
 
                         }
 
-                        $delegateRing = "delegateRingType$UserId -.->$linkNumber delegateMember$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
+                        $delegateRing = "delegateRingType$UserId -.->$linkNumber delegateMember$UserId-$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
 
                         $subgraphUnansweredSettings += $delegateRing
 
-                        $allMermaidNodes += "delegateMember$($delegateUserObject.Identity)$delegateCounter"
+                        $allMermaidNodes += "delegateMember$UserId-$($delegateUserObject.Identity)$delegateCounter"
 
                         # Add delegate to nested voice apps if nested user call flows are enabled
                         if ($nestedVoiceApps -notcontains $($delegateUserObject.Identity) -and $ShowNestedUserDelegates -eq $true) {
@@ -1694,6 +1710,8 @@ $allSubgraphs += "subgraphdelegates$UserId"
                         if ($ShowNestedUserDelegates -eq $true) {
 
                             $mermaidCode += "subgraphDelegates$UserId --> $($delegateUserObject.Identity)(User<br>$($delegateUserObject.DisplayName))"
+
+                            $allMermaidNodes += "$($delegateUserObject.Identity)"
 
                         }
 
@@ -1772,9 +1790,11 @@ $allSubgraphs += "subgraphCallGroups$UserId"
 
                             $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
 
+                            $allMermaidNodes += "$($callGroupUserObject.Identity)"
+
                         }
 
-                        $callGroupCounter ++
+                        $callGroupMemberCounter ++
                     }
 
                     $subgraphUnansweredSettings += "`nend"
