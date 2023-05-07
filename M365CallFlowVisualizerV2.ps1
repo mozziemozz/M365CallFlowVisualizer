@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.0.3
+    Version:            3.0.4
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
 
@@ -91,6 +91,18 @@
         Required:           false
         Type:               boolean
         Default value:      true
+
+    -ShowNestedUserCallGroups
+        Specifies if call groups of users should be expanded and included into the diagram.
+        Required:           false
+        Type:               boolean
+        Default value:      false
+
+    -ShowNestedUserDelegates
+        Specifies if delegates s of users should be expanded and included into the diagram.
+        Required:           false
+        Type:               boolean
+        Default value:      false
 
     -CombineDisconnectCallNodes
         Specifies whether or not to only display one mermaid node for all disconnect actions. If this is enabled, diagrams are most likely less readable. This does not apply to "DisconnectCall" actions in holiday call handlings.
@@ -297,6 +309,8 @@ param(
     [Parameter(Mandatory=$false)][String]$CustomFilePath = ".\Output\$(Get-Date -Format "yyyy-MM-dd")",
     [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
     [Parameter(Mandatory=$false)][Bool]$ShowUserCallingSettings = $true,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedUserCallGroups = $false,
+    [Parameter(Mandatory=$false)][Bool]$ShowNestedUserDelegates = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowNestedHolidayCallFlows = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowNestedHolidayIVRs = $false,
     [Parameter(Mandatory=$false)][Bool]$CombineDisconnectCallNodes = $false,

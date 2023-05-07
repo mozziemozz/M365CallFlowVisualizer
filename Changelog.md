@@ -126,3 +126,5 @@
 |05.04.2023|M365CallFlowVisualizerV2.ps1|3.0.2|Add support to display outbound caller Ids of individual CQ agents. Add "HardcoreMode" to easily enable all parameters which show additional information on the diagram.|
 |21.04.2023|M365CallFlowVisualizerV2.ps1|3.0.3|Add support to use in combination with DocFx. More info will follow shortly.|
 |21.04.2023|AllTopLevelVoiceAppsToMarkdownDocFx.ps1|1.0.4|Add support to use in combination with DocFx. More info will follow shortly.|
+|07.05.2023|M365CallFlowVisualizerV2.ps1|3.0.4|Add 2 new parameters to expand and include user call groups and delegates.|
+|07.05.2023|Get-TeamsUserCallFlow.ps1|1.0.6|Add support to also expand and include user call groups and delegates.|
