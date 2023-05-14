@@ -6,7 +6,7 @@
     Reads the user calling settings of a Teams user and outputs them in an easy to understand SVG diagram. See the script "ExportAllUserCallFlowsToSVG.ps1" in the root of this repo for an example on how to generate a diagram for each user in a tenant.
 
     Author:             Martin Heusser
-    Version:            1.0.7
+    Version:            1.0.8
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -93,10 +93,10 @@ function Get-TeamsUserCallFlow {
         [Parameter(Mandatory=$false)][string]$CustomFilePath = ".\Output\UserCallingSettings",
         [Parameter(Mandatory=$false)][bool]$StandAlone = $true,
         [Parameter(Mandatory=$false)][bool]$ExportMarkdown = $false,
-        [Parameter(Mandatory=$false)][bool]$PreviewSvg = $true,
+        [Parameter(Mandatory=$false)][bool]$PreviewSvg = $false,
         [Parameter(Mandatory=$false)][bool]$SetClipBoard = $true,
         [Parameter(Mandatory=$false)][Bool]$ObfuscatePhoneNumbers = $false,
-        [Parameter(Mandatory=$false)][bool]$ExportSvg = $true
+        [Parameter(Mandatory=$false)][bool]$ExportSvg = $false
     )
 
     . .\Functions\Connect-M365CFV.ps1
@@ -166,7 +166,7 @@ function Get-TeamsUserCallFlow {
     # user is neither forwarding or unanswered enabled
     if (!$userCallingSettings.IsForwardingEnabled -and !$userCallingSettings.IsUnansweredEnabled) {
 
-        #Write-Host "User is neither forwaring or unanswered enabled"
+        Write-Host "User is neither forwaring or unanswered enabled"
 
         $mdUserCallingSettings = @"
         $userNode
@@ -177,7 +177,7 @@ function Get-TeamsUserCallFlow {
     # user is immediate forwarding enabled
     elseif ($userCallingSettings.ForwardingType -eq "Immediate") {
 
-        #Write-Host "User is immediate forwarding enabled."
+        Write-Host "User is immediate forwarding enabled."
 
         switch ($userCallingSettings.ForwardingTargetType) {
             MyDelegates {
@@ -192,7 +192,7 @@ userForwarding$UserId --> subgraphDelegates$UserId
 $allMermaidNodes += @("userForwarding$UserId","userForwarding$UserId","")
 $allSubgraphs += "subgraphSettings$UserId"
 
-                $mdSubgraphDelegates = @"
+                $mdsubgraphDelegates = @"
 subgraph subgraphDelegates$UserId[Delegates of $($teamsUser.DisplayName)]
 direction LR
 ringType$UserId[(Simultaneous Ring)]
@@ -210,7 +210,7 @@ $allSubgraphs += "subgraphDelegates$UserId"
 
                     $delegateRing = "                ringType$UserId -.-> delegateMember$UserId-$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
 
-                    $mdSubgraphDelegates += $delegateRing
+                    $mdsubgraphDelegates += $delegateRing
 
                     $allMermaidNodes += "delegateMember$UserId-$($delegateUserObject.Identity)$delegateCounter"
 
@@ -234,7 +234,7 @@ $allSubgraphs += "subgraphDelegates$UserId"
 
                 }
 
-                $mdUserCallingSettings += $mdSubgraphDelegates
+                $mdUserCallingSettings += $mdsubgraphDelegates
 
                 switch ($userCallingSettings.UnansweredTargetType) {
                     Voicemail {
@@ -556,7 +556,63 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                     # Link call group subgraph to user node if nested user call flows are enabled
                     if ($ShowNestedUserCallGroups -eq $true) {
 
-                        $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+                        if ($ringOrder -eq "Serial") {
+
+                            if ($CombineCallConnectedNodes -eq $true) {
+
+                                $mdCallSuccess = "callSuccess((Call Connected))"
+                        
+                                $allMermaidNodes += "callSuccess"
+                        
+                            }
+                        
+                            else {
+                        
+                                $mdCallSuccess = "callGroupSerialRingMemberSuccess$UserId-$callGroupMemberCounter((Call Connected))"
+                        
+                                $allMermaidNodes += "callGroupSerialRingMemberSuccess$UserId-$callGroupMemberCounter"
+                        
+                            }
+
+                            if ($callGroupMemberCounter -eq 1) {
+
+                                Write-Host "Checkpoint" -ForegroundColor Yellow
+                                Write-Host $callGroupMemberCounter -ForegroundColor Yellow    
+
+
+                                $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+
+
+
+                            }
+
+                            else {
+
+                                $mermaidCode += "--> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+
+                            }
+
+                            # $lastMermaidNodeIndex = $mdUserCallingSettings.LastIndexOf("-->")
+                            # $lastMermaidNode = $mdUserCallingSettings.Substring($lastMermaidNodeIndex)
+                            # $lastMermaidNode = $lastMermaidNode.Replace("--> ","")
+
+                            # Write-Host $userCallingSettings.SipUri -ForegroundColor Yellow
+                            # $lastMermaidNode
+
+                            $mermaidCode += "$($callGroupUserObject.Identity) --> callGroupSerialRingMember$UserId-$callGroupMemberCounter{Call Answered?}"
+                            $mermaidCode += "callGroupSerialRingMember$UserId-$callGroupMemberCounter --> |Yes| $mdCallSuccess"
+                            $mermaidCode += "callGroupSerialRingMember$UserId-$callGroupMemberCounter --> |No| callGroupSerialRingMemberTimeout$UserId-$callGroupMemberCounter[(Timeout: 20 Seconds)]"
+
+                            $allMermaidNodes += @("callGroupSerialRingMember$UserId-$callGroupMemberCounter","callGroupSerialRingMemberTimeout$UserId-$callGroupMemberCounter")
+
+                        }
+
+                        # Simultaneous ring
+                        else {
+
+                            $mermaidCode += "subgraphCallGroups$UserId -.-> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+
+                        }
 
                         $allMermaidNodes += "$($callGroupUserObject.Identity)"
 
@@ -725,7 +781,7 @@ $allMermaidNodes += @("userForwarding$UserId","userForwardingTarget$UserId")
         # user is forwarding and unanswered enabled
         if ($userCallingSettings.IsForwardingEnabled -and $userCallingSettings.IsUnansweredEnabled) {
 
-            #Write-Host "User is forwaring and unanswered enabled"
+            Write-Host "User is forwaring and unanswered enabled"
 
             switch ($userCallingSettings.UnansweredTargetType) {
                 MyDelegates {
@@ -733,14 +789,14 @@ $allMermaidNodes += @("userForwarding$UserId","userForwardingTarget$UserId")
                     $ringOrder = "Simultaneous"
 
                     $subgraphUnansweredSettings = @"
-subgraph subgraphdelegates$UserId[Delegates of $($teamsUser.DisplayName)]
+subgraph subgraphDelegates$UserId[Delegates of $($teamsUser.DisplayName)]
 direction LR
 delegateRingType$UserId[($ringOrder Ring)]
 
 "@
 
 $allMermaidNodes += "delegateRingType$UserId"
-$allSubgraphs += "subgraphdelegates$UserId"
+$allSubgraphs += "subgraphDelegates$UserId"
 
                     $delegateCounter = 1
 
@@ -788,7 +844,7 @@ $allSubgraphs += "subgraphdelegates$UserId"
 
                     $subgraphUnansweredSettings += "`nend"
 
-                    $mdUnansweredTarget = "--> subgraphdelegates$UserId"
+                    $mdUnansweredTarget = "--> subgraphDelegates$UserId"
 
 
                 }
@@ -866,10 +922,64 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                             # Link call group subgraph to user node if nested user call flows are enabled
                             if ($ShowNestedUserCallGroups -eq $true) {
 
-                                $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+                                if ($ringOrder -eq "Serial") {
 
-                                $allMermaidNodes += "$($callGroupUserObject.Identity)"
-
+                                    if ($CombineCallConnectedNodes -eq $true) {
+        
+                                        $mdCallSuccess = "callSuccess((Call Connected))"
+                                
+                                        $allMermaidNodes += "callSuccess"
+                                
+                                    }
+                                
+                                    else {
+                                
+                                        $mdCallSuccess = "callGroupSerialRingMemberSuccess$UserId-$callGroupMemberCounter((Call Connected))"
+                                
+                                        $allMermaidNodes += "callGroupSerialRingMemberSuccess$UserId-$callGroupMemberCounter"
+                                
+                                    }
+        
+                                    if ($callGroupMemberCounter -eq 1) {
+        
+                                        Write-Host "Checkpoint" -ForegroundColor Yellow
+                                        Write-Host $callGroupMemberCounter -ForegroundColor Yellow    
+        
+        
+                                        $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+        
+        
+        
+                                    }
+        
+                                    else {
+        
+                                        $mermaidCode += "--> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+        
+                                    }
+        
+                                    # $lastMermaidNodeIndex = $mdUserCallingSettings.LastIndexOf("-->")
+                                    # $lastMermaidNode = $mdUserCallingSettings.Substring($lastMermaidNodeIndex)
+                                    # $lastMermaidNode = $lastMermaidNode.Replace("--> ","")
+        
+                                    # Write-Host $userCallingSettings.SipUri -ForegroundColor Yellow
+                                    # $lastMermaidNode
+        
+                                    $mermaidCode += "$($callGroupUserObject.Identity) --> callGroupSerialRingMember$UserId-$callGroupMemberCounter{Call Answered?}"
+                                    $mermaidCode += "callGroupSerialRingMember$UserId-$callGroupMemberCounter --> |Yes| $mdCallSuccess"
+                                    $mermaidCode += "callGroupSerialRingMember$UserId-$callGroupMemberCounter --> |No| callGroupSerialRingMemberTimeout$UserId-$callGroupMemberCounter[(Timeout: 20 Seconds)]"
+        
+                                    $allMermaidNodes += @("$($callGroupUserObject.Identity)","callGroupSerialRingMember$UserId-$callGroupMemberCounter","callGroupSerialRingMemberTimeout$UserId-$callGroupMemberCounter")
+        
+                                }
+        
+                                # Simultaneous ring
+                                else {
+        
+                                    $mermaidCode += "subgraphCallGroups$UserId -.-> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+        
+                                }
+                
                             }
     
                             $callGroupMemberCounter ++
@@ -1028,7 +1138,7 @@ subgraph subgraphSettings$UserId[ ]
 $allMermaidNodes += @("userForwarding$UserId","userParallelRing$userId","userForwardingResult$UserId")
 $allSubgraphs += "subgraphSettings$UserId"
     
-                    $mdSubgraphDelegates = @"
+                    $mdsubgraphDelegates = @"
 subgraph subgraphDelegates$UserId[Delegates of $($teamsUser.DisplayName)]
 direction LR
 ringType$UserId[(Simultaneous Ring)]
@@ -1046,7 +1156,7 @@ $allSubgraphs += "subgraphDelegates$UserId"
     
                         $delegateRing = "                ringType$UserId -.-> delegateMember$UserId-$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
     
-                        $mdSubgraphDelegates += $delegateRing
+                        $mdsubgraphDelegates += $delegateRing
 
                         $allMermaidNodes += "delegateMember$UserId-$($delegateUserObject.Identity)$delegateCounter"
 
@@ -1069,7 +1179,7 @@ $allSubgraphs += "subgraphDelegates$UserId"
                         $delegateCounter ++
                     }
     
-                    $mdUserCallingSettings += $mdSubgraphDelegates
+                    $mdUserCallingSettings += $mdsubgraphDelegates
 
                     if ($CombineCallConnectedNodes -eq $true) {
 
@@ -1184,10 +1294,65 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                         # Link call group subgraph to user node if nested user call flows are enabled
                         if ($ShowNestedUserCallGroups -eq $true) {
 
-                            $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+                            if ($ringOrder -eq "Serial") {
 
-                            $allMermaidNodes += "$($callGroupUserObject.Identity)"
-
+                                if ($CombineCallConnectedNodes -eq $true) {
+    
+                                    $mdCallSuccess = "callSuccess((Call Connected))"
+                            
+                                    $allMermaidNodes += "callSuccess"
+                            
+                                }
+                            
+                                else {
+                            
+                                    $mdCallSuccess = "callGroupSerialRingMemberSuccess$UserId-$callGroupMemberCounter((Call Connected))"
+                            
+                                    $allMermaidNodes += "callGroupSerialRingMemberSuccess$UserId-$callGroupMemberCounter"
+                            
+                                }
+    
+                                if ($callGroupMemberCounter -eq 1) {
+    
+                                    Write-Host "Checkpoint" -ForegroundColor Yellow
+                                    Write-Host $callGroupMemberCounter -ForegroundColor Yellow    
+    
+    
+                                    $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+    
+    
+    
+                                }
+    
+                                else {
+    
+                                    $mermaidCode += "--> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+    
+                                }
+    
+                                # $lastMermaidNodeIndex = $mdUserCallingSettings.LastIndexOf("-->")
+                                # $lastMermaidNode = $mdUserCallingSettings.Substring($lastMermaidNodeIndex)
+                                # $lastMermaidNode = $lastMermaidNode.Replace("--> ","")
+    
+                                # Write-Host $userCallingSettings.SipUri -ForegroundColor Yellow
+                                # $lastMermaidNode
+    
+                                $mermaidCode += "$($callGroupUserObject.Identity) --> callGroupSerialRingMember$UserId-$callGroupMemberCounter{Call Answered?}"
+                                $mermaidCode += "callGroupSerialRingMember$UserId-$callGroupMemberCounter --> |Yes| $mdCallSuccess"
+                                $mermaidCode += "callGroupSerialRingMember$UserId-$callGroupMemberCounter --> |No| callGroupSerialRingMemberTimeout$UserId-$callGroupMemberCounter[(Timeout: 20 Seconds)]"
+    
+                                $allMermaidNodes += @("$($callGroupUserObject.Identity)","callGroupSerialRingMember$UserId-$callGroupMemberCounter","callGroupSerialRingMemberTimeout$UserId-$callGroupMemberCounter")
+    
+                            }
+    
+                            # Simultaneous ring
+                            else {
+    
+                                $mermaidCode += "subgraphCallGroups$UserId -.-> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+    
+                            }
+    
+    
                         }
     
                         $callGroupMemberCounter ++
@@ -1415,7 +1580,7 @@ userForwardingResult$UserId --> |Yes| $mdCallSuccess
         # user is forwarding enabled but not unanswered enabled
         elseif ($userCallingSettings.IsForwardingEnabled -and !$userCallingSettings.IsUnansweredEnabled) {
 
-            #Write-Host "User is forwarding enabled but not unanswered enabled"
+            Write-Host "User is forwarding enabled but not unanswered enabled"
 
             switch ($userCallingSettings.ForwardingTargetType) {
                 Group {
@@ -1485,10 +1650,64 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                         # Link call group subgraph to user node if nested user call flows are enabled
                         if ($ShowNestedUserCallGroups -eq $true) {
 
-                            $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+                            if ($ringOrder -eq "Serial") {
 
-                            $allMermaidNodes += "$($callGroupUserObject.Identity)"
-
+                                if ($CombineCallConnectedNodes -eq $true) {
+    
+                                    $mdCallSuccess = "callSuccess((Call Connected))"
+                            
+                                    $allMermaidNodes += "callSuccess"
+                            
+                                }
+                            
+                                else {
+                            
+                                    $mdCallSuccess = "callGroupSerialRingMemberSuccess$UserId-$callGroupMemberCounter((Call Connected))"
+                            
+                                    $allMermaidNodes += "callGroupSerialRingMemberSuccess$UserId-$callGroupMemberCounter"
+                            
+                                }
+    
+                                if ($callGroupMemberCounter -eq 1) {
+    
+                                    Write-Host "Checkpoint" -ForegroundColor Yellow
+                                    Write-Host $callGroupMemberCounter -ForegroundColor Yellow    
+    
+    
+                                    $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+    
+    
+    
+                                }
+    
+                                else {
+    
+                                    $mermaidCode += "--> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+    
+                                }
+    
+                                # $lastMermaidNodeIndex = $mdUserCallingSettings.LastIndexOf("-->")
+                                # $lastMermaidNode = $mdUserCallingSettings.Substring($lastMermaidNodeIndex)
+                                # $lastMermaidNode = $lastMermaidNode.Replace("--> ","")
+    
+                                # Write-Host $userCallingSettings.SipUri -ForegroundColor Yellow
+                                # $lastMermaidNode
+    
+                                $mermaidCode += "$($callGroupUserObject.Identity) --> callGroupSerialRingMember$UserId-$callGroupMemberCounter{Call Answered?}"
+                                $mermaidCode += "callGroupSerialRingMember$UserId-$callGroupMemberCounter --> |Yes| $mdCallSuccess"
+                                $mermaidCode += "callGroupSerialRingMember$UserId-$callGroupMemberCounter --> |No| callGroupSerialRingMemberTimeout$UserId-$callGroupMemberCounter[(Timeout: 20 Seconds)]"
+    
+                                $allMermaidNodes += @("$($callGroupUserObject.Identity)","callGroupSerialRingMember$UserId-$callGroupMemberCounter","callGroupSerialRingMemberTimeout$UserId-$callGroupMemberCounter")
+    
+                            }
+    
+                            # Simultaneous ring
+                            else {
+    
+                                $mermaidCode += "subgraphCallGroups$UserId -.-> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+    
+                            }
+        
                         }
     
                         $callGroupMemberCounter ++
@@ -1658,7 +1877,7 @@ $allMermaidNodes += @("userForwarding$UserId","userParallelRing$userId","userFor
         # user is unanswered enabled but not forwarding enabled
         elseif ($userCallingSettings.IsUnansweredEnabled -and !$userCallingSettings.IsForwardingEnabled) {
 
-            #Write-Host "User is unanswered enabled but not forwarding enabled"
+            Write-Host "User is unanswered enabled but not forwarding enabled"
 
             switch ($userCallingSettings.UnansweredTargetType) {
                 MyDelegates {
@@ -1666,14 +1885,14 @@ $allMermaidNodes += @("userForwarding$UserId","userParallelRing$userId","userFor
                     $ringOrder = "Simultaneous"
 
                     $subgraphUnansweredSettings = @"
-subgraph subgraphdelegates$UserId[Delegates of $($teamsUser.DisplayName)]
+subgraph subgraphDelegates$UserId[Delegates of $($teamsUser.DisplayName)]
 direction LR
 delegateRingType$UserId[($ringOrder Ring)]
     
 "@
 
 $allMermaidNodes += "delegateRingType$UserId"
-$allSubgraphs += "subgraphdelegates$UserId"
+$allSubgraphs += "subgraphDelegates$UserId"
 
                     $delegateCounter = 1
 
@@ -1720,7 +1939,7 @@ $allSubgraphs += "subgraphdelegates$UserId"
 
                     $subgraphUnansweredSettings += "`nend"
 
-                    $mdUnansweredTarget = "--> subgraphdelegates$UserId"
+                    $mdUnansweredTarget = "--> subgraphDelegates$UserId"
 
 
                 }
@@ -1788,10 +2007,65 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                         # Link call group subgraph to user node if nested user call flows are enabled
                         if ($ShowNestedUserCallGroups -eq $true) {
 
-                            $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+                            if ($ringOrder -eq "Serial") {
 
-                            $allMermaidNodes += "$($callGroupUserObject.Identity)"
-
+                                if ($CombineCallConnectedNodes -eq $true) {
+    
+                                    $mdCallSuccess = "callSuccess((Call Connected))"
+                            
+                                    $allMermaidNodes += "callSuccess"
+                            
+                                }
+                            
+                                else {
+                            
+                                    $mdCallSuccess = "callGroupSerialRingMemberSuccess$UserId-$callGroupMemberCounter((Call Connected))"
+                            
+                                    $allMermaidNodes += "callGroupSerialRingMemberSuccess$UserId-$callGroupMemberCounter"
+                            
+                                }
+    
+                                if ($callGroupMemberCounter -eq 1) {
+    
+                                    Write-Host "Checkpoint" -ForegroundColor Yellow
+                                    Write-Host $callGroupMemberCounter -ForegroundColor Yellow    
+    
+    
+                                    $mermaidCode += "subgraphCallGroups$UserId --> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+    
+    
+    
+                                }
+    
+                                else {
+    
+                                    $mermaidCode += "--> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+    
+                                }
+    
+                                # $lastMermaidNodeIndex = $mdUserCallingSettings.LastIndexOf("-->")
+                                # $lastMermaidNode = $mdUserCallingSettings.Substring($lastMermaidNodeIndex)
+                                # $lastMermaidNode = $lastMermaidNode.Replace("--> ","")
+    
+                                # Write-Host $userCallingSettings.SipUri -ForegroundColor Yellow
+                                # $lastMermaidNode
+    
+                                $mermaidCode += "$($callGroupUserObject.Identity) --> callGroupSerialRingMember$UserId-$callGroupMemberCounter{Call Answered?}"
+                                $mermaidCode += "callGroupSerialRingMember$UserId-$callGroupMemberCounter --> |Yes| $mdCallSuccess"
+                                $mermaidCode += "callGroupSerialRingMember$UserId-$callGroupMemberCounter --> |No| callGroupSerialRingMemberTimeout$UserId-$callGroupMemberCounter[(Timeout: 20 Seconds)]"
+    
+                                $allMermaidNodes += @("$($callGroupUserObject.Identity)","callGroupSerialRingMember$UserId-$callGroupMemberCounter","callGroupSerialRingMemberTimeout$UserId-$callGroupMemberCounter")
+    
+                            }
+    
+                            # Simultaneous ring
+                            else {
+    
+                                $mermaidCode += "subgraphCallGroups$UserId -.-> $($callGroupUserObject.Identity)(User<br>$($callGroupUserObject.DisplayName))"
+    
+                            }
+    
+    
                         }
 
                         $callGroupMemberCounter ++
