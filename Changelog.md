@@ -133,4 +133,4 @@
 |02.06.2023|M365CallFlowVisualizerV2.ps1|3.0.5|Remove "Call Flow" prefix from H2 title in HTML output.|
 |02.06.2023|AllTopLevelVoiceAppsToMarkdownDocFx.ps1|1.0.5|Add param for relative path.|
 |02.06.2023|AllTopLevelVoiceAppsToMarkdownDocFx.ps1|1.0.6|Rename "call_flows.md" to "call-flows.md" to follow the awesome-docfx-template repo.|
-
+|02.06.2023|Find-CallQueueAndAutoAttendantUserLinks.ps1|1.0.2|Migrate to Get-AllVoiceAppsAndResourceAccounts function and set -CacheResults to True for performance improvements.|

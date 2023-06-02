@@ -4,10 +4,11 @@
     
     .DESCRIPTION
     Author:             Martin Heusser
-    Version:            1.0.1
+    Version:            1.0.2
     Changelog:          .\Changelog.md
 
 #>
+
 
 function Export-UserLinkVoiceApps {
     param (
@@ -25,12 +26,13 @@ function Find-CallQueueAndAutoAttendantUserLinks {
     )
 
     . .\Functions\Connect-M365CFV.ps1
+    . .\Functions\Get-AllVoiceAppsAndResourceAccounts.ps1
 
     . Connect-M365CFV
 
     if (!$SearchUserId) {
 
-        $SearchUserId = (Get-MgUser -Top 10000 | Select-Object DisplayName, UserPrincipalName, Id | Out-GridView -Title "Select a User..." -PassThru).Id
+        $SearchUserId = (Get-MgUser -All| Select-Object DisplayName, UserPrincipalName, Id | Out-GridView -Title "Select a User..." -PassThru).Id
 
     }
 
@@ -38,23 +40,26 @@ function Find-CallQueueAndAutoAttendantUserLinks {
 
     $searchScopeIncludedVoiceApps = @()
 
+    # Get all voice apps and resource accounts from external function
+    . Get-AllVoiceAppsAndResourceAccounts
+
     switch ($SearchScope) {
         All {
-            $searchScopeIncludedVoiceApps += (Get-CsCallQueue -First 1000 -WarningAction SilentlyContinue).Identity
-            $searchScopeIncludedVoiceApps += (Get-CsAutoAttendant- First 1000).Identity
+            $searchScopeIncludedVoiceApps += $allCallQueues.Identity
+            $searchScopeIncludedVoiceApps += $allAutoAttendants.Identity
         }
         CallQueues {
-            $searchScopeIncludedVoiceApps += (Get-CsCallQueue -First 1000 -WarningAction SilentlyContinue).Identity
+            $searchScopeIncludedVoiceApps += $allCallQueues.Identity
         }
         AutoAttendants {
-            $searchScopeIncludedVoiceApps += (Get-CsAutoAttendant -First 1000).Identity
+            $searchScopeIncludedVoiceApps += $allAutoAttendants.Identity
         }
         Default {}
     }
 
     foreach ($searchScopeIncludedVoiceApp in $searchScopeIncludedVoiceApps) {
 
-        . .\M365CallFlowVisualizerV2.ps1 -Identity $searchScopeIncludedVoiceApp -FindUserLinks -SaveToFile $false -SetClipBoard $false -ExportHtml $false -ShowNestedCallFlows $false -ShowUserCallingSettings $false
+        . .\M365CallFlowVisualizerV2.ps1 -Identity $searchScopeIncludedVoiceApp -FindUserLinks -SaveToFile $false -SetClipBoard $false -ExportHtml $false -ShowNestedCallFlows $false -ShowUserCallingSettings $false -CacheResults $true
 
     }
 
