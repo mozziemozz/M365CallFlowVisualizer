@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.0.4
+    Version:            3.0.5
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
 
@@ -4436,8 +4436,8 @@ else {
 #Remove invalid characters from mermaid syntax
 $mermaidCode = $mermaidCode.Replace(";",",")
 
-#Add H1 Title to Markdown code
-$mermaidCode = $mermaidCode.Replace("## CallFlowNamePlaceHolder","## Call Flow $VoiceAppFileName")
+#Add H2 Title to Markdown code
+$mermaidCode = $mermaidCode.Replace("## CallFlowNamePlaceHolder","## $VoiceAppFileName")
 
 # Custom Mermaid Color Themes
 function Set-CustomMermaidTheme {
@@ -4589,7 +4589,7 @@ if ($ExportPng -eq $true) {
 if ($SetClipBoard -eq $true) {
     $mermaidCode -Replace('```mermaid','') `
     -Replace('```','') `
-    -Replace("## Call Flow $VoiceAppFileName","") `
+    -Replace("## $VoiceAppFileName","") `
     -Replace($MarkdownTheme,"") | Set-Clipboard
 
     Write-Host "Mermaid code copied to clipboard. Paste it on https://mermaid.live" -ForegroundColor Cyan
@@ -4619,7 +4619,7 @@ if ($ExportHtml -eq $true) {
         -Replace "VoiceAppNameHtmlIdPlaceHolder",($($VoiceAppFileName).Replace(" ","-")) `
         -Replace '<div class="mermaid">ThemePlaceHolder',$MarkdownThemeHtml `
         -Replace "MermaidPlaceHolder",($mermaidCode | Out-String).Replace($MarkdownTheme,"") `
-        -Replace "## Call Flow $VoiceAppFileName","" `
+        -Replace "## $VoiceAppFileName","" `
         -Replace('```mermaid','') `
         -Replace('```','') | Set-Content -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.htm" -Encoding UTF8
 

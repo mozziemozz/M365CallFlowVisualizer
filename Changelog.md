@@ -130,3 +130,5 @@
 |07.05.2023|Get-TeamsUserCallFlow.ps1|1.0.6|Add support to also expand and include user call groups and delegates.|
 |07.05.2023|Get-TeamsUserCallFlow.ps1|1.0.7|Bug fixes.|
 |14.05.2023|Get-TeamsUserCallFlow.ps1|1.0.8|Add support for serial call group user nesting. Change ExportSvg and PreviewSVG default values to $false since they're currently broken.|
+|02.06.2023|M365CallFlowVisualizerV2.ps1|3.0.5|Remove "Call Flow" prefix from H2 title in HTML output.|
+|02.06.2023|AllTopLevelVoiceAppsToMarkdownDocFx.ps1|1.0.5|Add param for relative path.|
