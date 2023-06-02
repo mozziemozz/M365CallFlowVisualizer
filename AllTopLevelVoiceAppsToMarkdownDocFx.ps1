@@ -6,7 +6,7 @@
     This script can only be used when it's called from another script in another repo. Do not use it manually.
 
     Author:             Martin Heusser
-    Version:            1.0.5
+    Version:            1.0.6
 
 #>
 
@@ -65,11 +65,11 @@ foreach ($CallQueue in $AllCallQueues) {
     
 }
 
-Set-Content -Path "$localRepoPath\Docs\articles\$ArticlesRelativePath\call_flows.md" -Value "# Call Flows"
+Set-Content -Path "$localRepoPath\Docs\articles\$ArticlesRelativePath\call-flows.md" -Value "# Call Flows"
 
 if ($IncludeCallFlowDocs) {
 
-    Add-Content -Path "$localRepoPath\Docs\articles\$ArticlesRelativePath\call_flows.md" -Value "`n[!INCLUDE[](call_flow_docs.md)]`n"
+    Add-Content -Path "$localRepoPath\Docs\articles\$ArticlesRelativePath\call-flows.md" -Value "`n[!INCLUDE[](call_flow_docs.md)]`n"
 
 }
 
@@ -81,6 +81,6 @@ foreach ($VoiceAppIdentity in $VoiceApps) {
 
     $markdownInclude = "&nbsp;`n[!include[$($VoiceAppFileName)]($voiceAppIdentity/$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension)]`n- [Enlarge View]($voiceAppIdentity/$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.htm)`n- [PNG Download]($voiceAppIdentity/$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png) `n&nbsp;`n"
 
-    Add-Content -Path "$localRepoPath\Docs\articles\$ArticlesRelativePath\call_flows.md" -Value $markdownInclude
+    Add-Content -Path "$localRepoPath\Docs\articles\$ArticlesRelativePath\call-flows.md" -Value $markdownInclude
 
 }
