@@ -134,3 +134,4 @@
 |02.06.2023|AllTopLevelVoiceAppsToMarkdownDocFx.ps1|1.0.5|Add param for relative path.|
 |02.06.2023|AllTopLevelVoiceAppsToMarkdownDocFx.ps1|1.0.6|Rename "call_flows.md" to "call-flows.md" to follow the awesome-docfx-template repo.|
 |02.06.2023|Find-CallQueueAndAutoAttendantUserLinks.ps1|1.0.2|Migrate to Get-AllVoiceAppsAndResourceAccounts function and set -CacheResults to True for performance improvements.|
+|04.07.2023|M365CallFlowVisualizerV2.ps1|3.0.6|Add new parameter `-ShowCqAuthorizedUsers` to display authorized users of call queues.|

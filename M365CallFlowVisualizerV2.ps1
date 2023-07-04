@@ -7,9 +7,11 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.0.5
+    Version:            3.0.6
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
+    Sponsor Project:    https://github.com/sponsors/mozziemozz
+    Website:            https://heusser.pro
 
     .PARAMETER Name
     -Identity
@@ -188,6 +190,12 @@
         Type:               bool
         Default value:      false
 
+    -ShowCqAuthorizedUsers
+        Specifies if authorized users of call queues should be shown
+        Required:           false
+        Type:               bool
+        Default value:      false
+
     -ShowUserOutboundCallingIds
         Specifies if outbound calling Ids of individual call queue agents should be shown. This only works if -ShowCqAgentPhoneNumbers is $true
         Required:           false
@@ -328,6 +336,7 @@ param(
     [Parameter(Mandatory=$false)][Bool]$ShowSharedVoicemailGroupMembers = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowCqOutboundCallingIds = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowUserOutboundCallingIds = $false,
+    [Parameter(Mandatory=$false)][Bool]$ShowCqAuthorizedUsers = $false,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][ValidateSet("EU","US")][String]$DateFormat = "EU",
     [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral","custom")][String]$Theme = "default",
@@ -378,6 +387,7 @@ if ($HardcoreMode -eq $true) {
     $ShowSharedVoicemailGroupMembers = $true
     $ShowCqOutboundCallingIds = $true
     $ShowUserOutboundCallingIds = $true
+    $ShowCqAuthorizedUsers = $true
     $PreviewHtml = $true
     $Theme = "dark"
 
@@ -3871,45 +3881,51 @@ function Get-CallQueueCallFlow {
     # Add outbound calling IDs if available and if selected
     if ($ShowCqOutboundCallingIds -eq $true) {
 
-        if ($CqOboResourceAccountIds) {
+        $oboResourceAccounts = "Outbound Calling Ids:"
 
-            $oboResourceAccounts = "Outbound Calling Ids:"
+        foreach ($CqOboResourceAccountId in $CqOboResourceAccountIds) {
 
-            foreach ($CqOboResourceAccountId in $CqOboResourceAccountIds) {
+            $oboResourceAccount = $allResourceAccounts | Where-Object {$_.ObjectId -eq $CqOboResourceAccountId}
+            $oboResourceAccountDisplayName = Optimize-DisplayName -String $oboResourceAccount.DisplayName
+            $oboResourceAccountPhoneNumber = $oboResourceAccount.PhoneNumber.Replace("tel:","")
 
-                $oboResourceAccount = $allResourceAccounts | Where-Object {$_.ObjectId -eq $CqOboResourceAccountId}
-                $oboResourceAccountDisplayName = Optimize-DisplayName -String $oboResourceAccount.DisplayName
-                $oboResourceAccountPhoneNumber = $oboResourceAccount.PhoneNumber.Replace("tel:","")
+            if ($ShowPhoneNumberType -eq $true) {
 
-                if ($ShowPhoneNumberType -eq $true) {
+                $oboResourceAccountPhoneNumberPhoneNumberType = (Get-CsPhoneNumberAssignment -TelephoneNumber $oboResourceAccount.PhoneNumber.Replace("tel:","")).NumberType
+            
+            }
 
-                    $oboResourceAccountPhoneNumberPhoneNumberType = (Get-CsPhoneNumberAssignment -TelephoneNumber $oboResourceAccount.PhoneNumber.Replace("tel:","")).NumberType
-                
-                }
+            if ($ObfuscatePhoneNumbers -eq $true) {
 
-                if ($ObfuscatePhoneNumbers -eq $true) {
-
-                    $oboResourceAccountPhoneNumber = $oboResourceAccountPhoneNumber.Remove(($oboResourceAccountPhoneNumber.Length -4)) + "****"
-    
-                }
-
-                if ($ShowPhoneNumberType -eq $true) {
-
-                    $oboResourceAccountPhoneNumber = $oboResourceAccountPhoneNumber + "<br>$oboResourceAccountPhoneNumberPhoneNumberType"
-
-                }
-    
-                $oboResourceAccounts += "<br>$oboResourceAccountDisplayName $oboResourceAccountPhoneNumber"
+                $oboResourceAccountPhoneNumber = $oboResourceAccountPhoneNumber.Remove(($oboResourceAccountPhoneNumber.Length -4)) + "****"
 
             }
 
-            $mdOutboundCallingIds = @"
+            if ($ShowPhoneNumberType -eq $true) {
 
-            cqSettingsContainer$($cqCallFlowObjectId) -.- cqOutboundCallingIds$($cqCallFlowObjectId)[($($oboResourceAccounts))] -.- 
-        
+                $oboResourceAccountPhoneNumber = $oboResourceAccountPhoneNumber + "<br>$oboResourceAccountPhoneNumberPhoneNumberType"
+
+            }
+
+            $oboResourceAccounts += "<br>$oboResourceAccountDisplayName $oboResourceAccountPhoneNumber"
+
+        }
+
+        $mdOutboundCallingIds = @"
+
+cqSettingsContainer$($cqCallFlowObjectId) -.- cqOutboundCallingIds$($cqCallFlowObjectId)[($($oboResourceAccounts))] -.- 
+    
 "@
-        
-            $allMermaidNodes += "cqOutboundCallingIds$($cqCallFlowObjectId)"
+    
+        $allMermaidNodes += "cqOutboundCallingIds$($cqCallFlowObjectId)"
+
+    }
+
+    else {
+
+        if ($ShowCqAuthorizedUsers -eq $true -and $MatchingCQ.AuthorizedUsers) {
+
+            $mdOutboundCallingIds = $null
 
         }
 
@@ -3921,9 +3937,56 @@ function Get-CallQueueCallFlow {
 
     }
 
-    else {
+    if ($ShowCqAuthorizedUsers -eq $true -and $MatchingCQ.AuthorizedUsers) {
 
-        $mdOutboundCallingIds = "cqSettingsContainer$($cqCallFlowObjectId) -.- timeOut$($cqCallFlowObjectId)"
+        if ($ShowCqOutboundCallingIds -eq $true -and $CqOboResourceAccountIds) {
+
+            $mdOutboundCallingIds = $mdOutboundCallingIds.Replace(")] -.- ",")]")
+
+            $mdCqAuthorizedUsers = "cqOutboundCallingIds$($cqCallFlowObjectId) -.- cqAuthorizedUsers$($cqCallFlowObjectId)[(Authorized Users<br>"
+
+        }
+
+        else {
+
+            $mdCqAuthorizedUsers = "cqSettingsContainer$($cqCallFlowObjectId) -.- cqAuthorizedUsers$($cqCallFlowObjectId)[(Authorized Users<br>"
+
+        }
+
+        foreach ($cqAuthorizedUser in $MatchingCQ.AuthorizedUsers.Guid) {
+
+            $cqAuthorizedCsOnlineUser = Get-CsOnlineUser -Identity $cqAuthorizedUser
+
+            if (!$cqAuthorizedCsOnlineUser.TeamsVoiceApplicationsPolicy.Name) {
+
+                Write-Warning -Message "User $($cqAuthorizedCsOnlineUser.DisplayName) is an authorized user of CQ $($MatchingCQ.Name) but doesn't have a Voice Application Policy assigned."
+
+                $mdCqAuthorizedUserVoiceApplicationPolicy = ", Assigned Policy: None"
+
+            }
+
+            else {
+
+                # $cqAuthorizedUserVoiceApplicationPolicy = Get-CsTeamsVoiceApplicationsPolicy -Identity $cqAuthorizedCsOnlineUser.TeamsVoiceApplicationsPolicy.Name
+
+                $mdCqAuthorizedUserVoiceApplicationPolicy = ", Assigned Policy: $($cqAuthorizedCsOnlineUser.TeamsVoiceApplicationsPolicy.Name)"
+
+            }
+
+            $mdCqAuthorizedUsers += ($cqAuthorizedCsOnlineUser.DisplayName) + $mdCqAuthorizedUserVoiceApplicationPolicy + "<br>"
+
+        }
+
+        $mdCqAuthorizedUsers = $mdCqAuthorizedUsers.Remove(($mdCqAuthorizedUsers.Length -4),4)
+        $mdCqAuthorizedUsers += ")] -.-"
+
+        $allMermaidNodes += "cqAuthorizedUsers$($cqCallFlowObjectId)"
+
+    }
+
+    else {
+        
+        $mdCqAuthorizedUsers = $null
 
     }
     
@@ -3956,6 +4019,7 @@ routingMethod$($cqCallFlowObjectId)[(Routing Method: $CqRoutingMethod)] --> agen
 agentAlertTime$($cqCallFlowObjectId)[(Agent Alert Time: $CqAgentAlertTime)] -.- cqSettingsContainer$($cqCallFlowObjectId)
 cqSettingsContainer$($cqCallFlowObjectId)[(Music On Hold: $CqMusicOnHold <br> Conference Mode Enabled: $CqConferenceMode <br> Agent Opt Out Allowed: $CqAgentOptOut <br> Presence Based Routing: $CqPresenceBasedRouting <br> TTS Greeting Language: $CqLanguageId)]
 $mdOutboundCallingIds
+$mdCqAuthorizedUsers
 timeOut$($cqCallFlowObjectId)[(Timeout: $CqTimeOut Seconds)]
 end
 agentAlertTime$($cqCallFlowObjectId) --> subgraphAgents$($cqCallFlowObjectId)
