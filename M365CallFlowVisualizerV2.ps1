@@ -302,7 +302,7 @@
     
 #>
 
-#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.9.3" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
+#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "5.5.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
 
 [CmdletBinding(DefaultParametersetName="None")]
 param(
@@ -3727,6 +3727,54 @@ function Get-CallQueueCallFlow {
     
     }
 
+    switch ($MatchingCQ.NoAgentApplyTo) {
+        AllCalls {
+            $mdNoAgentApplyTo = "|New and Queued Calls|"
+        }
+        NewCalls {
+            $mdNoAgentApplyTo = "|New Calls Only|"
+        }
+        Default {}
+    }
+
+    switch ($MatchingCQ.NoAgentAction) {
+        Queue {
+
+            $mdCqNoAgentAction = @"
+cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($cqCallFlowObjectId)(Queue Call) --> $mdNoAgentApplyTo cqResult$($cqCallFlowObjectId)
+"@
+
+            $mdCqNoAgentActionDisconnect = $null
+
+        }
+        Disconnect {
+
+            if ($CombineDisconnectCallNodes -eq $true) {
+
+                $mdCqNoAgentAction = "cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($cqCallFlowObjectId)(Apply To)"
+
+                $mdCqNoAgentActionDisconnect = "cqNoAgentsAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo disconnectCall((DisconnectCall))"
+
+                $allMermaidNodes += "disconnectCall"
+    
+            }
+    
+            else {
+    
+                $mdCqNoAgentAction = "cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($cqCallFlowObjectId)(Apply To)"
+
+                $mdCqNoAgentActionDisconnect = "cqNoAgentsAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo cqNoAgentsDisconnect$($cqCallFlowObjectId)((DisconnectCall))"
+
+                $allMermaidNodes += "cqNoAgentsDisconnect$($cqCallFlowObjectId)"
+                
+            }
+
+        }
+        Default {}
+    }
+
+    $allMermaidNodes += @("cqNoAgents$($cqCallFlowObjectId)","cqNoAgentsApplyTo$($cqCallFlowObjectId)","cqNoAgentsAction$($cqCallFlowObjectId)")
+
     # Create empty mermaid element for agent list
     $mdCqAgentsDisplayNames = @"
 "@
@@ -4027,11 +4075,14 @@ subgraph subgraphAgents$($cqCallFlowObjectId)[Agents List]
 agentListType$($cqCallFlowObjectId)[(Agent List Type: $CqAgentListType)]
 $mdCqAgentsDisplayNames
 end
-subgraphAgents$($cqCallFlowObjectId) --> cqResult$($cqCallFlowObjectId){Agent Answered?}
+subgraphAgents$($cqCallFlowObjectId) --> cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |Yes| cqResult$($cqCallFlowObjectId){Agent Answered?}
+$mdCqNoAgentAction
 end
 
 cqResult$($cqCallFlowObjectId) --> |Yes| $mdCallSuccess
 cqResult$($cqCallFlowObjectId) --> |No| timeOut$($cqCallFlowObjectId) --> $CqTimeoutActionFriendly
+
+$mdCqNoAgentActionDisconnect
 
 "@
 
