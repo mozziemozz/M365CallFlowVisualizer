@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.0.7
+    Version:            3.0.8
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -202,6 +202,12 @@
         Type:               bool
         Default value:      false
 
+    -ShowAaAuthorizedUsers
+        Specifies if authorized users of auto attendants should be shown
+        Required:           false
+        Type:               bool
+        Default value:      false
+
     -ShowUserOutboundCallingIds
         Specifies if outbound calling Ids of individual call queue agents should be shown. This only works if -ShowCqAgentPhoneNumbers is $true
         Required:           false
@@ -344,6 +350,7 @@ param(
     [Parameter(Mandatory=$false)][Bool]$ShowCqOutboundCallingIds = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowUserOutboundCallingIds = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowCqAuthorizedUsers = $false,
+    [Parameter(Mandatory=$false)][Bool]$ShowAaAuthorizedUsers = $false,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][ValidateSet("EU","US")][String]$DateFormat = "EU",
     [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral","custom")][String]$Theme = "default",
@@ -395,6 +402,7 @@ if ($HardcoreMode -eq $true) {
     $ShowCqOutboundCallingIds = $true
     $ShowUserOutboundCallingIds = $true
     $ShowCqAuthorizedUsers = $true
+    $ShowAaAuthorizedUsers = $true
     $PreviewHtml = $true
     $OverrideVoiceIdToFemale = $true
     $Theme = "dark"
@@ -1465,6 +1473,46 @@ $nodeElementHolidayLink --> $mdAutoAttendantDefaultCallFlow
 
     }
 
+    if ($ShowAaAuthorizedUsers -eq $true -and $aa.AuthorizedUsers) {
+
+        $mdAaAuthorizedUsers = "$($aa.Identity) -.- aaAuthorizedUsers$($aaObjectId)[(Authorized Users<br>"
+    
+        foreach ($aaAuthorizedUser in $aa.AuthorizedUsers.Guid) {
+    
+            $aaAuthorizedCsOnlineUser = Get-CsOnlineUser -Identity $aaAuthorizedUser
+    
+            if (!$aaAuthorizedCsOnlineUser.TeamsVoiceApplicationsPolicy.Name) {
+    
+                Write-Warning -Message "User $($aaAuthorizedCsOnlineUser.DisplayName) is an authorized user of CQ $($aa.Name) but doesn't have a Voice Application Policy assigned."
+    
+                $mdAaAuthorizedUserVoiceApplicationPolicy = ", Assigned Policy: None"
+    
+            }
+    
+            else {
+    
+                # $aaAuthorizedUserVoiceApplicationPolicy = Get-CsTeamsVoiceApplicationsPolicy -Identity $aaAuthorizedCsOnlineUser.TeamsVoiceApplicationsPolicy.Name
+    
+                $mdAaAuthorizedUserVoiceApplicationPolicy = ", Assigned Policy: $($aaAuthorizedCsOnlineUser.TeamsVoiceApplicationsPolicy.Name)"
+    
+            }
+    
+            $mdAaAuthorizedUsers += ($aaAuthorizedCsOnlineUser.DisplayName) + $mdAaAuthorizedUserVoiceApplicationPolicy + "<br>"
+    
+        }
+    
+        $mdAaAuthorizedUsers = $mdAaAuthorizedUsers.Remove(($mdAaAuthorizedUsers.Length -4),4)
+        $mdAaAuthorizedUsers += ")]"
+    
+        $allMermaidNodes += "aaAuthorizedUsers$($aaObjectId)"
+
+        if ($mermaidCode -notcontains $mdAaAuthorizedUsers) {
+
+            $mermaidCode += $mdAaAuthorizedUsers
+    
+        }
+    
+    }
     
 }
 
