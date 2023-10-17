@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.0.6
+    Version:            3.0.8
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -172,6 +172,12 @@
         Type:               switch
         Default value:      false
 
+    -OverrideVoiceIdToFemale
+        If set to true, all instances of 'Male' voice Id of auto attendants will be overwritten to 'Female'. It's likely that an auto attendants properties say Male even though the aa is using a female voice. This is a bug from MS.
+        Required:           false
+        Type:               switch
+        Default value:      false
+
     -FindUserLinks
         This paramter can only be used by the external function Find-CallQueueAndAutoAttendantUserLinks. When this parameter is true, the script will write every user which is part of a call flow into an external variable.
         Required:           false
@@ -198,6 +204,12 @@
 
     -ShowCqAuthorizedUsers
         Specifies if authorized users of call queues should be shown
+        Required:           false
+        Type:               bool
+        Default value:      false
+
+    -ShowAaAuthorizedUsers
+        Specifies if authorized users of auto attendants should be shown
         Required:           false
         Type:               bool
         Default value:      false
@@ -308,7 +320,7 @@
     
 #>
 
-#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.9.3" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
+#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "5.5.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
 
 [CmdletBinding(DefaultParametersetName="None")]
 param(
@@ -338,12 +350,14 @@ param(
     [Parameter(Mandatory=$false)][Single]$TruncateGreetings = 20,
     [Parameter(Mandatory=$false)][Switch]$ExportAudioFiles,
     [Parameter(Mandatory=$false)][Switch]$ExportTTSGreetings,
+    [Parameter(Mandatory=$false)][Switch]$OverrideVoiceIdToFemale,
     [Parameter(Mandatory=$false)][Switch]$FindUserLinks,
     [Parameter(Mandatory=$false)][Bool]$ObfuscatePhoneNumbers = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowSharedVoicemailGroupMembers = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowCqOutboundCallingIds = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowUserOutboundCallingIds = $false,
     [Parameter(Mandatory=$false)][Bool]$ShowCqAuthorizedUsers = $false,
+    [Parameter(Mandatory=$false)][Bool]$ShowAaAuthorizedUsers = $false,
     [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
     [Parameter(Mandatory=$false)][ValidateSet("EU","US")][String]$DateFormat = "EU",
     [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral","custom")][String]$Theme = "default",
@@ -395,10 +409,14 @@ if ($HardcoreMode -eq $true) {
     $ShowCqOutboundCallingIds = $true
     $ShowUserOutboundCallingIds = $true
     $ShowCqAuthorizedUsers = $true
+    $ShowAaAuthorizedUsers = $true
     $PreviewHtml = $true
+    $OverrideVoiceIdToFemale = $true
     $Theme = "dark"
 
 }
+
+Write-Warning -Message "There is currently a bug in MicrosoftTeams PowerShell. Auto attendants are likely to output 'Male' as VoiceId property when querried via PowerShell. `nPlease call your auto attendant's phone number to confirm the voice Id it's using. Use the -OverrideVoiceIdToFemale switch param to change all 'Male' values to 'Female' in diagram output."
 
 if ($SaveToFile -eq $false -and $CustomFilePath -ne ".\Output") {
 
@@ -1463,6 +1481,46 @@ $nodeElementHolidayLink --> $mdAutoAttendantDefaultCallFlow
 
     }
 
+    if ($ShowAaAuthorizedUsers -eq $true -and $aa.AuthorizedUsers) {
+
+        $mdAaAuthorizedUsers = "$($aa.Identity) -.- aaAuthorizedUsers$($aaObjectId)[(Authorized Users<br>"
+    
+        foreach ($aaAuthorizedUser in $aa.AuthorizedUsers.Guid) {
+    
+            $aaAuthorizedCsOnlineUser = Get-CsOnlineUser -Identity $aaAuthorizedUser
+    
+            if (!$aaAuthorizedCsOnlineUser.TeamsVoiceApplicationsPolicy.Name) {
+    
+                Write-Warning -Message "User $($aaAuthorizedCsOnlineUser.DisplayName) is an authorized user of CQ $($aa.Name) but doesn't have a Voice Application Policy assigned."
+    
+                $mdAaAuthorizedUserVoiceApplicationPolicy = ", Assigned Policy: None"
+    
+            }
+    
+            else {
+    
+                # $aaAuthorizedUserVoiceApplicationPolicy = Get-CsTeamsVoiceApplicationsPolicy -Identity $aaAuthorizedCsOnlineUser.TeamsVoiceApplicationsPolicy.Name
+    
+                $mdAaAuthorizedUserVoiceApplicationPolicy = ", Assigned Policy: $($aaAuthorizedCsOnlineUser.TeamsVoiceApplicationsPolicy.Name)"
+    
+            }
+    
+            $mdAaAuthorizedUsers += ($aaAuthorizedCsOnlineUser.DisplayName) + $mdAaAuthorizedUserVoiceApplicationPolicy + "<br>"
+    
+        }
+    
+        $mdAaAuthorizedUsers = $mdAaAuthorizedUsers.Remove(($mdAaAuthorizedUsers.Length -4),4)
+        $mdAaAuthorizedUsers += ")]"
+    
+        $allMermaidNodes += "aaAuthorizedUsers$($aaObjectId)"
+
+        if ($mermaidCode -notcontains $mdAaAuthorizedUsers) {
+
+            $mermaidCode += $mdAaAuthorizedUsers
+    
+        }
+    
+    }
     
 }
 
@@ -3735,6 +3793,337 @@ function Get-CallQueueCallFlow {
     
     }
 
+    switch ($MatchingCQ.NoAgentApplyTo) {
+        AllCalls {
+            $mdNoAgentApplyTo = "|New and Queued Calls|"
+        }
+        NewCalls {
+            $mdNoAgentApplyTo = "|New Calls Only|"
+        }
+        Default {}
+    }
+
+    switch ($MatchingCQ.NoAgentAction) {
+        Queue {
+
+            $mdCqNoAgentAction = @"
+cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($cqCallFlowObjectId)(Queue Call) --> $mdNoAgentApplyTo cqResult$($cqCallFlowObjectId)
+"@
+
+            $mdCqNoAgentActionDisconnect = $null
+            $mdCqNoAgentActionForward = $null
+
+        }
+        Disconnect {
+
+            $mdCqNoAgentActionForward = $null
+
+            if ($CombineDisconnectCallNodes -eq $true) {
+
+                $mdCqNoAgentAction = "cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($cqCallFlowObjectId)(ApplyTo)"
+
+                $mdCqNoAgentActionDisconnect = "cqNoAgentsAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo disconnectCall((DisconnectCall))"
+
+                $allMermaidNodes += "disconnectCall"
+    
+            }
+    
+            else {
+    
+                $mdCqNoAgentAction = "cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($cqCallFlowObjectId)(ApplyTo)"
+
+                $mdCqNoAgentActionDisconnect = "cqNoAgentsAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo cqNoAgentsDisconnect$($cqCallFlowObjectId)((DisconnectCall))"
+
+                $allMermaidNodes += "cqNoAgentsDisconnect$($cqCallFlowObjectId)"
+                
+            }
+
+        }
+        Forward {
+
+            $mdCqNoAgentActionDisconnect = $null
+    
+            if ($MatchingCQ.NoAgentActionTarget.Type -eq "User") {
+        
+                $MatchingNoAgentUserProperties = (Get-MgUser -UserId $MatchingCQ.NoAgentActionTarget.Id)
+                $MatchingNoAgentUser = Optimize-DisplayName -String $MatchingNoAgentUserProperties.DisplayName
+                $MatchingNoAgentIdentity = $MatchingNoAgentUserProperties.Id
+        
+                if ($FindUserLinks -eq $true) {
+         
+                    . New-VoiceAppUserLinkProperties -userLinkUserId $MatchingCQ.NoAgentActionTarget.Id -userLinkUserName $MatchingNoAgentUserProperties.DisplayName -userLinkVoiceAppType "Call Queue" -userLinkVoiceAppActionType "TimoutActionTarget" -userLinkVoiceAppName $MatchingCQ.Name -userLinkVoiceAppId $MatchingCQIdentity
+                
+                }        
+        
+                if ($nestedVoiceApps -notcontains $MatchingNoAgentUserProperties.Id -and $MatchingCQ.OverflowThreshold -ge 1) {
+        
+                    $nestedVoiceApps += $MatchingNoAgentUserProperties.Id
+        
+                }
+        
+                $CqNoAgentActionFriendly = "cqNoAgentAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingNoAgentIdentity)(User <br> $MatchingNoAgentUser)"
+        
+                $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)","$($MatchingNoAgentIdentity)")
+        
+            }
+        
+            elseif ($MatchingCQ.NoAgentActionTarget.Type -eq "Phone") {
+        
+                $cqNoAgentPhoneNumber = ($MatchingCQ.NoAgentActionTarget.Id).Replace("tel:","")
+        
+                if ($ObfuscatePhoneNumbers -eq $true) {
+        
+                    $cqNoAgentPhoneNumber = $cqNoAgentPhoneNumber.Remove(($cqNoAgentPhoneNumber.Length -4)) + "****"
+        
+                }
+        
+                $CqNoAgentActionFriendly = "cqNoAgentAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($cqNoAgentPhoneNumber)(External Number <br> $cqNoAgentPhoneNumber)"
+        
+                $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)","$($cqNoAgentPhoneNumber)")
+                
+            }
+        
+            else {
+        
+                $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $MatchingCQ.NoAgentActionTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
+        
+                if ($matchingApplicationInstanceCheckAa) {
+        
+                    $MatchingNoAgentAA = ($allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.NoAgentActionTarget.Id})
+        
+                    $MatchingNoAgentAA.Name = Optimize-DisplayName -String $MatchingNoAgentAA.Name
+        
+                    $CqNoAgentActionFriendly = "cqNoAgentAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingNoAgentAA.Identity)([Auto Attendant <br> $($MatchingNoAgentAA.Name)])"
+        
+                    if ($nestedVoiceApps -notcontains $MatchingNoAgentAA.Identity -and $MatchingCQ.OverflowThreshold -ge 1 -and $MatchingCQ.TimeoutThreshold -ge 1) {
+        
+                        $nestedVoiceApps += $MatchingNoAgentAA.Identity
+        
+                    }
+        
+                    $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)","$($MatchingNoAgentAA.Identity)")
+        
+                }
+        
+                else {
+        
+                    $MatchingNoAgentCQ = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.NoAgentActionTarget.Id})
+        
+                    $MatchingNoAgentCQ.Name = Optimize-DisplayName -String $MatchingNoAgentCQ.Name
+        
+                    $CqNoAgentActionFriendly = "cqNoAgentAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingNoAgentCQ.Identity)([Call Queue <br> $($MatchingNoAgentCQ.Name)])"
+        
+                    if ($nestedVoiceApps -notcontains $MatchingNoAgentCQ.Identity -and $MatchingCQ.OverflowThreshold -ge 1 -and $MatchingCQ.TimeoutThreshold -ge 1) {
+        
+                        $nestedVoiceApps += $MatchingNoAgentCQ.Identity
+        
+                    }
+        
+                    $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)","$($MatchingNoAgentCQ.Identity)")
+        
+                }
+        
+            }
+
+            $mdCqNoAgentAction = "cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($cqCallFlowObjectId)(ApplyTo)"
+
+            $mdCqNoAgentActionForward = "cqNoAgentsAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo $CqNoAgentActionFriendly"
+        
+        }
+        Voicemail {
+
+            $mdCqNoAgentActionDisconnect = $null
+
+            $MatchingNoAgentPersonalVoicemailUserProperties = (Get-MgUser -UserId $MatchingCQ.NoAgentActionTarget.Id)
+            $MatchingNoAgentPersonalVoicemailUser = Optimize-DisplayName -String $MatchingNoAgentPersonalVoicemailUserProperties.DisplayName
+            $MatchingNoAgentPersonalVoicemailIdentity = $MatchingNoAgentPersonalVoicemailUserProperties.Id
+        
+            if ($FindUserLinks -eq $true) {
+         
+                . New-VoiceAppUserLinkProperties -userLinkUserId $MatchingCQ.NoAgentActionTarget.Id -userLinkUserName $MatchingNoAgentPersonalVoicemailUserProperties.DisplayName -userLinkVoiceAppType "Call Queue" -userLinkVoiceAppActionType "TimoutActionTargetPersonalVoicemail" -userLinkVoiceAppName $MatchingCQ.Name -userLinkVoiceAppId $MatchingCQIdentity
+            
+            }
+        
+            $CqNoAgentActionFriendly = "cqNoAgentAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqPersonalVoicemail$($MatchingNoAgentPersonalVoicemailIdentity)(Personal Voicemail <br> $MatchingNoAgentPersonalVoicemailUser)"
+        
+            $mdCqNoAgentAction = "cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($cqCallFlowObjectId)(ApplyTo)"
+        
+            $mdCqNoAgentActionForward = "cqNoAgentsAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo $CqNoAgentActionFriendly"
+        
+            $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)","$($MatchingNoAgentPersonalVoicemailIdentity)","cqPersonalVoicemail$($MatchingNoAgentPersonalVoicemailIdentity)")
+        
+        }
+        SharedVoicemail {
+
+            $mdCqNoAgentActionDisconnect = $null
+
+            $MatchingNoAgentVoicemailProperties = (Get-MgGroup -GroupId $MatchingCQ.NoAgentActionTarget.Id)
+            $MatchingNoAgentVoicemail = Optimize-DisplayName -String $MatchingNoAgentVoicemailProperties.DisplayName
+            $MatchingNoAgentIdentity = $MatchingNoAgentVoicemailProperties.Id
+        
+            if ($ShowSharedVoicemailGroupMembers -eq $true) {
+        
+                . Get-SharedVoicemailGroupMembers -SharedVoicemailGroupId $MatchingCQ.NoAgentActionTarget.Id
+        
+                $MatchingNoAgentVoicemail = "$MatchingNoAgentVoicemail$mdSharedVoicemailGroupMembers"
+        
+            }
+        
+            if ($MatchingCQ.NoAgentSharedVoicemailTextToSpeechPrompt) {
+        
+                $CqNoAgentVoicemailGreeting = "TextToSpeech"
+                
+                if ($ShowTTSGreetingText) {
+        
+                    $NoAgentVoicemailTTSGreetingValueExport = $MatchingCQ.NoAgentSharedVoicemailTextToSpeechPrompt
+                    $NoAgentVoicemailTTSGreetingValue = Optimize-DisplayName -String $MatchingCQ.NoAgentSharedVoicemailTextToSpeechPrompt
+        
+                    if ($ExportTTSGreetings) {
+        
+                        $NoAgentVoicemailTTSGreetingValueExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqNoAgentVoicemailGreeting.txt"
+        
+                        $ttsGreetings += ("click cqNoAgentVoicemailGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqNoAgentVoicemailGreeting.txt" + '"')
+        
+                    }    
+        
+        
+                    if ($NoAgentVoicemailTTSGreetingValue.Length -gt $truncateGreetings) {
+        
+                        $NoAgentVoicemailTTSGreetingValue = $NoAgentVoicemailTTSGreetingValue.Remove($NoAgentVoicemailTTSGreetingValue.Length - ($NoAgentVoicemailTTSGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
+        
+                    }
+        
+                    $CqNoAgentVoicemailGreeting += " <br> ''$NoAgentVoicemailTTSGreetingValue''"
+        
+                }
+        
+                if ($MatchingCQ.EnableNoAgentSharedVoicemailSystemPromptSuppression -eq $false) {
+        
+                    $CQNoAgentVoicemailSystemGreeting = "--> cqNoAgentVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] "
+        
+                    $CQNoAgentVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
+                    $CQNoAgentVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
+        
+                    if ($ShowTTSGreetingText) {
+        
+                        if ($ExportTTSGreetings) {
+        
+                            $CQNoAgentVoicemailSystemGreetingValueExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqNoAgentMsSystemMessage.txt"
+            
+                            $ttsGreetings += ("click cqNoAgentVoicemailSystemGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqNoAgentMsSystemMessage.txt" + '"')
+            
+                        }
+        
+                        if ($CQNoAgentVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
+        
+                            $CQNoAgentVoicemailSystemGreetingValue = $CQNoAgentVoicemailSystemGreetingValue.Remove($CQNoAgentVoicemailSystemGreetingValue.Length - ($CQNoAgentVoicemailSystemGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
+        
+                        }
+        
+                        $CQNoAgentVoicemailSystemGreeting = $CQNoAgentVoicemailSystemGreeting.Replace("] "," <br> ''$CQNoAgentVoicemailSystemGreetingValue''] ")
+        
+                    }
+        
+                    $allMermaidNodes += "cqNoAgentVoicemailSystemGreeting$($cqCallFlowObjectId)"
+        
+                }
+        
+                else {
+        
+                    $CQNoAgentVoicemailSystemGreeting = $null
+        
+                }
+        
+            }
+        
+            else {
+        
+                $CqNoAgentVoicemailGreeting = "AudioFile"
+        
+                if ($ShowAudioFileName) {
+        
+                    $audioFileName = Optimize-DisplayName -String ($MatchingCQ.NoAgentSharedVoicemailAudioFilePromptFileName)
+        
+                    # If audio file name is not present on call queue properties
+                    if (!$audioFileName) {
+        
+                        $audioFileName = Optimize-DisplayName -String (Get-CsOnlineAudioFile -Identity $MatchingCQ.NoAgentSharedVoicemailAudioFilePrompt -ApplicationId HuntGroup).FileName
+        
+                    }
+        
+                    if ($ExportAudioFiles) {
+        
+                        $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.NoAgentSharedVoicemailAudioFilePrompt -ApplicationId HuntGroup
+                        [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+        
+                        $audioFileNames += ("click cqNoAgentVoicemailGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+        
+                    }
+                    
+                    if ($audioFileName.Length -gt $truncateGreetings) {
+                
+                        $audioFileNameExtension = ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length -4)..$audioFileName.Length])[3]
+                        $audioFileName = $audioFileName.Remove($audioFileName.Length -($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
+        
+                    }
+        
+                    $CqNoAgentVoicemailGreeting += " <br> $audioFileName"
+        
+                }
+        
+                if ($MatchingCQ.EnableNoAgentSharedVoicemailSystemPromptSuppression -eq $false) {
+        
+                    $CQNoAgentVoicemailSystemGreeting = "--> cqNoAgentVoicemailSystemGreeting$($cqCallFlowObjectId)>Greeting <br> MS System Message] "
+        
+                    $CQNoAgentVoicemailSystemGreetingValue = (. Get-MsSystemMessage)[-1]
+                    $CQNoAgentVoicemailSystemGreetingValueExport = (. Get-MsSystemMessage)[0]
+        
+                    if ($ShowTTSGreetingText) {
+        
+                        if ($ExportTTSGreetings) {
+        
+                            $CQNoAgentVoicemailSystemGreetingValueExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqNoAgentMsSystemMessage.txt"
+            
+                            $ttsGreetings += ("click cqNoAgentVoicemailSystemGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqNoAgentMsSystemMessage.txt" + '"')
+            
+                        }
+        
+                        if ($CQNoAgentVoicemailSystemGreetingValue.Length -gt $truncateGreetings) {
+        
+                            $CQNoAgentVoicemailSystemGreetingValue = $CQNoAgentVoicemailSystemGreetingValue.Remove($CQNoAgentVoicemailSystemGreetingValue.Length - ($CQNoAgentVoicemailSystemGreetingValue.Length -$truncateGreetings)).TrimEnd() + "..."
+        
+                        }
+        
+                        $CQNoAgentVoicemailSystemGreeting = $CQNoAgentVoicemailSystemGreeting.Replace("] "," <br> ''$CQNoAgentVoicemailSystemGreetingValue''] ")
+        
+                    }
+        
+                    $allMermaidNodes += "cqNoAgentVoicemailSystemGreeting$($cqCallFlowObjectId)"
+        
+                }
+        
+                else {
+        
+                    $CQNoAgentVoicemailSystemGreeting = $null
+        
+                }
+        
+            }
+        
+            $CqNoAgentActionFriendly = "cqNoAgentVoicemailGreeting$($cqCallFlowObjectId)>Greeting <br> $CqNoAgentVoicemailGreeting] $CQNoAgentVoicemailSystemGreeting--> cqNoAgentAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingNoAgentIdentity)(Shared Voicemail <br> $MatchingNoAgentVoicemail)"
+        
+            $mdCqNoAgentAction = "cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($cqCallFlowObjectId)(ApplyTo)"
+        
+            $mdCqNoAgentActionForward = "cqNoAgentsAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo $CqNoAgentActionFriendly"
+
+            $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)","cqNoAgentVoicemailGreeting$($cqCallFlowObjectId)","$($MatchingNoAgentIdentity)")
+        
+        }
+        Default {}
+    }
+
+    $allMermaidNodes += @("cqNoAgents$($cqCallFlowObjectId)","cqNoAgentsApplyTo$($cqCallFlowObjectId)","cqNoAgentsAction$($cqCallFlowObjectId)")
+
     # Create empty mermaid element for agent list
     $mdCqAgentsDisplayNames = @"
 "@
@@ -4035,16 +4424,21 @@ subgraph subgraphAgents$($cqCallFlowObjectId)[Agents List]
 agentListType$($cqCallFlowObjectId)[(Agent List Type: $CqAgentListType)]
 $mdCqAgentsDisplayNames
 end
-subgraphAgents$($cqCallFlowObjectId) --> cqResult$($cqCallFlowObjectId){Agent Answered?}
+subgraphAgents$($cqCallFlowObjectId) --> cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |Yes| cqResult$($cqCallFlowObjectId){Agent Answered?}
+$mdCqNoAgentAction
 end
 
 cqResult$($cqCallFlowObjectId) --> |Yes| $mdCallSuccess
 cqResult$($cqCallFlowObjectId) --> |No| timeOut$($cqCallFlowObjectId) --> $CqTimeoutActionFriendly
 
+$mdCqNoAgentActionDisconnect
+$mdCqNoAgentActionForward
+
 "@
 
     if ($mermaidCode -notcontains $mdCallQueueCallFlow) {
 
+        # Add complete call queue call flow if overflow and timeout thresholds are set
         if ($MatchingCQ.OverflowThreshold -ge 1 -and $MatchingCQ.TimeoutThreshold -ge 1) {
 
             $mermaidCode += $mdCallQueueCallFlow
@@ -4053,6 +4447,7 @@ cqResult$($cqCallFlowObjectId) --> |No| timeOut$($cqCallFlowObjectId) --> $CqTim
 
         else {
 
+            # Add only overflow call flow if overflow threshold is 0
             if ($MatchingCQ.OverflowThreshold -eq 0) {
 
                 $mdCallQueueCallFlow =@"
@@ -4064,6 +4459,7 @@ overFlow$($cqCallFlowObjectId) --> $CqOverFlowActionFriendly
             $mermaidCode += $mdCallQueueCallFlow
             }
 
+            # Add only timeout call flow if timeout threshold is 0 and overflow threshold is not 0
             else {
                 $mdCallQueueCallFlow =@"
 $($MatchingCQIdentity)([Call Queue <br> $($CqName)]) -->$cqGreetingNode timeOut$($cqCallFlowObjectId)[(Timeout Threshold: $CqTimeOut <br> Immediate Timeout Action <br> TTS Greeting Language: $CqLanguageId)]
@@ -4510,6 +4906,13 @@ $mermaidCode = $mermaidCode.Replace(";",",")
 
 #Add H2 Title to Markdown code
 $mermaidCode = $mermaidCode.Replace("## CallFlowNamePlaceHolder","## $VoiceAppFileName")
+
+if ($OverrideVoiceIdToFemale) {
+
+    $mermaidCode = $mermaidCode.Replace("Male<br>","Female<br>")
+
+}
+
 
 # Custom Mermaid Color Themes
 function Set-CustomMermaidTheme {
