@@ -30,7 +30,7 @@ function Get-AllVoiceAppsAndResourceAccounts {
         
                 $querriedAAs = Get-CsAutoAttendant -Skip $skipCounter
         
-                $allAutoAttendants += $querriedAAs
+                $Global:allAutoAttendants += $querriedAAs
 
                 $skipCounter += $querriedAAs.Count
 
@@ -66,7 +66,7 @@ function Get-AllVoiceAppsAndResourceAccounts {
         
                 $querriedCQs = Get-CsCallQueue -WarningAction SilentlyContinue -Skip $skipCounter
         
-                $allCallQueues += $querriedCQs
+                $Global:allCallQueues += $querriedCQs
 
                 $skipCounter += $querriedCQs.Count
 
