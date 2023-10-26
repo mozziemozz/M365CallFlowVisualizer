@@ -137,3 +137,4 @@
 |04.07.2023|M365CallFlowVisualizerV2.ps1|3.0.6|Add new parameter `-ShowCqAuthorizedUsers` to display authorized users of call queues.|
 |18.08.2023|M365CallFlowVisualizerV2.ps1|3.0.7|Add support for CQ no agents opted/logged.|
 |18.08.2023|M365CallFlowVisualizerV2.ps1|3.0.8|Add new parameter `-ShowAaAuthorizedUsers` to display authorized users of auto attendants.|
+|26.10.2023|M365CallFlowVisualizerV2.ps1|3.0.9|Fix Team names with special characters (Add Optimize-DisplayName function).|

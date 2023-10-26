@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.0.8
+    Version:            3.0.9
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -404,6 +404,7 @@ if ($HardcoreMode -eq $true) {
     $ShowCqAuthorizedUsers = $true
     $ShowAaAuthorizedUsers = $true
     $PreviewHtml = $true
+    $ExportPng = $true
     $OverrideVoiceIdToFemale = $true
     $Theme = "dark"
 
@@ -3206,7 +3207,7 @@ function Get-CallQueueCallFlow {
 
         else {
 
-            $TeamName = (Get-Team -GroupId $MatchingCQ.DistributionLists.Guid).DisplayName
+            $TeamName = Optimize-DisplayName -String (Get-Team -GroupId $MatchingCQ.DistributionLists.Guid).DisplayName
             $ChannelName = Optimize-DisplayName -String (Get-TeamChannel -GroupId $MatchingCQ.DistributionLists.Guid | Where-Object {$_.Id -eq $MatchingCQ.ChannelId}).DisplayName
 
             $CqAgentListType = "Teams Channel <br> Team Name: $TeamName <br> Channel Name: $ChannelName"
@@ -5042,7 +5043,7 @@ if ($ExportPng -eq $true) {
 
     }
 
-    mmdc -i "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -o "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png" -b transparent -w "16900" -H "15000" -t "$pngTheme"
+    mmdc -i "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -o "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png" -b transparent -t "$pngTheme" -s 10
 
     if ($DocType -eq "Markdown") {
 
