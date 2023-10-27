@@ -138,3 +138,7 @@
 |18.08.2023|M365CallFlowVisualizerV2.ps1|3.0.7|Add support for CQ no agents opted/logged.|
 |18.08.2023|M365CallFlowVisualizerV2.ps1|3.0.8|Add new parameter `-ShowAaAuthorizedUsers` to display authorized users of auto attendants.|
 |26.10.2023|M365CallFlowVisualizerV2.ps1|3.0.9|Fix Team names with special characters (Add Optimize-DisplayName function).|
+|27.10.2023|M365CallFlowVisualizerV2.ps1|3.0.10|Add support for Teams and Graph sign in via Entra ID App Registration / Service Principal.|
+|27.10.2023|Connect-M365CFV.ps1|1.1.0|Add support for Teams and Graph sign in via Entra ID App Registration / Service Principal.|
+|27.10.2023|Get-M365CFVTeamsAdminToken.ps1|1.0.0|Add support for Teams and Graph sign in via Entra ID App Registration / Service Principal.|
+|27.10.2023|SecureCredsMgmt.ps1|1.0.0|Add support for Teams and Graph sign in via Entra ID App Registration / Service Principal.|

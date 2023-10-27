@@ -10,3 +10,4 @@
 *.wav
 *.json
 EncodeMermaid.py
+**/.local

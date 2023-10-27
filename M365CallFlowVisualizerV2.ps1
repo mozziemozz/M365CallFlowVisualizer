@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.0.9
+    Version:            3.0.10
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -297,6 +297,29 @@
         Type:               switch
         Default value:      false
 
+    -ConnectWithServicePrincipal
+        Connect to Teams and Graph using your own Entra ID App Registration
+        Required:           false
+        Type:               switch
+        Default value:      false
+
+    -EntraTenantIdFileName
+        Specifies the name of the file to store/read the tenant ID in an encrypted format at .\.local\SecureCreds. If -ConnectWithServicePrincipal is specified/$true this parameter must be specified as well.
+        Required:           false
+        Type:               string
+        Default value:      "m365-cfv-tenant-id"
+
+    -EntraAppRegistrationIdFileName
+        Specifies the name of the file to store/read the app ID in an encrypted format at .\.local\SecureCreds. If -ConnectWithServicePrincipal is specified/$true this parameter must be specified as well.
+        Required:           false
+        Type:               string
+        Default value:      "m365-cfv-app-id"
+
+    -EntraAppRegistrationClientSecretFileName
+        Specifies the name of the file to store/read the client secret in an encrypted format at .\.local\SecureCreds. If -ConnectWithServicePrincipal is specified/$true this parameter must be specified as well.
+        Required:           false
+        Type:               string
+        Default value:      "m365-cfv-client-secret"
 
     .INPUTS
         None.
@@ -318,51 +341,56 @@
 
 [CmdletBinding(DefaultParametersetName="None")]
 param(
-    [Parameter(Mandatory=$false)][String]$Identity,
-    [Parameter(Mandatory=$false)][Bool]$SetClipBoard = $false,
-    [Parameter(Mandatory=$false)][Bool]$SaveToFile = $true,
-    [Parameter(Mandatory=$false)][Bool]$ExportHtml = $true,
-    [Parameter(Mandatory=$false)][Bool]$ExportPng = $false,
-    [Parameter(Mandatory=$false)][Switch]$PreviewHtml,
-    [Parameter(Mandatory=$false)][Switch]$DocFxMode,
-    [Parameter(Mandatory=$false)][Bool]$CacheResults = $false,
-    [Parameter(Mandatory=$false)][String]$CustomFilePath = ".\Output\$(Get-Date -Format "yyyy-MM-dd")",
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedCallFlows = $true,
-    [Parameter(Mandatory=$false)][Bool]$ShowUserCallingSettings = $true,
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedUserCallGroups = $false,
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedUserDelegates = $false,
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedHolidayCallFlows = $false,
-    [Parameter(Mandatory=$false)][Bool]$ShowNestedHolidayIVRs = $false,
-    [Parameter(Mandatory=$false)][Bool]$CombineDisconnectCallNodes = $false,
-    [Parameter(Mandatory=$false)][Bool]$CombineCallConnectedNodes = $false,
-    [Parameter(Mandatory=$false)][Switch]$ShowCqAgentPhoneNumbers,
-    [Parameter(Mandatory=$false)][Switch]$ShowCqAgentOptInStatus,
-    [Parameter(Mandatory=$false)][Switch]$ShowPhoneNumberType,
-    [Parameter(Mandatory=$false)][Switch]$ShowTTSGreetingText,
-    [Parameter(Mandatory=$false)][Switch]$ShowAudioFileName,
-    [Parameter(Mandatory=$false)][Single]$TruncateGreetings = 20,
-    [Parameter(Mandatory=$false)][Switch]$ExportAudioFiles,
-    [Parameter(Mandatory=$false)][Switch]$ExportTTSGreetings,
-    [Parameter(Mandatory=$false)][Switch]$OverrideVoiceIdToFemale,
-    [Parameter(Mandatory=$false)][Switch]$FindUserLinks,
-    [Parameter(Mandatory=$false)][Bool]$ObfuscatePhoneNumbers = $false,
-    [Parameter(Mandatory=$false)][Bool]$ShowSharedVoicemailGroupMembers = $false,
-    [Parameter(Mandatory=$false)][Bool]$ShowCqOutboundCallingIds = $false,
-    [Parameter(Mandatory=$false)][Bool]$ShowUserOutboundCallingIds = $false,
-    [Parameter(Mandatory=$false)][Bool]$ShowCqAuthorizedUsers = $false,
-    [Parameter(Mandatory=$false)][Bool]$ShowAaAuthorizedUsers = $false,
-    [Parameter(Mandatory=$false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
-    [Parameter(Mandatory=$false)][ValidateSet("EU","US")][String]$DateFormat = "EU",
-    [Parameter(Mandatory=$false)][ValidateSet("default","forest","dark","neutral","custom")][String]$Theme = "default",
-    [Parameter(Mandatory=$false)][String]$NodeColor = "#505AC9",
-    [Parameter(Mandatory=$false)][String]$NodeBorderColor = "#464EB8",
-    [Parameter(Mandatory=$false)][String]$FontColor = "#FFFFFF",
-    [Parameter(Mandatory=$false)][String]$LinkColor = "#505AC9",
-    [Parameter(Mandatory=$false)][String]$LinkTextColor = "#000000",
-    [Parameter(Mandatory=$false)][String]$SubgraphColor = "#7B83EB",
-    [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$false)][String]$VoiceAppName,
-    [Parameter(ParameterSetName="VoiceAppProperties",Mandatory=$true)][ValidateSet("Auto Attendant","Call Queue")][String]$VoiceAppType,
-    [Parameter(Mandatory=$false)][Switch]$HardcoreMode
+    [Parameter(Mandatory = $false)][String]$Identity,
+    [Parameter(Mandatory = $false)][Bool]$SetClipBoard = $false,
+    [Parameter(Mandatory = $false)][Bool]$SaveToFile = $true,
+    [Parameter(Mandatory = $false)][Bool]$ExportHtml = $true,
+    [Parameter(Mandatory = $false)][Bool]$ExportPng = $false,
+    [Parameter(Mandatory = $false)][Switch]$PreviewHtml,
+    [Parameter(Mandatory = $false)][Switch]$DocFxMode,
+    [Parameter(Mandatory = $false)][Bool]$CacheResults = $false,
+    [Parameter(Mandatory = $false)][String]$CustomFilePath = ".\Output\$(Get-Date -Format "yyyy-MM-dd")",
+    [Parameter(Mandatory = $false)][Bool]$ShowNestedCallFlows = $true,
+    [Parameter(Mandatory = $false)][Bool]$ShowUserCallingSettings = $true,
+    [Parameter(Mandatory = $false)][Bool]$ShowNestedUserCallGroups = $false,
+    [Parameter(Mandatory = $false)][Bool]$ShowNestedUserDelegates = $false,
+    [Parameter(Mandatory = $false)][Bool]$ShowNestedHolidayCallFlows = $false,
+    [Parameter(Mandatory = $false)][Bool]$ShowNestedHolidayIVRs = $false,
+    [Parameter(Mandatory = $false)][Bool]$CombineDisconnectCallNodes = $false,
+    [Parameter(Mandatory = $false)][Bool]$CombineCallConnectedNodes = $false,
+    [Parameter(Mandatory = $false)][Switch]$ShowCqAgentPhoneNumbers,
+    [Parameter(Mandatory = $false)][Switch]$ShowCqAgentOptInStatus,
+    [Parameter(Mandatory = $false)][Switch]$ShowPhoneNumberType,
+    [Parameter(Mandatory = $false)][Switch]$ShowTTSGreetingText,
+    [Parameter(Mandatory = $false)][Switch]$ShowAudioFileName,
+    [Parameter(Mandatory = $false)][Single]$TruncateGreetings = 20,
+    [Parameter(Mandatory = $false)][Switch]$ExportAudioFiles,
+    [Parameter(Mandatory = $false)][Switch]$ExportTTSGreetings,
+    [Parameter(Mandatory = $false)][Switch]$OverrideVoiceIdToFemale,
+    [Parameter(Mandatory = $false)][Switch]$FindUserLinks,
+    [Parameter(Mandatory = $false)][Bool]$ObfuscatePhoneNumbers = $false,
+    [Parameter(Mandatory = $false)][Bool]$ShowSharedVoicemailGroupMembers = $false,
+    [Parameter(Mandatory = $false)][Bool]$ShowCqOutboundCallingIds = $false,
+    [Parameter(Mandatory = $false)][Bool]$ShowUserOutboundCallingIds = $false,
+    [Parameter(Mandatory = $false)][Bool]$ShowCqAuthorizedUsers = $false,
+    [Parameter(Mandatory = $false)][Bool]$ShowAaAuthorizedUsers = $false,
+    [Parameter(Mandatory = $false)][ValidateSet("Markdown","Mermaid")][String]$DocType = "Markdown",
+    [Parameter(Mandatory = $false)][ValidateSet("EU","US")][String]$DateFormat = "EU",
+    [Parameter(Mandatory = $false)][ValidateSet("default","forest","dark","neutral","custom")][String]$Theme = "default",
+    [Parameter(Mandatory = $false)][String]$NodeColor = "#505AC9",
+    [Parameter(Mandatory = $false)][String]$NodeBorderColor = "#464EB8",
+    [Parameter(Mandatory = $false)][String]$FontColor = "#FFFFFF",
+    [Parameter(Mandatory = $false)][String]$LinkColor = "#505AC9",
+    [Parameter(Mandatory = $false)][String]$LinkTextColor = "#000000",
+    [Parameter(Mandatory = $false)][String]$SubgraphColor = "#7B83EB",
+    [Parameter(ParameterSetName="VoiceAppProperties",Mandatory = $false)][String]$VoiceAppName,
+    [Parameter(ParameterSetName="VoiceAppProperties",Mandatory = $true)][ValidateSet("Auto Attendant","Call Queue")][String]$VoiceAppType,
+    [Parameter(Mandatory = $false)][Switch]$HardcoreMode,
+    [Parameter(Mandatory = $false)][Switch]$ConnectWithServicePrincipal,
+    [Parameter(Mandatory = $false)][String]$EntraTenantIdFileName = "m365-cfv-tenant-id",
+    [Parameter(Mandatory = $false)][String]$EntraAppRegistrationIdFileName = "m365-cfv-app-id",
+    [Parameter(Mandatory = $false)][String]$EntraAppRegistrationClientSecretFileName = "m365-cfv-client-secret"
+
 )
 
 $ErrorActionPreference = "Continue"
@@ -380,9 +408,30 @@ $ErrorActionPreference = "Continue"
 . .\Functions\Get-IvrTransferMessage.ps1
 . .\Functions\Get-AutoAttendantDirectorySearchConfig.ps1
 . .\Functions\Get-AllVoiceAppsAndResourceAccounts.ps1
+. .\Functions\SecureCredsMgmt.ps1
+. .\Functions\Get-M365CFVTeamsAdminToken.ps1
 
 # Connect to MicrosoftTeams and Microsoft.Graph
-. Connect-M365CFV
+
+if ($ConnectWithServicePrincipal) {
+
+    $TenantId = . Get-MZZSecureCreds -FileName $EntraTenantIdFileName -NoClipboard
+    $AppId = . Get-MZZSecureCreds -FileName $EntraAppRegistrationIdFileName -NoClipboard
+    $AppSecret = . Get-MZZSecureCreds -FileName $EntraAppRegistrationClientSecretFileName -NoClipboard
+
+    . Get-M365CFVTeamsAdminToken -TenantId $TenantId -AppId $AppId -AppSecret $AppSecret
+
+    $graphTokenSecureString = $graphToken | ConvertTo-SecureString -AsPlainText -Force
+
+    . Connect-M365CFV -ConnectWithServicePrincipal
+
+}
+
+else {
+
+    . Connect-M365CFV
+
+}
 
 if ($HardcoreMode -eq $true) {
 
@@ -496,7 +545,7 @@ else {
 
 function Set-Mermaid {
     param (
-        [Parameter(Mandatory=$true)][String]$DocType
+        [Parameter(Mandatory = $true)][String]$DocType
         )
 
     if ($Theme -eq "custom") {
@@ -559,7 +608,7 @@ flowchart TB
 
 function Find-Holidays {
     param (
-        [Parameter(Mandatory=$true)][String]$VoiceAppId
+        [Parameter(Mandatory = $true)][String]$VoiceAppId
 
     )
 
@@ -658,7 +707,7 @@ function Find-Holidays {
 
 function Find-AfterHours {
     param (
-        [Parameter(Mandatory=$true)][String]$VoiceAppId
+        [Parameter(Mandatory = $true)][String]$VoiceAppId
 
     )
 
@@ -720,7 +769,7 @@ function Find-AfterHours {
 
 function Get-AutoAttendantHolidaysAndAfterHours {
     param (
-        [Parameter(Mandatory=$true)][String]$VoiceAppId
+        [Parameter(Mandatory = $true)][String]$VoiceAppId
     )
 
     $aaObjectId = $aa.Identity
@@ -1519,7 +1568,7 @@ $nodeElementHolidayLink --> $mdAutoAttendantDefaultCallFlow
 
 function Get-AutoAttendantDefaultCallFlow {
     param (
-        [Parameter(Mandatory=$false)][String]$VoiceAppId
+        [Parameter(Mandatory = $false)][String]$VoiceAppId
     )
 
     $aaDefaultCallFlowAaObjectId = $aa.Identity
@@ -2255,7 +2304,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
 function Get-AutoAttendantAfterHoursCallFlow {
     param (
-        [Parameter(Mandatory=$false)][String]$VoiceAppId
+        [Parameter(Mandatory = $false)][String]$VoiceAppId
     )
 
     $aaAfterHoursCallFlowAaObjectId = $aa.Identity
@@ -2996,7 +3045,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
 function Get-CallQueueCallFlow {
     param (
-        [Parameter(Mandatory=$true)][String]$MatchingCQIdentity
+        [Parameter(Mandatory = $true)][String]$MatchingCQIdentity
     )
 
     $MatchingCQ = $allCallQueues | Where-Object {$_.Identity -eq $MatchingCQIdentity}
@@ -4477,9 +4526,9 @@ $mdNodePhoneNumbersCounter = 0
 
 function Get-CallFlow {
     param (
-        [Parameter(Mandatory=$false)][String]$VoiceAppId,
-        [Parameter(Mandatory=$false)][String]$VoiceAppName,
-        [Parameter(Mandatory=$false)][String]$voiceAppType
+        [Parameter(Mandatory = $false)][String]$VoiceAppId,
+        [Parameter(Mandatory = $false)][String]$VoiceAppName,
+        [Parameter(Mandatory = $false)][String]$voiceAppType
     )
     
     if (!$VoiceAppName -and !$voiceAppType -and !$VoiceAppId) {
@@ -4910,11 +4959,11 @@ if ($OverrideVoiceIdToFemale) {
 # Custom Mermaid Color Themes
 function Set-CustomMermaidTheme {
     param (
-        [Parameter(Mandatory=$false)][String]$NodeColor,
-        [Parameter(Mandatory=$false)][String]$NodeBorderColor,
-        [Parameter(Mandatory=$false)][String]$FontColor,
-        [Parameter(Mandatory=$false)][String]$LinkColor,
-        [Parameter(Mandatory=$false)][String]$LinkTextColor
+        [Parameter(Mandatory = $false)][String]$NodeColor,
+        [Parameter(Mandatory = $false)][String]$NodeBorderColor,
+        [Parameter(Mandatory = $false)][String]$FontColor,
+        [Parameter(Mandatory = $false)][String]$LinkColor,
+        [Parameter(Mandatory = $false)][String]$LinkTextColor
     )
 
 
