@@ -1,16 +1,45 @@
+<#
+    .SYNOPSIS
+    Connects to Teams and Graph if not already connected. Supports interactive sign in via Microsoft Graph Command Line Tools (14d82eec-204b-4c2f-b7e8-296a70dab67e)
+    or your own dedicated Entra ID App Registration / Service Principal.
+    
+    .DESCRIPTION
+    Author:             Martin Heusser
+    Version:            1.1.0
+    Changelog:          .\Changelog.md
+
+#>
+
 function Connect-M365CFV {
     param (
+        [Parameter(Mandatory = $false)][switch]$ConnectWithServicePrincipal
     )
 
     try {
         $msTeamsTenant = Get-CsTenant -ErrorAction Stop > $null
         $msTeamsTenant = Get-CsTenant
     }
+
     catch {
-        Connect-MicrosoftTeams -ErrorAction SilentlyContinue
+
+        if ($ConnectWithServicePrincipal) {
+
+            Connect-MicrosoftTeams -AccessTokens @("$graphToken", "$teamsToken") -ErrorAction SilentlyContinue > $null
+
+        }
+
+        else {
+
+            Connect-MicrosoftTeams -ErrorAction SilentlyContinue
+
+        }
+
         $msTeamsTenant = Get-CsTenant
+
     }
+
     finally {
+        
         if ($msTeamsTenant -and $? -eq $true) {
 
             Write-Host "Connected Teams Tenant: $($msTeamsTenant.DisplayName)" -ForegroundColor Green
@@ -31,6 +60,7 @@ function Connect-M365CFV {
     }
 
     try {
+
         $testMsGraphConnection = Get-MgUser -Top 1 -ErrorAction Stop > $null
         $msGraphContext = (Get-MgContext).TenantId
 
@@ -43,7 +73,17 @@ function Connect-M365CFV {
                     Disconnect-MgGraph
                 }
 
-                Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsTenantId
+                if ($ConnectWithServicePrincipal) {
+
+                    Connect-MgGraph -AccessToken $graphTokenSecureString > $null
+
+                }
+
+                else {
+
+                    Connect-MgGraph -Scopes "User.Read.All", "Group.Read.All" -TenantId $msTeamsTenantId
+
+                }
 
                 $msGraphContext = (Get-MgContext).TenantId
 
@@ -52,6 +92,7 @@ function Connect-M365CFV {
         }
         
     }
+
     catch {
 
         if (Test-Path -Path "$env:USERPROFILE\.graph") {
@@ -61,14 +102,39 @@ function Connect-M365CFV {
 
         }
 
-        Connect-MgGraph -Scopes "User.Read.All","Group.Read.All" -TenantId $msTeamsTenantId
+        if ($ConnectWithServicePrincipal) {
+
+            Connect-MgGraph -AccessToken $graphTokenSecureString > $null
+
+        }
+
+        else {
+
+            Connect-MgGraph -Scopes "User.Read.All", "Group.Read.All" -TenantId $msTeamsTenantId
+
+        }
+
         $msGraphContext = (Get-MgContext).TenantId
     }
+
     finally {
+
         if ($msGraphContext -eq $msTeamsTenantId -and $msTeamsTenant) {
 
-            $msGraphTenantName = (Get-MgContext).Account.Split("@")[-1]
-            Write-Host "Connected Graph Tenant matches connected Teams Tenant: $msGraphTenantName" -ForegroundColor Green
+            if ($ConnectWithServicePrincipal) {
+
+                $EntraIdAppRegistrationName = (Get-MgContext).AppName
+                Write-Host "Connected Graph Tenant matches connected Teams Tenant: $($msTeamsTenant.DisplayName)" -ForegroundColor Green
+                Write-Host "Connected to Graph with App: $EntraIdAppRegistrationName" -ForegroundColor Green
+
+            }
+
+            else {
+
+                $msGraphTenantName = (Get-MgContext).Account.Split("@")[-1]
+                Write-Host "Connected Graph Tenant matches connected Teams Tenant: $msGraphTenantName" -ForegroundColor Green
+
+            }
 
         }
 
