@@ -142,3 +142,5 @@
 |27.10.2023|Connect-M365CFV.ps1|1.1.0|Add support for Teams and Graph sign in via Entra ID App Registration / Service Principal.|
 |27.10.2023|Get-M365CFVTeamsAdminToken.ps1|1.0.0|Add support for Teams and Graph sign in via Entra ID App Registration / Service Principal.|
 |27.10.2023|SecureCredsMgmt.ps1|1.0.0|Add support for Teams and Graph sign in via Entra ID App Registration / Service Principal.|
+|27.10.2023|Get-AllVoiceAppsAndResourceAccounts.ps1|1.0.1|Fix result caching by making all relevant variables global.|
+|27.10.2023|M365CallFlowVisualizerV2.ps1|3.0.11|Add support for PDF Export. Thanks @MicheleBomello for this PR!|
