@@ -24,6 +24,7 @@ function Optimize-DisplayName {
         -Replace "  "," " `
         -Replace "@"," at " `
         -Replace "call", "Call" `
-        -Replace "’","'"
+        -Replace "’","'" `
+        -Replace "`n","'"
         ).Trim()
 }

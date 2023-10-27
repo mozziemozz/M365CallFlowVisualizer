@@ -4,7 +4,7 @@
     
     .DESCRIPTION
     Author:             Martin Heusser
-    Version:            1.0.0
+    Version:            1.0.1
     Changelog:          .\Changelog.md
 
 #>
@@ -20,7 +20,7 @@ function Get-AllVoiceAppsAndResourceAccounts {
 
         $Global:allAutoAttendants = Get-CsAutoAttendant -First $queryResultSize
 
-        if ($allAutoAttendants.Count -ge $queryResultSize) {
+        if ($Global:allAutoAttendants.Count -ge $queryResultSize) {
 
             Write-Host "This tenant has at least $queryResultSize or more Auto Attendants. Querrying additional AAs..." -ForegroundColor Cyan
 
@@ -30,7 +30,7 @@ function Get-AllVoiceAppsAndResourceAccounts {
         
                 $querriedAAs = Get-CsAutoAttendant -Skip $skipCounter
         
-                $allAutoAttendants += $querriedAAs
+                $Global:allAutoAttendants += $querriedAAs
 
                 $skipCounter += $querriedAAs.Count
 
@@ -40,7 +40,7 @@ function Get-AllVoiceAppsAndResourceAccounts {
 
         }
 
-        Write-Host "Finished getting all Auto Attendants. Number of Auto Attendants found: $($allAutoAttendants.Count)"
+        Write-Host "Finished getting all Auto Attendants. Number of Auto Attendants found: $($Global:allAutoAttendants.Count)"
 
     }
 
@@ -56,7 +56,7 @@ function Get-AllVoiceAppsAndResourceAccounts {
 
         $Global:allCallQueues = Get-CsCallQueue -WarningAction SilentlyContinue -First $queryResultSize
 
-        if ($allCallQueues.Count -ge $queryResultSize) {
+        if ($Global:allCallQueues.Count -ge $queryResultSize) {
 
             Write-Host "This tenant has at least $queryResultSize or more Call Queues. Querrying additional CQs..." -ForegroundColor Cyan
 
@@ -66,7 +66,7 @@ function Get-AllVoiceAppsAndResourceAccounts {
         
                 $querriedCQs = Get-CsCallQueue -WarningAction SilentlyContinue -Skip $skipCounter
         
-                $allCallQueues += $querriedCQs
+                $Global:allCallQueues += $querriedCQs
 
                 $skipCounter += $querriedCQs.Count
 
@@ -76,7 +76,7 @@ function Get-AllVoiceAppsAndResourceAccounts {
 
         }
 
-        Write-Host "Finished getting all Call Queues. Number of Call Queues found: $($allCallQueues.Count)"
+        Write-Host "Finished getting all Call Queues. Number of Call Queues found: $($Global:allCallQueues.Count)"
 
     }
 
