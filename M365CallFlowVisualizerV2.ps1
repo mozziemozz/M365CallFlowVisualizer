@@ -45,6 +45,12 @@
         Type:               boolean
         Default value:      false
 
+    -ExportPDF
+        Specifies if, the mermaid or markdown file should be converted and saved as a PDF file. This requires Node.JS and @mermaid-js/mermaid-cli + mermaid packages.
+        Required:           false
+        Type:               boolean
+        Default value:      false
+
     -PreviewHtml
         Specifies if the exported html file should be opened in default / last active browser (only works on Windows systems)
         Required:           false
@@ -346,6 +352,7 @@ param(
     [Parameter(Mandatory = $false)][Bool]$SaveToFile = $true,
     [Parameter(Mandatory = $false)][Bool]$ExportHtml = $true,
     [Parameter(Mandatory = $false)][Bool]$ExportPng = $false,
+    [Parameter(Mandatory=$false)][Bool]$ExportPDF = $false,
     [Parameter(Mandatory = $false)][Switch]$PreviewHtml,
     [Parameter(Mandatory = $false)][Switch]$DocFxMode,
     [Parameter(Mandatory = $false)][Bool]$CacheResults = $false,
@@ -390,7 +397,6 @@ param(
     [Parameter(Mandatory = $false)][String]$EntraTenantIdFileName = "m365-cfv-tenant-id",
     [Parameter(Mandatory = $false)][String]$EntraAppRegistrationIdFileName = "m365-cfv-app-id",
     [Parameter(Mandatory = $false)][String]$EntraAppRegistrationClientSecretFileName = "m365-cfv-client-secret"
-
 )
 
 $ErrorActionPreference = "Continue"
@@ -473,7 +479,7 @@ if ($ObfuscatePhoneNumbers -eq $true) {
 
 }
 
-if ($ExportPng -eq $true) {
+if (($ExportPng -eq $true) -or ($ExportPDF -eq $true)) {
 
     try {
         $ErrorActionPreference = "SilentlyContinue"
@@ -492,6 +498,7 @@ if ($ExportPng -eq $true) {
     catch {
         Write-Warning -Message "mermaid npm packages is not installed. Please install mermaid npm packages for PNG output. `nnpm install -g @mermaid-js/mermaid-cli"
         $ExportPng = $false
+        $ExportPDF = $false
     }
 
 }
@@ -5102,6 +5109,42 @@ if ($ExportPng -eq $true) {
     }
 
 }
+
+if ($ExportPDF -eq $true) {
+
+    if ($Theme -eq "custom") {
+
+        $pdfTheme = "dark"
+
+    }
+
+    else {
+
+        $pdfTheme = $Theme
+
+    }
+
+    if (Test-Path -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.pdf") {
+
+        Remove-Item -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.pdf" -Force
+
+    }
+
+    mmdc -i "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -o "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.pdf" -b transparent -w "16900" -H "15000" -t "$pdfTheme"
+
+    if ($DocType -eq "Markdown") {
+
+        $createdPDF = Get-ChildItem -Path "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow-1.pdf"
+        Rename-Item -Path $createdPDF.FullName -NewName "$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.pdf" -Force
+
+    }
+
+}
+
+
+
+
+
 
 if ($SetClipBoard -eq $true) {
     $mermaidCode -Replace('```mermaid','') `
