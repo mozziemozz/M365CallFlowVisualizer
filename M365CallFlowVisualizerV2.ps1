@@ -315,13 +315,13 @@
         Type:               string
         Default value:      "m365-cfv-tenant-id"
 
-    -EntraAppRegistrationIdFileName
+    -EntraApplicationIdFileName
         Specifies the name of the file to store/read the app ID in an encrypted format at .\.local\SecureCreds. If -ConnectWithServicePrincipal is specified/$true this parameter must be specified as well.
         Required:           false
         Type:               string
         Default value:      "m365-cfv-app-id"
 
-    -EntraAppRegistrationClientSecretFileName
+    -EntraClientSecretFileName
         Specifies the name of the file to store/read the client secret in an encrypted format at .\.local\SecureCreds. If -ConnectWithServicePrincipal is specified/$true this parameter must be specified as well.
         Required:           false
         Type:               string
@@ -343,7 +343,7 @@
     
 #>
 
-#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "5.5.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
+#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "5.7.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
 
 [CmdletBinding(DefaultParametersetName="None")]
 param(
@@ -375,6 +375,7 @@ param(
     [Parameter(Mandatory = $false)][Switch]$ExportTTSGreetings,
     [Parameter(Mandatory = $false)][Switch]$OverrideVoiceIdToFemale,
     [Parameter(Mandatory = $false)][Switch]$FindUserLinks,
+    [Parameter(Mandatory = $false)][Switch]$CheckCallFlowRouting,
     [Parameter(Mandatory = $false)][Bool]$ObfuscatePhoneNumbers = $false,
     [Parameter(Mandatory = $false)][Bool]$ShowSharedVoicemailGroupMembers = $false,
     [Parameter(Mandatory = $false)][Bool]$ShowCqOutboundCallingIds = $false,
@@ -395,8 +396,8 @@ param(
     [Parameter(Mandatory = $false)][Switch]$HardcoreMode,
     [Parameter(Mandatory = $false)][Switch]$ConnectWithServicePrincipal,
     [Parameter(Mandatory = $false)][String]$EntraTenantIdFileName = "m365-cfv-tenant-id",
-    [Parameter(Mandatory = $false)][String]$EntraAppRegistrationIdFileName = "m365-cfv-app-id",
-    [Parameter(Mandatory = $false)][String]$EntraAppRegistrationClientSecretFileName = "m365-cfv-client-secret"
+    [Parameter(Mandatory = $false)][String]$EntraApplicationIdFileName = "m365-cfv-app-id",
+    [Parameter(Mandatory = $false)][String]$EntraClientSecretFileName = "m365-cfv-client-secret"
 )
 
 $ErrorActionPreference = "Continue"
@@ -410,6 +411,7 @@ $ErrorActionPreference = "Continue"
 . .\Functions\Get-MsSystemMessage.ps1
 . .\Functions\Get-AccountType.ps1
 . .\Functions\New-VoiceAppUserLinkProperties.ps1
+. .\Functions\New-HolidayLinkProperties.ps1
 . .\Functions\Get-SharedVoicemailGroupMembers.ps1
 . .\Functions\Get-IvrTransferMessage.ps1
 . .\Functions\Get-AutoAttendantDirectorySearchConfig.ps1
@@ -421,13 +423,20 @@ $ErrorActionPreference = "Continue"
 
 if ($ConnectWithServicePrincipal) {
 
-    $TenantId = . Get-MZZSecureCreds -FileName $EntraTenantIdFileName -NoClipboard
-    $AppId = . Get-MZZSecureCreds -FileName $EntraAppRegistrationIdFileName -NoClipboard
-    $AppSecret = . Get-MZZSecureCreds -FileName $EntraAppRegistrationClientSecretFileName -NoClipboard
+    # $EntraTenantIdFileName = "m365-cfv-tenant-id"
+    # $EntraApplicationIdFileName = "m365-cfv-app-id"
+    # $EntraClientSecretFileName = "m365-cfv-client-secret"
+
+    . Get-MZZTenantIdTxt -FileName $EntraTenantIdFileName
+    . Get-MZZAppIdTxt -FileName $EntraApplicationIdFileName
+    . Get-MZZSecureCreds -FileName $EntraClientSecretFileName -NoClipboard > $null
+    $AppSecret = $passwordDecrypted
 
     . Get-M365CFVTeamsAdminToken -TenantId $TenantId -AppId $AppId -AppSecret $AppSecret
 
     $graphTokenSecureString = $graphToken | ConvertTo-SecureString -AsPlainText -Force
+
+    $graphTokenSecureString = $graphToken
 
     . Connect-M365CFV -ConnectWithServicePrincipal
 
@@ -622,7 +631,7 @@ function Find-Holidays {
     $aa = $allAutoAttendants | Where-Object {$_.Identity -eq $VoiceAppId}
 
     if ($aa.CallHandlingAssociations.Type -contains "Holiday") {
-        $aaHasHolidays = $true    
+        $aaHasHolidays = $true
     }
 
     else {
@@ -753,6 +762,68 @@ function Find-AfterHours {
         $aaAfterHoursScheduleId = ($aa.CallHandlingAssociations | Where-Object {$_.Type -eq "AfterHours"}).ScheduleId
         $aaAfterHoursScheduleProperties = ($aa.Schedules | Where-Object {$_.Id -eq $aaAfterHoursScheduleId}).WeeklyRecurrentSchedule
 
+        if ($CheckCallFlowRouting -eq $true) {
+
+            $toTimeZone = $aa.TimeZoneId
+
+            # Convert local time to time zone configured on Auto Attendant
+            $convertedDateTime = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId($localDateTime, $localTimeZone, $toTimeZone)
+
+            $currentTimeAtAaTimeZone = $convertedDateTime.ToLongTimeString()
+            $currentDayOfWeekAtAaTimeZone = $convertedDateTime.DayOfWeek
+
+            $dayOfWeekAaScheduleToCheck = $aaAfterHoursScheduleProperties."$($currentDayOfWeekAtAaTimeZone)Hours"
+
+            # Check if end time is end of day
+            if ($dayOfWeekAaScheduleToCheck.End.TotalHours -eq 24) {
+
+                $dayOfWeekAaScheduleToCheckString = "23:59:59"
+            }
+
+            else {
+
+                $dayOfWeekAaScheduleToCheckString = $dayOfWeekAaScheduleToCheck.End.ToString()
+
+            }
+
+            if ($aaAfterHoursScheduleProperties.ComplementEnabled -eq $true) {
+
+                Write-Host "Complement enabled" -ForegroundColor Yellow
+
+                if ($currentTimeAtAaTimeZone -ge ($dayOfWeekAaScheduleToCheck.Start).ToString() -and $currentTimeAtAaTimeZone -le $dayOfWeekAaScheduleToCheckString) {
+
+                    Write-Host "$($aa.Name) is currently open" -ForegroundColor Green
+
+                }
+
+                else {
+
+                    Write-Host "$($aa.Name) is currently closed" -ForegroundColor Red
+
+                }
+
+            }
+
+            else {
+
+                Write-Host "Complement disabled" -ForegroundColor Yellow
+
+                if ($currentTimeAtAaTimeZone -le ($dayOfWeekAaScheduleToCheck.Start).ToString() -and $currentTimeAtAaTimeZone -ge $dayOfWeekAaScheduleToCheckString) {
+
+                    Write-Host "$($aa.Name) is currently open" -ForegroundColor Green
+
+                }
+
+                else {
+
+                    Write-Host "$($aa.Name) is currently closed" -ForegroundColor Red
+
+                }
+
+            }
+
+        }
+
         . Read-BusinessHours
     
         # Check if the auto attendant has business hours by comparing the ps object to the actual config of the current auto attendant
@@ -808,6 +879,21 @@ subgraph $holidaySubgraphName
 
             $holidayCallFlow = $aa.CallFlows | Where-Object {$_.Id -eq $HolidayCallHandling.CallFlowId}
             $holidaySchedule = $aa.Schedules | Where-Object {$_.Id -eq $HolidayCallHandling.ScheduleId}
+
+            if ($CheckCallFlowRouting -eq $true) {
+
+                foreach ($dateTimeRange in $holidaySchedule.FixedSchedule.DateTimeRanges) {
+
+                    . New-HolidayLinkProperties -HolidayLinkVoiceAppType "AutoAttendant" -HolidayLinkVoiceAppName $aa.Name -HolidayLinkVoiceAppId $aa.Identity`
+                        -HolidayLinkStartDate ($dateTimeRange.Start).ToString()`
+                        -HolidayLinkEndDate ($dateTimeRange.End).ToString()`
+                        -HolidayLinkTimeZone $aa.TimeZoneId`
+                        -HolidayLinkScheduleName $holidaySchedule.Name`
+                        -HolidayLinkCallFlowName $holidayCallFlow.Name
+
+                }
+
+            }
 
             if (!$holidayCallFlow.Greetings) {
 
