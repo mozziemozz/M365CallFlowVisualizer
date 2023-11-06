@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.0.11
+    Version:            3.1.0
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -183,6 +183,18 @@
         Required:           false
         Type:               switch
         Default value:      false
+
+    -CheckCallFlowRouting
+        This paramter will check if any Auto attendant (top-level or nested) is currently open or closed based on holiday and business hours schedule. Output is written to the console. By default, your current system date and time and time zone is used to check in respective Auto Attendant time zone.
+        Required:           false
+        Type:               switch
+        Default value:      false
+
+    -CheckCallFlowRoutingSpecificDateTime
+        This paramter can only be used when -CheckCallFlowRouting is $true. Specify any date and time in the future or past to check if an any Auto attendant (top-level or nested) is open or closed based on holiday and business hours schedule on that specific date. Enter the date as string in your local date time format. Example: "19.11.2023 23:59:59"
+        Required:           false
+        Type:               string
+        Default value:      none
 
     -ObfuscatePhoneNumbers
         Specifies if phone numbers in call flows should be obfuscated for sharing / example reasons. This will replace the last 4 digits in numbers with an asterisk (*) character. Warning: This will only obfuscate phone numbers in node descriptions. The complete phone number will still be included in Markdown, Mermaid and HTML output!
@@ -376,6 +388,7 @@ param(
     [Parameter(Mandatory = $false)][Switch]$OverrideVoiceIdToFemale,
     [Parameter(Mandatory = $false)][Switch]$FindUserLinks,
     [Parameter(Mandatory = $false)][Switch]$CheckCallFlowRouting,
+    [Parameter(Mandatory = $false)][String]$CheckCallFlowRoutingSpecificDateTime,
     [Parameter(Mandatory = $false)][Bool]$ObfuscatePhoneNumbers = $false,
     [Parameter(Mandatory = $false)][Bool]$ShowSharedVoicemailGroupMembers = $false,
     [Parameter(Mandatory = $false)][Bool]$ShowCqOutboundCallingIds = $false,
@@ -411,7 +424,6 @@ $ErrorActionPreference = "Continue"
 . .\Functions\Get-MsSystemMessage.ps1
 . .\Functions\Get-AccountType.ps1
 . .\Functions\New-VoiceAppUserLinkProperties.ps1
-. .\Functions\New-HolidayLinkProperties.ps1
 . .\Functions\Get-SharedVoicemailGroupMembers.ps1
 . .\Functions\Get-IvrTransferMessage.ps1
 . .\Functions\Get-AutoAttendantDirectorySearchConfig.ps1
@@ -474,7 +486,7 @@ if ($HardcoreMode -eq $true) {
 
 }
 
-Write-Warning -Message "There is currently a bug in MicrosoftTeams PowerShell. Auto attendants are likely to output 'Male' as VoiceId property when querried via PowerShell. `nPlease call your auto attendant's phone number to confirm the voice Id it's using. Use the -OverrideVoiceIdToFemale switch param to change all 'Male' values to 'Female' in diagram output."
+Write-Warning -Message "There is currently a bug in MicrosoftTeams PowerShell. Auto attendants are likely to output 'Male' as VoiceId property when queried via PowerShell. `nPlease call your auto attendant's phone number to confirm the voice Id it's using. Use the -OverrideVoiceIdToFemale switch param to change all 'Male' values to 'Female' in diagram output."
 
 if ($SaveToFile -eq $false -and $CustomFilePath -ne ".\Output") {
 
@@ -730,6 +742,7 @@ function Find-AfterHours {
     $aa = $allAutoAttendants | Where-Object {$_.Identity -eq $VoiceAppId}
 
     Write-Host "Reading call flow for: $($aa.Name)" -ForegroundColor Magenta
+    Write-Host "##################################################" -ForegroundColor Magenta
     Write-Host "Voice App Id: $($aa.Identity)" -ForegroundColor Magenta
 
     if ($($aa.Name -ne (Optimize-DisplayName -String $aa.Name))) {
@@ -762,77 +775,150 @@ function Find-AfterHours {
         $aaAfterHoursScheduleId = ($aa.CallHandlingAssociations | Where-Object {$_.Type -eq "AfterHours"}).ScheduleId
         $aaAfterHoursScheduleProperties = ($aa.Schedules | Where-Object {$_.Id -eq $aaAfterHoursScheduleId}).WeeklyRecurrentSchedule
 
-        if ($CheckCallFlowRouting -eq $true) {
-
-            $toTimeZone = $aa.TimeZoneId
-
-            # Convert local time to time zone configured on Auto Attendant
-            $convertedDateTime = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId($localDateTime, $localTimeZone, $toTimeZone)
-
-            $currentTimeAtAaTimeZone = $convertedDateTime.ToLongTimeString()
-            $currentDayOfWeekAtAaTimeZone = $convertedDateTime.DayOfWeek
-
-            $dayOfWeekAaScheduleToCheck = $aaAfterHoursScheduleProperties."$($currentDayOfWeekAtAaTimeZone)Hours"
-
-            # Check if end time is end of day
-            if ($dayOfWeekAaScheduleToCheck.End.TotalHours -eq 24) {
-
-                $dayOfWeekAaScheduleToCheckString = "23:59:59"
-            }
-
-            else {
-
-                $dayOfWeekAaScheduleToCheckString = $dayOfWeekAaScheduleToCheck.End.ToString()
-
-            }
-
-            if ($aaAfterHoursScheduleProperties.ComplementEnabled -eq $true) {
-
-                Write-Host "Complement enabled" -ForegroundColor Yellow
-
-                if ($currentTimeAtAaTimeZone -ge ($dayOfWeekAaScheduleToCheck.Start).ToString() -and $currentTimeAtAaTimeZone -le $dayOfWeekAaScheduleToCheckString) {
-
-                    Write-Host "$($aa.Name) is currently open" -ForegroundColor Green
-
-                }
-
-                else {
-
-                    Write-Host "$($aa.Name) is currently closed" -ForegroundColor Red
-
-                }
-
-            }
-
-            else {
-
-                Write-Host "Complement disabled" -ForegroundColor Yellow
-
-                if ($currentTimeAtAaTimeZone -le ($dayOfWeekAaScheduleToCheck.Start).ToString() -and $currentTimeAtAaTimeZone -ge $dayOfWeekAaScheduleToCheckString) {
-
-                    Write-Host "$($aa.Name) is currently open" -ForegroundColor Green
-
-                }
-
-                else {
-
-                    Write-Host "$($aa.Name) is currently closed" -ForegroundColor Red
-
-                }
-
-            }
-
-        }
-
         . Read-BusinessHours
     
         # Check if the auto attendant has business hours by comparing the ps object to the actual config of the current auto attendant
         if ($aaDefaultScheduleProperties -eq ($aaEffectiveScheduleProperties | Out-String)) {
+            
             $aaHasAfterHours = $false
+
         }
 
         else {
+
             $aaHasAfterHours = $true
+
+            if ($CheckCallFlowRouting -eq $true) {
+
+                Write-Host "Checking if Auto Attendant '$($aa.Name)' is currently in business hours or after hours schedule..." -ForegroundColor Magenta
+
+                # Local time zone and date time
+                $localTimeZone = (Get-TimeZone).Id
+
+                if ($CheckCallFlowRoutingSpecificDateTime) {
+
+                    $localDateTime = Get-Date $CheckCallFlowRoutingSpecificDateTime
+
+                }
+
+                else {
+                        
+                    $localDateTime = Get-Date
+
+                }
+                
+                # Time zone configured on Auto Attendant
+                $toTimeZone = $aa.TimeZoneId
+
+                # Convert local time to time zone configured on Auto Attendant
+                $convertedDateTime = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId($localDateTime, $localTimeZone, $toTimeZone)
+
+                $currentTimeAtAaTimeZone = $convertedDateTime.ToLongTimeString()
+                $currentDayOfWeekAtAaTimeZone = $convertedDateTime.DayOfWeek
+
+                $dayOfWeekAaScheduleToCheck = $aaAfterHoursScheduleProperties."$($currentDayOfWeekAtAaTimeZone)Hours"
+
+                $openTimeRange = @()
+
+                foreach ($businessHoursTimeRange in $dayOfWeekAaScheduleToCheck) {
+
+                    # Check if end time is end of day
+                    if ($businessHoursTimeRange.End.TotalHours -eq 24) {
+
+                        $businessHoursTimeRangeString = "23:59:59"
+                    }
+
+                    else {
+
+                        $businessHoursTimeRangeString = $businessHoursTimeRange.End.ToString()
+
+                    }
+
+                    if ($aaAfterHoursScheduleProperties.ComplementEnabled -eq $true) {
+
+                        Write-Host "Complement: Enabled" -ForegroundColor Yellow
+
+                        if ($currentTimeAtAaTimeZone -ge ($businessHoursTimeRange.Start).ToString() -and $currentTimeAtAaTimeZone -le $businessHoursTimeRangeString) {
+
+                            $openTimeRange += $businessHoursTimeRange
+
+                        }
+
+                    }
+
+                    else {
+
+                        # Based on my testing, complement disabled is not supported / working anymore (not inverted). This means that the default call flow is active for the hours defined in after hours schedule.
+
+                        # Write-Host "Complement: Disabled" -ForegroundColor Yellow
+
+                        # if ($currentTimeAtAaTimeZone -le ($businessHoursTimeRange.Start).ToString() -and $currentTimeAtAaTimeZone -ge $businessHoursTimeRangeString) {
+
+                        #     $openTimeRange += $businessHoursTimeRange
+
+                        # }
+
+                    }
+
+                }
+
+                Write-Host "Local Time Zone: $localTimeZone" -ForegroundColor Yellow
+                Write-Host "Local Date Time: $($localDateTime.ToString('dddd, yyyy-MM-dd HH:mm:ss'))" -ForegroundColor Yellow
+                Write-Host "Auto Attendant Time Zone: $toTimeZone" -ForegroundColor Yellow
+                Write-Host "Time in Auto Attendant Time Zone: $($convertedDateTime.ToString('dddd, yyyy-MM-dd HH:mm:ss'))" -ForegroundColor Yellow
+
+                $businessHoursTimeRangesStarts = ($dayOfWeekAaScheduleToCheck.Start -join ",").Split(",")
+                $businessHoursTimeRangesEnds = ($dayOfWeekAaScheduleToCheck.End -join ",").Split(",")
+
+                $businessHoursTimeRangesString = ""
+
+                $businessHoursTimeRangesIndex = 0
+
+                foreach ($time in $businessHoursTimeRangesStarts) {
+
+                    $businessHoursTimeRangesString += "$($businessHoursTimeRangesStarts[$businessHoursTimeRangesIndex]) - $($businessHoursTimeRangesEnds[$businessHoursTimeRangesIndex]), "
+
+                    $businessHoursTimeRangesIndex ++
+
+                }
+
+                $businessHoursTimeRangesString = $businessHoursTimeRangesString.TrimEnd(", ")
+
+                $businessHoursTimeRangesString = $businessHoursTimeRangesString.Replace("1.00:00:00","23:59:59")
+
+                Write-Host "Business Hours for $($currentDayOfWeekAtAaTimeZone) in AA Time Zone: $businessHoursTimeRangesString" -ForegroundColor Yellow
+
+                if ($VoiceAppFileName -eq $aa.Name) {
+
+                    $topLevelAaInfo = "(initially queried Auto Attendant)"
+
+                }
+
+                else {
+
+                    $topLevelAaInfo = "(nested Auto Attendant of initially queried Auto Attendant '$($VoiceAppFileName)')"
+
+                }
+
+                if ($openTimeRange) {
+
+                    Write-Host "Active Business Hours Time Range for $($currentDayOfWeekAtAaTimeZone): $($openTimeRange.Start) - $(($openTimeRange.End).ToString().Replace("1.00:00:00","23:59:59"))" -ForegroundColor Green
+                    Write-Host "Auto Attendant: '$($aa.Name)' $topLevelAaInfo is currently in business hours schedule (open)" -ForegroundColor Green
+
+                    Write-Host "Check Call Flow Diagram to see where calls are routed to during business hours..." -ForegroundColor Cyan
+
+                }
+
+                else {
+
+                    Write-Host "Auto Attendant: '$($aa.Name)' $topLevelAaInfo is currently in after hours schedule (closed)" -ForegroundColor Red
+
+                    Write-Host "Check Call Flow Diagram to see where calls are routed to during after hours..." -ForegroundColor Cyan
+
+                }
+
+            }
+
         }
 
     }
@@ -842,7 +928,51 @@ function Find-AfterHours {
         $aaHasAfterHours = $false
 
     }
-    
+
+    if ($aaHasAfterHours -eq $false -and $CheckCallFlowRouting -eq $true) {
+
+        if ($VoiceAppFileName -eq $aa.Name) {
+
+            $topLevelAaInfo = "(initially queried Auto Attendant)"
+
+        }
+
+        else {
+
+            $topLevelAaInfo = "(nested Auto Attendant of initially queried Auto Attendant '$($VoiceAppFileName)')"
+
+        }
+
+        Write-Host "Checking if Auto Attendant '$($aa.Name)' is currently in business hours or after hours schedule..." -ForegroundColor Magenta
+
+        Write-Host "Auto Attendant: '$($aa.Name)' $topLevelAaInfo has no business hours/after hours schedule configured. It's permanently in business hours schedule (open)" -ForegroundColor Green
+     
+        Write-Host "Check Call Flow Diagram to see where calls are permanently routed to (during business hours / default call flow)..." -ForegroundColor Cyan
+
+    }
+
+    if ($CheckCallFlowRouting -eq $true -and $aaHasHolidays -eq $false -and $aaHasHolidays -eq $false) {
+
+        if ($VoiceAppFileName -eq $aa.Name) {
+
+            $topLevelAaInfo = "(initially queried Auto Attendant)"
+
+        }
+
+        else {
+
+            $topLevelAaInfo = "(nested Auto Attendant of initially queried Auto Attendant '$($VoiceAppFileName)')"
+
+        }
+
+        Write-Host "Checking if Auto Attendant '$($aa.Name)' is currently in holiday schedule..." -ForegroundColor Magenta
+
+        Write-Host "Auto Attendant: '$($aa.Name)' $topLevelAaInfo does not have any holidays configured." -ForegroundColor Green
+
+        Write-Host "Check Call Flow Diagram to see where calls are routed to during normal operation (when it's not a holiday)..." -ForegroundColor Cyan
+
+    }
+   
 }
 
 function Get-AutoAttendantHolidaysAndAfterHours {
@@ -875,6 +1005,14 @@ subgraph $holidaySubgraphName
 
         $mdHolidayNestedCallFlowLinks = ""
 
+        if ($CheckCallFlowRouting -eq $true) {
+
+            Write-Host "Checking if Auto Attendant '$($aa.Name)' is currently in holiday schedule..." -ForegroundColor Magenta
+
+            $holidayExceptionList = @()
+
+        }
+
         foreach ($HolidayCallHandling in $aaHolidays) {
 
             $holidayCallFlow = $aa.CallFlows | Where-Object {$_.Id -eq $HolidayCallHandling.CallFlowId}
@@ -882,14 +1020,53 @@ subgraph $holidaySubgraphName
 
             if ($CheckCallFlowRouting -eq $true) {
 
-                foreach ($dateTimeRange in $holidaySchedule.FixedSchedule.DateTimeRanges) {
+                # Local time zone and date time
+                $localTimeZone = (Get-TimeZone).Id
 
-                    . New-HolidayLinkProperties -HolidayLinkVoiceAppType "AutoAttendant" -HolidayLinkVoiceAppName $aa.Name -HolidayLinkVoiceAppId $aa.Identity`
-                        -HolidayLinkStartDate ($dateTimeRange.Start).ToString()`
-                        -HolidayLinkEndDate ($dateTimeRange.End).ToString()`
-                        -HolidayLinkTimeZone $aa.TimeZoneId`
-                        -HolidayLinkScheduleName $holidaySchedule.Name`
-                        -HolidayLinkCallFlowName $holidayCallFlow.Name
+                if ($CheckCallFlowRoutingSpecificDateTime) {
+
+                    $localDateTime = Get-Date $CheckCallFlowRoutingSpecificDateTime
+
+                }
+
+                else {
+                        
+                    $localDateTime = Get-Date
+
+                }
+                
+                # Time zone configured on Auto Attendant
+                $toTimeZone = $aa.TimeZoneId
+
+                # Convert local time to time zone configured on Auto Attendant
+                $convertedDateTime = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId($localDateTime, $localTimeZone, $toTimeZone)
+
+                foreach ($dateTimeRange in $holidaySchedule.FixedSchedule.DateTimeRanges) {
+                    
+                    if ($VoiceAppFileName -eq $aa.Name) {
+
+                        $topLevelAaInfo = "(initially queried Auto Attendant)"
+
+                    }
+
+                    else {
+
+                        $topLevelAaInfo = "(nested Auto Attendant of initially queried Auto Attendant '$($VoiceAppFileName)')"
+
+                    }
+
+                    if ($convertedDateTime -ge $dateTimeRange.Start -and $convertedDateTime -le $dateTimeRange.End) {
+
+                        $holidayExceptionDetails = New-Object -TypeName psobject
+
+                        $holidayExceptionDetails | Add-Member -MemberType NoteProperty -Name "HolidayCallFlowName" -Value $holidayCallFlow.Name
+                        $holidayExceptionDetails | Add-Member -MemberType NoteProperty -Name "HolidayScheduleName" -Value $holidaySchedule.Name
+                        $holidayExceptionDetails | Add-Member -MemberType NoteProperty -Name "HolidayScheduleStart" -Value $dateTimeRange.Start
+                        $holidayExceptionDetails | Add-Member -MemberType NoteProperty -Name "HolidayScheduleEnd" -Value $dateTimeRange.End
+
+                        $holidayExceptionList += $holidayExceptionDetails
+
+                    }
 
                 }
 
@@ -1227,6 +1404,58 @@ subgraph $holidaySubgraphName
             $allSubgraphs += @("subgraphHolidayCallHandling$($HolidayCallHandling.CallFlowId)","subgraphHolidaySchedule$($HolidayCallHandling.CallFlowId)")
 
         } # End of for-each loop
+
+        if ($CheckCallFlowRouting -eq $true -and $holidayExceptionList) {
+
+            if ($holidayExceptionList.Count -gt 1) {
+
+                $holidayExceptionListTimeSpans = @()
+
+                foreach ($holidayException in $holidayExceptionList) {
+
+                    $holidayExceptionListTimeSpans += ($holidayException.HolidayScheduleEnd - $holidayException.HolidayScheduleStart).TotalSeconds
+
+                }
+
+                $shortestTimeSpan = ($holidayExceptionListTimeSpans | Measure-Object -Minimum).Minimum
+                $shortestTimeSpanIndex = $holidayExceptionListTimeSpans.IndexOf($shortestTimeSpan)
+
+                $activeHolidayException = $holidayExceptionList[$shortestTimeSpanIndex]
+
+                Write-Host "Auto Attendant: '$($aa.Name)' $topLevelAaInfo has multiple holiday schedules which match for $($localDateTime.ToString('dddd, yyyy-MM-dd HH:mm:ss')) (local time: $localTimeZone) / $($convertedDateTime.ToString('dddd, yyyy-MM-dd HH:mm:ss')) (Auto Attendant time: $toTimeZone)." -ForegroundColor Yellow
+                Write-Host "In this case, the schedule which is most precise (smallest time range) will be active. All matching holidays:" -ForegroundColor Yellow
+                Write-Host ($holidayExceptionList | Out-String) -ForegroundColor Yellow
+
+            }
+
+            else {
+
+                $activeHolidayException = $holidayExceptionList
+
+            }
+
+            Write-Host "Local Time Zone: $localTimeZone" -ForegroundColor Yellow
+            Write-Host "Local Date Time: $($localDateTime.ToString('dddd, yyyy-MM-dd HH:mm:ss'))" -ForegroundColor Yellow
+            Write-Host "Auto Attendant Time Zone: $toTimeZone" -ForegroundColor Yellow
+            Write-Host "Time in Auto Attendant Time Zone: $($convertedDateTime.ToString('dddd, yyyy-MM-dd HH:mm:ss'))" -ForegroundColor Yellow
+
+            Write-Host "Holiday Schedule: $($activeHolidayException.HolidayScheduleStart.ToString('dddd, yyyy-MM-dd HH:mm:ss')) - $($activeHolidayException.HolidayScheduleEnd.ToString('dddd, yyyy-MM-dd HH:mm:ss'))" -ForegroundColor Yellow
+            Write-Host "Holiday Call Flow Name: $($activeHolidayException.HolidayCallFlowName)" -ForegroundColor Yellow
+            Write-Host "Holiday Schedule Name: $($activeHolidayException.HolidayScheduleName)" -ForegroundColor Yellow
+            Write-Host "Auto Attendant: '$($aa.Name)' $topLevelAaInfo is currently in holiday schedule (exception)" -ForegroundColor Red
+
+            Write-Host "Check Call Flow Diagram to see where calls are routed to on Holiday '$($activeHolidayException.HolidayCallFlowName)'..." -ForegroundColor Cyan
+
+        }
+
+        # Console output if there are no active holidays
+        if ($CheckCallFlowRouting -eq $true -and !$holidayExceptionList) {
+
+            Write-Host "Auto Attendant: '$($aa.Name)' $topLevelAaInfo is currently not in holiday schedule." -ForegroundColor Green
+
+            Write-Host "Check Call Flow Diagram to see where calls are routed to during normal operation (when it's not a holiday)..." -ForegroundColor Cyan
+
+        }
 
         # Create end for the holiday subgraph
         $mdSubGraphHolidaysEnd =@"
@@ -3146,6 +3375,7 @@ function Get-CallQueueCallFlow {
     $cqCallFlowObjectId = $MatchingCQ.Identity
 
     Write-Host "Reading call flow for: $($MatchingCQ.Name)" -ForegroundColor Magenta
+    Write-Host "##################################################" -ForegroundColor Magenta
     Write-Host "Voice App Id: $cqCallFlowObjectId" -ForegroundColor Magenta
 
     if ($($MatchingCQ.Name -ne (Optimize-DisplayName -String $MatchingCQ.Name))) {
