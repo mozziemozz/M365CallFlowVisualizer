@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.1.1
+    Version:            3.1.2
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -430,27 +430,26 @@ $ErrorActionPreference = "Continue"
 . .\Functions\Get-AllVoiceAppsAndResourceAccounts.ps1
 . .\Functions\SecureCredsMgmt.ps1
 . .\Functions\Get-M365CFVTeamsAdminToken.ps1
+. .\Functions\Connect-MsTeamsServicePrincipal.ps1
 
 # Connect to MicrosoftTeams and Microsoft.Graph
 
 if ($ConnectWithServicePrincipal) {
 
-    # $EntraTenantIdFileName = "m365-cfv-tenant-id"
-    # $EntraApplicationIdFileName = "m365-cfv-app-id"
-    # $EntraClientSecretFileName = "m365-cfv-client-secret"
+    Write-Warning -Message "Connecting to Microsoft Teams and Microsoft Graph using your own Entra ID App Registration is not supported yet because it doesn't support [Get|Set|New|Sync]-CsOnlineApplicationInstance yet. Please don't use this parameter yet. https://learn.microsoft.com/en-us/MicrosoftTeams/teams-powershell-application-authentication#cmdlets-supported"
 
-    . Get-MZZTenantIdTxt -FileName $EntraTenantIdFileName
-    . Get-MZZAppIdTxt -FileName $EntraApplicationIdFileName
-    . Get-MZZSecureCreds -FileName $EntraClientSecretFileName -NoClipboard > $null
-    $AppSecret = $passwordDecrypted
+    # . Get-MZZTenantIdTxt -FileName $EntraTenantIdFileName
+    # . Get-MZZAppIdTxt -FileName $EntraApplicationIdFileName
+    # . Get-MZZSecureCreds -FileName $EntraClientSecretFileName -NoClipboard > $null
+    # $AppSecret = $passwordDecrypted
 
-    . Get-M365CFVTeamsAdminToken -TenantId $TenantId -AppId $AppId -AppSecret $AppSecret
+    # . Connect-MsTeamsServicePrincipal -TenantId $TenantId -AppId $AppId -AppSecret $AppSecret
 
-    $graphTokenSecureString = $graphToken | ConvertTo-SecureString -AsPlainText -Force
+    # $graphTokenSecureString = $graphToken | ConvertTo-SecureString -AsPlainText -Force
 
-    $graphTokenSecureString = $graphToken
+    # $graphTokenSecureString = $graphToken | ConvertTo-SecureString -AsPlainText -Force
 
-    . Connect-M365CFV -ConnectWithServicePrincipal
+    # Connect-MgGraph -AccessToken $graphTokenSecureString
 
 }
 

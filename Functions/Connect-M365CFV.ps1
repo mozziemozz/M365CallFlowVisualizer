@@ -5,14 +5,13 @@
     
     .DESCRIPTION
     Author:             Martin Heusser
-    Version:            1.1.0
+    Version:            1.1.1
     Changelog:          .\Changelog.md
 
 #>
 
 function Connect-M365CFV {
     param (
-        [Parameter(Mandatory = $false)][switch]$ConnectWithServicePrincipal
     )
 
     try {
@@ -22,18 +21,7 @@ function Connect-M365CFV {
 
     catch {
 
-        if ($ConnectWithServicePrincipal) {
-
-            Connect-MicrosoftTeams -AccessTokens @("$graphToken", "$teamsToken") -ErrorAction SilentlyContinue > $null
-
-        }
-
-        else {
-
-            Connect-MicrosoftTeams -ErrorAction SilentlyContinue
-
-        }
-
+        Connect-MicrosoftTeams -ErrorAction SilentlyContinue
         $msTeamsTenant = Get-CsTenant
 
     }
@@ -73,17 +61,7 @@ function Connect-M365CFV {
                     Disconnect-MgGraph
                 }
 
-                if ($ConnectWithServicePrincipal) {
-
-                    Connect-MgGraph -AccessToken $graphTokenSecureString > $null
-
-                }
-
-                else {
-
-                    Connect-MgGraph -Scopes "User.Read.All", "Group.Read.All" -TenantId $msTeamsTenantId
-
-                }
+                Connect-MgGraph -Scopes "User.Read.All", "Group.Read.All" -TenantId $msTeamsTenantId
 
                 $msGraphContext = (Get-MgContext).TenantId
 
