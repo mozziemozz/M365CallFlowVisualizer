@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.1.0
+    Version:            3.1.1
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -776,6 +776,22 @@ function Find-AfterHours {
         $aaAfterHoursScheduleProperties = ($aa.Schedules | Where-Object {$_.Id -eq $aaAfterHoursScheduleId}).WeeklyRecurrentSchedule
 
         . Read-BusinessHours
+
+        if ($aaAfterHoursScheduleProperties.ComplementEnabled -eq $false) {
+
+            Write-Warning -Message "Complement is disabled. This can only be set through PowerShell. Any time you change business hours in TAC, coplement will be enabled again."
+
+            $mdComplementNo = "Yes"
+            $mdComplementYes = "No"
+
+        }
+
+        else {
+                
+            $mdComplementNo = "No"
+            $mdComplementYes = "Yes"
+
+        }
     
         # Check if the auto attendant has business hours by comparing the ps object to the actual config of the current auto attendant
         if ($aaDefaultScheduleProperties -eq ($aaEffectiveScheduleProperties | Out-String)) {
@@ -834,29 +850,26 @@ function Find-AfterHours {
 
                     }
 
+                    if ($currentTimeAtAaTimeZone -ge ($businessHoursTimeRange.Start).ToString() -and $currentTimeAtAaTimeZone -le $businessHoursTimeRangeString) {
+
+                        $openTimeRange += $businessHoursTimeRange
+
+                    }
+
+
                     if ($aaAfterHoursScheduleProperties.ComplementEnabled -eq $true) {
 
                         Write-Host "Complement: Enabled" -ForegroundColor Yellow
 
-                        if ($currentTimeAtAaTimeZone -ge ($businessHoursTimeRange.Start).ToString() -and $currentTimeAtAaTimeZone -le $businessHoursTimeRangeString) {
-
-                            $openTimeRange += $businessHoursTimeRange
-
-                        }
+                        $complementEnabled = $true
 
                     }
 
                     else {
 
-                        # Based on my testing, complement disabled is not supported / working anymore (not inverted). This means that the default call flow is active for the hours defined in after hours schedule.
+                        Write-Host "Complement: Disabled" -ForegroundColor Yellow
 
-                        # Write-Host "Complement: Disabled" -ForegroundColor Yellow
-
-                        # if ($currentTimeAtAaTimeZone -le ($businessHoursTimeRange.Start).ToString() -and $currentTimeAtAaTimeZone -ge $businessHoursTimeRangeString) {
-
-                        #     $openTimeRange += $businessHoursTimeRange
-
-                        # }
+                        $complementEnabled = $false
 
                     }
 
@@ -886,8 +899,6 @@ function Find-AfterHours {
 
                 $businessHoursTimeRangesString = $businessHoursTimeRangesString.Replace("1.00:00:00","23:59:59")
 
-                Write-Host "Business Hours for $($currentDayOfWeekAtAaTimeZone) in AA Time Zone: $businessHoursTimeRangesString" -ForegroundColor Yellow
-
                 if ($VoiceAppFileName -eq $aa.Name) {
 
                     $topLevelAaInfo = "(initially queried Auto Attendant)"
@@ -900,7 +911,9 @@ function Find-AfterHours {
 
                 }
 
-                if ($openTimeRange) {
+                if ($openTimeRange -and $complementEnabled -eq $true) {
+
+                    Write-Host "Business Hours for $($currentDayOfWeekAtAaTimeZone) in AA Time Zone: $businessHoursTimeRangesString" -ForegroundColor Yellow
 
                     Write-Host "Active Business Hours Time Range for $($currentDayOfWeekAtAaTimeZone): $($openTimeRange.Start) - $(($openTimeRange.End).ToString().Replace("1.00:00:00","23:59:59"))" -ForegroundColor Green
                     Write-Host "Auto Attendant: '$($aa.Name)' $topLevelAaInfo is currently in business hours schedule (open)" -ForegroundColor Green
@@ -909,7 +922,30 @@ function Find-AfterHours {
 
                 }
 
+                elseif ($openTimeRange -and $complementEnabled -eq $false) {
+
+                    Write-Host "After Hours for $($currentDayOfWeekAtAaTimeZone) in AA Time Zone: $businessHoursTimeRangesString" -ForegroundColor Yellow
+
+                    Write-Host "Active After Hours Time Range for $($currentDayOfWeekAtAaTimeZone): $($openTimeRange.Start) - $(($openTimeRange.End).ToString().Replace("1.00:00:00","23:59:59"))" -ForegroundColor Green
+                    Write-Host "Auto Attendant: '$($aa.Name)' $topLevelAaInfo is currently in afther hours schedule (closed) because Complement is disabled and schedule is not inverted" -ForegroundColor Green
+
+                    Write-Host "Check Call Flow Diagram to see where calls are routed to during after hours..." -ForegroundColor Cyan
+
+                }
+
+                elseif (!$openTimeRange -and $complementEnabled -eq $false) {
+
+                    Write-Host "Business Hours for $($currentDayOfWeekAtAaTimeZone) in AA Time Zone: $businessHoursTimeRangesString" -ForegroundColor Yellow
+
+                    Write-Host "Auto Attendant: '$($aa.Name)' $topLevelAaInfo is currently in business hours schedule (open) because Complement is disabled and schedule is not inverted" -ForegroundColor Red
+
+                    Write-Host "Check Call Flow Diagram to see where calls are routed to during business hours..." -ForegroundColor Cyan
+
+                }
+
                 else {
+
+                    Write-Host "Business Hours for $($currentDayOfWeekAtAaTimeZone) in AA Time Zone: $businessHoursTimeRangesString" -ForegroundColor Yellow
 
                     Write-Host "Auto Attendant: '$($aa.Name)' $topLevelAaInfo is currently in after hours schedule (closed)" -ForegroundColor Red
 
@@ -1790,8 +1826,8 @@ subgraph $holidaySubgraphName
 $nodeElementHolidayLink --> $nodeElementHolidayCheck
 $nodeElementHolidayCheck -->|Yes| $holidaySubgraphName
 $nodeElementHolidayCheck -->|No| $nodeElementAfterHoursCheck
-$nodeElementAfterHoursCheck -->|No| $mdAutoAttendantAfterHoursCallFlow
-$nodeElementAfterHoursCheck -->|Yes| $mdAutoAttendantDefaultCallFlow
+$nodeElementAfterHoursCheck -->|$mdComplementNo| $mdAutoAttendantAfterHoursCallFlow
+$nodeElementAfterHoursCheck -->|$mdComplementYes| $mdAutoAttendantDefaultCallFlow
 
 $mdSubGraphHolidays
 
@@ -1819,8 +1855,8 @@ $mdSubGraphHolidays
 
             $mdHolidayAndAfterHoursCheck =@"
 $nodeElementHolidayLink --> $nodeElementAfterHoursCheckCheck
-$nodeElementAfterHoursCheck -->|No| $mdAutoAttendantAfterHoursCallFlow
-$nodeElementAfterHoursCheck -->|Yes| $mdAutoAttendantDefaultCallFlow
+$nodeElementAfterHoursCheck -->|$mdComplementNo| $mdAutoAttendantAfterHoursCallFlow
+$nodeElementAfterHoursCheck -->|$mdComplementYes| $mdAutoAttendantDefaultCallFlow
 
 
 "@      

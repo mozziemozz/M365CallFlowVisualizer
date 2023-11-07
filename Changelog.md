@@ -145,3 +145,4 @@
 |27.10.2023|Get-AllVoiceAppsAndResourceAccounts.ps1|1.0.1|Fix result caching by making all relevant variables global.|
 |27.10.2023|M365CallFlowVisualizerV2.ps1|3.0.11|Add support for PDF Export. Thanks @MicheleBomello for this PR!|
 |06.11.2023|M365CallFlowVisualizerV2.ps1|3.1.0|Add support to check if an Auto Attendant is currently in business- or after hours schedule or in holiday schedule by using -CheckCallFlowRouting.|
+|06.11.2023|M365CallFlowVisualizerV2.ps1|3.1.1|Bug fixes, improvements in console and diagram output (support for ComplementEnabled: False schedules)|
