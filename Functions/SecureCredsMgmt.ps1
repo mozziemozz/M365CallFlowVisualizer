@@ -216,39 +216,69 @@ function Get-MZZSecureCreds {
 
 function Get-MZZTenantIdTxt {
     param (
+        [Parameter(Mandatory = $false)][string]$FileName = "TenantId"
     )
 
-    if (!(Test-Path -Path .\.local\SecureCreds\TenantId.txt)) {
+    if (!$localRepoPath) {
+
+        $localRepoPath = git rev-parse --show-toplevel
+
+    }
+
+    $secureCredsFolder = "$localRepoPath\.local\SecureCreds"
+
+    if (!(Test-Path -Path $secureCredsFolder)) {
+
+        New-Item -Path $secureCredsFolder -ItemType Directory
+
+    }
+
+    if (!(Test-Path -Path ".\.local\SecureCreds\$FileName.txt")) {
 
         $TenantId = Read-Host "Enter your Tenant Id"
 
-        Set-Content -Path .\.local\SecureCreds\TenantId.txt -Value $TenantId
+        Set-Content -Path ".\.local\SecureCreds\$FileName.txt" -Value $TenantId
 
     }
 
     else {
 
-        $TenantId = (Get-Content -Path .\.local\SecureCreds\TenantId.txt).Trim()
+        $TenantId = (Get-Content -Path ".\.local\SecureCreds\$FileName.txt").Trim()
 
     }
-    
+
 }
 
 function Get-MZZAppIdTxt {
     param (
+        [Parameter(Mandatory = $false)][string]$FileName = "AppId"
     )
 
-    if (!(Test-Path -Path .\.local\SecureCreds\AppId.txt)) {
+    if (!$localRepoPath) {
+
+        $localRepoPath = git rev-parse --show-toplevel
+
+    }
+
+    $secureCredsFolder = "$localRepoPath\.local\SecureCreds"
+
+    if (!(Test-Path -Path $secureCredsFolder)) {
+
+        New-Item -Path $secureCredsFolder -ItemType Directory
+
+    }
+
+    if (!(Test-Path -Path ".\.local\SecureCreds\$FileName.txt")) {
 
         $AppId = Read-Host "Enter your App Id"
 
-        Set-Content -Path .\.local\SecureCreds\AppId.txt -Value $AppId
+        Set-Content -Path ".\.local\SecureCreds\$FileName.txt" -Value $AppId
 
     }
 
     else {
 
-        $AppId = (Get-Content -Path .\.local\SecureCreds\AppId.txt).Trim()
+        $AppId = (Get-Content -Path ".\.local\SecureCreds\$FileName.txt").Trim()
 
     }
     

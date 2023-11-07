@@ -102,8 +102,8 @@ foreach ($resourceAccount in $resourceAccountIdsWithPhoneNumber) {
 }
 
 # Remove duplicate entries
-$autoAttendantsWithPhoneNumber = $autoAttendantsWithPhoneNumber | Sort-Object Name -Unique
-$callQueuesWithPhoneNumber = $callQueueWithPhoneNumber | Sort-Object Name -Unique
+# $autoAttendantsWithPhoneNumber = $autoAttendantsWithPhoneNumber | Sort-Object Name -Unique
+# $callQueuesWithPhoneNumber = $callQueueWithPhoneNumber | Sort-Object Identity -Unique
 
 $nonTopLevelAutoAttendants = $autoAttendantsWithResourceAccounts | Where-Object {$autoAttendantsWithPhoneNumber -notcontains $_}
 $nonTopLevelCallQueues = $callQueuesWithResourceAccounts | Where-Object {$callQueuesWithPhoneNumber -notcontains $_}
