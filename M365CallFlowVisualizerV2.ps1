@@ -429,7 +429,6 @@ $ErrorActionPreference = "Continue"
 . .\Functions\Get-AutoAttendantDirectorySearchConfig.ps1
 . .\Functions\Get-AllVoiceAppsAndResourceAccounts.ps1
 . .\Functions\SecureCredsMgmt.ps1
-. .\Functions\Get-M365CFVTeamsAdminToken.ps1
 . .\Functions\Connect-MsTeamsServicePrincipal.ps1
 
 # Connect to MicrosoftTeams and Microsoft.Graph
