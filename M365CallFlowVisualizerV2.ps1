@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.1.2
+    Version:            3.1.3
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -3434,13 +3434,24 @@ function Get-CallQueueCallFlow {
     $CqAgentOptOut = $MatchingCQ.AllowOptOut
     $CqConferenceMode = $MatchingCQ.ConferenceMode
     $CqAgentAlertTime = $MatchingCQ.AgentAlertTime
-    $CqPresenceBasedRouting = $MatchingCQ.PresenceBasedRouting
     $CqDistributionLists = $MatchingCQ.DistributionLists
     $CqDefaultMusicOnHold = $MatchingCQ.UseDefaultMusicOnHold
     $CqWelcomeMusicFileName = $MatchingCQ.WelcomeMusicFileName
     $CqWelcomeTTSGreeting = $MatchingCQ.WelcomeTextToSpeechPrompt
     $CqLanguageId = $MatchingCQ.LanguageId
     $CqOboResourceAccountIds = $MatchingCQ.OboResourceAccountIds.Guid
+
+    if ($cqroutingMethod -eq "LongestIdle") {
+
+        $CqPresenceBasedRouting = $true
+
+    }
+
+    else {
+
+        $CqPresenceBasedRouting = $MatchingCQ.PresenceBasedRouting
+
+    }
     
     $languageId = $CqLanguageId
 
