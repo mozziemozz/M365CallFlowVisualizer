@@ -161,13 +161,13 @@
         Default value:      20
 
     -ExportAudioFiles
-        Specifies if the audio files of greetings, announcements and music on hold should be exported to the specified directory. If this is enabled, Markdown and HTML output will have clickable links on the greeting nodes which open an audio file in the browser. This is an experimental feature.
+        Specifies if the audio files of greetings, announcements and music on hold should be exported to the specified directory. If this is enabled, Markdown and HTML output will have clickable links on the greeting nodes which open an audio file in the browser. For this to work, you must also use the -ShowAudioFileName switch.
         Required:           false
         Type:               switch
         Default value:      false
 
     -ExportTTSGreetings
-        Specifies if the value of TTS greetings and announcements should be exported to the specified directory. If this is enabled, Markdown and HTML output will have clickable links on the greeting nodes with which open a text file in the browser. This is an experimental feature.
+        Specifies if the value of TTS greetings and announcements should be exported to the specified directory. If this is enabled, Markdown and HTML output will have clickable links on the greeting nodes with which open a text file in the browser. For this to work, you must also use the -ShowTTSGreetingText switch.
         Required:           false
         Type:               switch
         Default value:      false
