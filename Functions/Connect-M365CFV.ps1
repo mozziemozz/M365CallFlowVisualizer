@@ -124,5 +124,62 @@ function Connect-M365CFV {
 
         }
     }
+
+    # if ($ShowSharedVoicemailGroupSubscribers -eq $true) {
+
+    #     try {
+        
+    #         $exoTenant = Get-EXOMailbox -ResultSize 1 -ErrorAction Stop > $null
+
+    #     }
+    #     catch {
+
+    #         Write-Warning "Not connected to Exchange Online. Please sign in to Exchange Online..."
+            
+    #         Connect-ExchangeOnline
+            
+    #     }
+    #     finally {
+            
+    #         $exoTenant = Get-EXOMailbox -ResultSize 1 -ErrorAction Stop > $null
+    #         $exoConnection = Get-ConnectionInformation
+
+    #         if ($exoTenant.Count -gt 1) {
+
+    #             $exoTenant = ($exoTenant | Where-Object { $_.State -eq "Connected" -and $_.TokenStatus -eq "Active" } | Sort-Object Id -Descending)[0]
+            
+    #         }
+
+    #         $exoTenantId = $exoTenant.TenantID
+
+    #         if ($exoTenantId -ne $msTeamsTenantId) {
+
+    #             do {
+
+    #                 if ($exoConnection) {
+    #                     Write-Warning -Message "Connected Exchange Online TenantId does not match connected Teams TenantId... Signing out of Exchange Online... "
+    #                     Disconnect-ExchangeOnline
+    #                 }
+
+    #                 Connect-ExchangeOnline
+
+    #                 $exoConnection = Get-ConnectionInformation
+
+    #                 if ($exoTenant.Count -gt 1) {
+
+    #                     $exoTenant = ($exoTenant | Where-Object { $_.State -eq "Connected" -and $_.TokenStatus -eq "Active" } | Sort-Object Id -Descending)[0]
+            
+    #                 }
+
+    #                 $exoTenantId = $exoTenant.TenantID
+
+
+    #             } until ($exoTenantId -eq $msTeamsTenantId)
+
+    #         }
+
+    #     }   
+
+    # }
     
 }

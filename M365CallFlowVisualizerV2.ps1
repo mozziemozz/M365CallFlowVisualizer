@@ -5270,7 +5270,7 @@ function Get-NestedCallFlow {
 
             if ($accountType -eq "UserAccount" -and $ShowUserCallingSettings) {
 
-                . Get-TeamsUserCallFlow -UserId $nestedVoiceApp -PreviewSvg $false -SetClipBoard $false -StandAlone $false -ExportSvg $false -CustomFilePath $CustomFilePath -ObfuscatePhoneNumbers $ObfuscatePhoneNumbers
+                Get-TeamsUserCallFlow -UserId $nestedVoiceApp -PreviewSvg $false -SetClipBoard $false -StandAlone $false -ExportSvg $false -CustomFilePath $CustomFilePath -ObfuscatePhoneNumbers $ObfuscatePhoneNumbers
 
                 if ($mermaidCode -notcontains $mdUserCallingSettings) {
     

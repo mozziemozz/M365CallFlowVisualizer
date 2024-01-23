@@ -96,7 +96,8 @@ function Get-TeamsUserCallFlow {
         [Parameter(Mandatory=$false)][bool]$PreviewSvg = $false,
         [Parameter(Mandatory=$false)][bool]$SetClipBoard = $true,
         [Parameter(Mandatory=$false)][Bool]$ObfuscatePhoneNumbers = $false,
-        [Parameter(Mandatory=$false)][bool]$ExportSvg = $false
+        [Parameter(Mandatory=$false)][bool]$ExportSvg = $false,
+        [Parameter(Mandatory = $false)][bool]$ExportPng = $false
     )
 
     . .\Functions\Connect-M365CFV.ps1
@@ -168,6 +169,8 @@ function Get-TeamsUserCallFlow {
 
         Write-Host "User is neither forwaring or unanswered enabled"
 
+        $callForwardSettingName = "ForwardNoCalls"
+
         $mdUserCallingSettings = @"
         $userNode
 "@
@@ -178,6 +181,8 @@ function Get-TeamsUserCallFlow {
     elseif ($userCallingSettings.ForwardingType -eq "Immediate") {
 
         Write-Host "User is immediate forwarding enabled."
+
+        $callForwardSettingName = "ForwardAllCallsImmediately"
 
         switch ($userCallingSettings.ForwardingTargetType) {
             MyDelegates {
@@ -782,6 +787,8 @@ $allMermaidNodes += @("userForwarding$UserId","userForwardingTarget$UserId")
         if ($userCallingSettings.IsForwardingEnabled -and $userCallingSettings.IsUnansweredEnabled) {
 
             Write-Host "User is forwaring and unanswered enabled"
+
+            $callForwardSettingName = "ForwardCallsSimultaneouslyAndUnanswered"
 
             switch ($userCallingSettings.UnansweredTargetType) {
                 MyDelegates {
@@ -1582,7 +1589,97 @@ userForwardingResult$UserId --> |Yes| $mdCallSuccess
 
             Write-Host "User is forwarding enabled but not unanswered enabled"
 
+            $callForwardSettingName = "ForwardCallsSimultaneously"
+
             switch ($userCallingSettings.ForwardingTargetType) {
+                MyDelegates {
+    
+                    $mdUserCallingSettings = @"
+$userNode --> userForwarding$UserId(Also Ring)
+userForwarding$UserId -.-> userParallelRing$userId(Teams Clients<br> $($teamsUser.DisplayName)) ---> userForwardingResult$UserId
+userForwarding$UserId -.-> subgraphDelegates$UserId
+subgraph subgraphSettings$UserId[ ]
+
+"@
+
+                    $allMermaidNodes += @("userForwarding$UserId", "userParallelRing$userId", "userForwardingResult$UserId")
+                    $allSubgraphs += "subgraphSettings$UserId"
+    
+                    $mdsubgraphDelegates = @"
+subgraph subgraphDelegates$UserId[Delegates of $($teamsUser.DisplayName)]
+direction LR
+ringType$UserId[(Simultaneous Ring)]
+
+"@
+
+                    $allMermaidNodes += "ringType$UserId"
+                    $allSubgraphs += "subgraphDelegates$UserId"
+    
+                    $delegateCounter = 1
+    
+                    foreach ($delegate in $userCallingSettings.Delegates) {
+    
+                        $delegateUserObject = (Get-CsOnlineUser -Identity $delegate.Id)
+    
+                        $delegateRing = "                ringType$UserId -.-> delegateMember$UserId-$($delegateUserObject.Identity)$delegateCounter($($delegateUserObject.DisplayName))`n"
+    
+                        $mdsubgraphDelegates += $delegateRing
+
+                        $allMermaidNodes += "delegateMember$UserId-$($delegateUserObject.Identity)$delegateCounter"
+
+                        # Add delegate to nested voice apps if nested user call flows are enabled
+                        if ($nestedVoiceApps -notcontains $($delegateUserObject.Identity) -and $ShowNestedUserDelegates -eq $true) {
+                
+                            $nestedVoiceApps += $($delegateUserObject.Identity)
+        
+                        }
+
+                        # Link delegate subgraph to user node if nested user call flows are enabled
+                        if ($ShowNestedUserDelegates -eq $true) {
+
+                            $mermaidCode += "subgraphDelegates$UserId --> $($delegateUserObject.Identity)(User<br>$($delegateUserObject.DisplayName))"
+
+                            $allMermaidNodes += "$($delegateUserObject.Identity)"
+
+                        }
+    
+                        $delegateCounter ++
+                    }
+    
+                    $mdUserCallingSettings += $mdsubgraphDelegates
+
+                    if ($CombineCallConnectedNodes -eq $true) {
+
+                        $mdCallSuccess = "callSuccess((Call Connected))"
+                
+                        $allMermaidNodes += "callSuccess"
+                
+                    }
+                
+                    else {
+                
+                        $mdCallSuccess = "userForwardingConnected$UserId((Call Connected))"
+                
+                        $allMermaidNodes += "userForwardingConnected$UserId"
+                
+                    }    
+        
+                    $mdUserCallingSettingsAddition = @"
+end
+userForwardingResult$UserId --> |No| userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)]
+subgraphDelegates$UserId --> userForwardingResult$UserId{Call Answered?}
+$subgraphUnansweredSettings
+end
+userForwardingTimeout$UserId[(Timeout: $userUnansweredTimeout)] $mdUnansweredTarget
+userForwardingResult$UserId --> |Yes| $mdCallSuccess
+
+"@
+    
+                    $allMermaidNodes += @("userForwardingResult$UserId", "userForwardingTimeout$UserId", "userForwardingConnected$UserId")
+
+                    $mdUserCallingSettings += $mdUserCallingSettingsAddition
+    
+                }
                 Group {
     
                     switch ($userCallingSettings.CallGroupOrder) {
@@ -1878,6 +1975,8 @@ $allMermaidNodes += @("userForwarding$UserId","userParallelRing$userId","userFor
         elseif ($userCallingSettings.IsUnansweredEnabled -and !$userCallingSettings.IsForwardingEnabled) {
 
             Write-Host "User is unanswered enabled but not forwarding enabled"
+
+            $callForwardSettingName = "ForwardCallsUnanswered"
 
             switch ($userCallingSettings.UnansweredTargetType) {
                 MyDelegates {
@@ -2289,6 +2388,24 @@ $mdFlowChart
     if ($PreviewSvg) {
 
         Start-Process $url
+
+    }
+
+    if ($ExportPng) {
+
+        if (!(Test-Path -Path "$filePath")) {
+
+            New-Item -Path $filePath -ItemType Directory
+
+        }
+
+        $date = Get-Date -Format "yyyy-MM-dd-HH-mm-ss"
+
+        $displayNameSafe = $teamsUser.DisplayName.Replace(" ", "-")
+
+        Set-Content -Path "$filePath\UserCallingSettings-$callForwardSettingName-$($displayNameSafe)-$date.mmd" -Value $mdFlowChart
+
+        mmdc.cmd -i "$filePath\UserCallingSettings-$callForwardSettingName-$($displayNameSafe)-$date.mmd" -o "$filePath\UserCallingSettings-$callForwardSettingName-$($displayNameSafe)-$date.png" -b transparent -s 10 -t dark
 
     }
 
