@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.1.3
+    Version:            3.1.4
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -208,6 +208,12 @@
         Type:               bool
         Default value:      false
 
+    -ShowSharedVoicemailGroupSubscribers
+        Specifies if the info if a group member is also following the group mailbox in their personal inbox should be included in the diagram. Requires -ShowSharedVoicemailGroupMembers to be $true
+        Required:           false
+        Type:               bool
+        Default value:      false
+
     -ShowCqOutboundCallingIds
         Specifies if outbound calling Ids of call queues should be shown
         Required:           false
@@ -391,6 +397,7 @@ param(
     [Parameter(Mandatory = $false)][String]$CheckCallFlowRoutingSpecificDateTime,
     [Parameter(Mandatory = $false)][Bool]$ObfuscatePhoneNumbers = $false,
     [Parameter(Mandatory = $false)][Bool]$ShowSharedVoicemailGroupMembers = $false,
+    [Parameter(Mandatory = $false)][Bool]$ShowSharedVoicemailGroupSubscribers = $false,
     [Parameter(Mandatory = $false)][Bool]$ShowCqOutboundCallingIds = $false,
     [Parameter(Mandatory = $false)][Bool]$ShowUserOutboundCallingIds = $false,
     [Parameter(Mandatory = $false)][Bool]$ShowCqAuthorizedUsers = $false,
@@ -473,6 +480,7 @@ if ($HardcoreMode -eq $true) {
     $ExportAudioFiles = $true
     $ExportTTSGreetings = $true
     $ShowSharedVoicemailGroupMembers = $true
+    $ShowSharedVoicemailGroupSubscribers = $true
     $ShowCqOutboundCallingIds = $true
     $ShowUserOutboundCallingIds = $true
     $ShowCqAuthorizedUsers = $true
@@ -5460,7 +5468,7 @@ if ($ExportPng -eq $true) {
 
     }
 
-    mmdc -i "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -o "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png" -b transparent -t "$pngTheme" -s 10
+    mmdc -i "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -o "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png" -b transparent -t "$pngTheme" -s 20 --configFile=".\mermaidRenderConfig.json"
 
     if ($DocType -eq "Markdown") {
 

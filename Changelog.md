@@ -151,3 +151,5 @@
 |07.11.2023|Connect-M365CFV.ps1|1.1.1|Remove support for Teams and Graph sign in via Entra ID App Registration / Service Principal. This has been moved into its own function.|
 |07.11.2023|Connect-MsTeamsServicePrincipal.ps1|1.0.0|Prepare for support for Teams and Graph sign in via Entra ID App Registration / Service Principal once it supports Get-CsOnlineApplicationInstance.|
 |22.11.2023|M365CallFlowVisualizerV2.ps1|3.1.3|Fix bug that showed longest idle CQ as presence based routing false when in fact it's true.|
+|07.02.2024|M365CallFlowVisualizerV2.ps1|3.1.4|Add parameter `-ShowSharedVoicemailGroupSubscribers` to display if people are following the group in their inbox.|
+|07.02.2024|Get-SharedVoicemailGroupMembers.ps1|1.0.2|Add parameter `-ShowSharedVoicemailGroupSubscribers` to display if people are following the group in their inbox.|

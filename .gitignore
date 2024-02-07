@@ -8,6 +8,5 @@
 *.mp3
 *.txt
 *.wav
-*.json
 EncodeMermaid.py
 **/.local

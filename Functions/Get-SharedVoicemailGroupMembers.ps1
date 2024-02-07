@@ -4,7 +4,7 @@
     
     .DESCRIPTION
     Author:             Martin Heusser
-    Version:            1.0.1
+    Version:            1.0.2
     Changelog:          .\Changelog.md
 
 #>
@@ -17,6 +17,12 @@ function Get-SharedVoicemailGroupMembers {
     Write-Host "Shared Voicemail Group Id: $SharedVoicemailGroupId" -ForegroundColor Magenta
 
     $sharedVoicemailGroupMembers = Get-MgGroupMember -GroupId $SharedVoicemailGroupId
+
+    if ($ShowSharedVoicemailGroupSubscribers -eq $true) {
+
+        $sharedVoicemailGroupSubscribers = Get-UnifiedGroupLinks -Identity $SharedVoicemailGroupId -LinkType Subscribers -ResultSize Unlimited
+
+    }
 
     $mdSharedVoicemailGroupMembers = "<br><br>Members"
 
@@ -44,6 +50,22 @@ function Get-SharedVoicemailGroupMembers {
         }
 
         $currentMember = $currentMember.Replace("@"," at ")
+
+        if ($ShowSharedVoicemailGroupSubscribers -eq $true) {
+
+            if ($sharedVoicemailGroupMember.Id -in $sharedVoicemailGroupSubscribers.ExternalDirectoryObjectId) {
+
+                $currentMember = "$currentMember, Follow In Inbox: TRUE"
+
+            }
+
+            else {
+
+                $currentMember = "$currentMember, Follow In Inbox: FALSE"
+
+            }
+
+        }
         
         $mdSharedVoicemailGroupMembers += "<br>$currentMember"
 
