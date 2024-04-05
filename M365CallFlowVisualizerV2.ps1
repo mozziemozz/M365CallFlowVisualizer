@@ -361,7 +361,7 @@
     
 #>
 
-#Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "5.7.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
+# Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "6.1.0" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
 
 [CmdletBinding(DefaultParametersetName="None")]
 param(

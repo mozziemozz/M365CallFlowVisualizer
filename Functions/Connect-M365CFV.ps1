@@ -5,7 +5,7 @@
     
     .DESCRIPTION
     Author:             Martin Heusser
-    Version:            1.1.1
+    Version:            1.1.2
     Changelog:          .\Changelog.md
 
 #>
@@ -13,6 +13,28 @@
 function Connect-M365CFV {
     param (
     )
+
+    if ($ShowSharedVoicemailGroupSubscribers -eq $true) {
+   
+        $exoConnection = Get-ConnectionInformation
+
+        if (!$exoConnection) {
+
+            Connect-ExchangeOnline
+
+            $exoConnection = Get-ConnectionInformation
+
+        }
+
+        if ($exoConnection.Count -gt 1) {
+
+            $exoConnection = ($exoConnection | Where-Object { $_.State -eq "Connected" -and $_.TokenStatus -eq "Active" } | Sort-Object Id -Descending)[0]
+
+        }
+
+        $exoTenantId = $exoConnection.TenantID
+
+    }
 
     try {
         $msTeamsTenant = Get-CsTenant -ErrorAction Stop > $null
@@ -125,61 +147,20 @@ function Connect-M365CFV {
         }
     }
 
-    # if ($ShowSharedVoicemailGroupSubscribers -eq $true) {
+    if ($ShowSharedVoicemailGroupSubscribers -eq $true) {
 
-    #     try {
-        
-    #         $exoTenant = Get-EXOMailbox -ResultSize 1 -ErrorAction Stop > $null
+        if ($exoTenantId -eq $msTeamsTenantId -and $exoTenantId -eq $msGraphContext) {
 
-    #     }
-    #     catch {
+            Write-Host "Connected Exchange Online Tenant matches connected Teams and Graph Tenant: $($msTeamsTenant.DisplayName)" -ForegroundColor Green
 
-    #         Write-Warning "Not connected to Exchange Online. Please sign in to Exchange Online..."
-            
-    #         Connect-ExchangeOnline
-            
-    #     }
-    #     finally {
-            
-    #         $exoTenant = Get-EXOMailbox -ResultSize 1 -ErrorAction Stop > $null
-    #         $exoConnection = Get-ConnectionInformation
+        }
 
-    #         if ($exoTenant.Count -gt 1) {
+        else {
 
-    #             $exoTenant = ($exoTenant | Where-Object { $_.State -eq "Connected" -and $_.TokenStatus -eq "Active" } | Sort-Object Id -Descending)[0]
-            
-    #         }
+            Write-Host "Connected Exchange Online Tenant does not match connected Teams and Graph Tenant. Please try again. Exiting..." -ForegroundColor Red
 
-    #         $exoTenantId = $exoTenant.TenantID
+        }
 
-    #         if ($exoTenantId -ne $msTeamsTenantId) {
-
-    #             do {
-
-    #                 if ($exoConnection) {
-    #                     Write-Warning -Message "Connected Exchange Online TenantId does not match connected Teams TenantId... Signing out of Exchange Online... "
-    #                     Disconnect-ExchangeOnline
-    #                 }
-
-    #                 Connect-ExchangeOnline
-
-    #                 $exoConnection = Get-ConnectionInformation
-
-    #                 if ($exoTenant.Count -gt 1) {
-
-    #                     $exoTenant = ($exoTenant | Where-Object { $_.State -eq "Connected" -and $_.TokenStatus -eq "Active" } | Sort-Object Id -Descending)[0]
-            
-    #                 }
-
-    #                 $exoTenantId = $exoTenant.TenantID
-
-
-    #             } until ($exoTenantId -eq $msTeamsTenantId)
-
-    #         }
-
-    #     }   
-
-    # }
+    }
     
 }
