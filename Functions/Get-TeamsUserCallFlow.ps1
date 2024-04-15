@@ -6,7 +6,7 @@
     Reads the user calling settings of a Teams user and outputs them in an easy to understand SVG diagram. See the script "ExportAllUserCallFlowsToSVG.ps1" in the root of this repo for an example on how to generate a diagram for each user in a tenant.
 
     Author:             Martin Heusser
-    Version:            1.0.8
+    Version:            1.0.9
     Changelog:          Moved to repository at .\Changelog.md
 
     .PARAMETER Name
@@ -328,7 +328,9 @@ $allSubgraphs += "subgraphCallGroups$UserId"
                     
                             if (Get-CsOnlineUser -AccountType ResourceAccount |  Where-Object {$_.SipAddress -eq $userCallingSettings.UnansweredTarget}) {
                     
-                                $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.UnansweredTarget).Replace("sip:","")
+                                # $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.UnansweredTarget).Replace("sip:","")
+
+                                $checkUserAccountType = $allResourceAccounts | Where-Object { $_.UserPrincipalName -eq $($userCallingSettings.UnansweredTarget).Replace("sip:", "")}
                                 
                             }
                     
@@ -649,7 +651,9 @@ end
 
                     if (Get-CsOnlineUser -AccountType ResourceAccount |  Where-Object {$_.SipAddress -eq $userCallingSettings.ForwardingTarget}) {
 
-                        $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.ForwardingTarget).Replace("sip:","")
+                        # $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.ForwardingTarget).Replace("sip:","")
+
+                        $checkUserAccountType = $allResourceAccounts | Where-Object { $_.UserPrincipalName -eq $($userCallingSettings.UnansweredTarget).Replace("sip:", "") }
                         
                     }
             
@@ -1010,7 +1014,9 @@ $allSubgraphs += "subgraphCallGroups$UserId"
 
                         if (Get-CsOnlineUser -AccountType ResourceAccount |  Where-Object {$_.SipAddress -eq $userCallingSettings.UnansweredTarget}) {
 
-                            $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.UnansweredTarget).Replace("sip:","")
+                            # $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.UnansweredTarget).Replace("sip:","")
+
+                            $checkUserAccountType = $allResourceAccounts | Where-Object { $_.UserPrincipalName -eq $($userCallingSettings.UnansweredTarget).Replace("sip:", "") }
                             
                         }
 
@@ -1407,7 +1413,9 @@ userForwardingResult$UserId --> |Yes| $mdCallSuccess
 
                         if (Get-CsOnlineUser -AccountType ResourceAccount |  Where-Object {$_.SipAddress -eq $userCallingSettings.ForwardingTarget}) {
 
-                            $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.ForwardingTarget).Replace("sip:","")
+                            # $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.ForwardingTarget).Replace("sip:","")
+
+                            $checkUserAccountType = $allResourceAccounts | Where-Object { $_.UserPrincipalName -eq $($userCallingSettings.UnansweredTarget).Replace("sip:", "") }
                             
                         }
                 
@@ -1832,7 +1840,9 @@ $allSubgraphs += "subgraphCallGroups$UserId"
 
                         if (Get-CsOnlineUser -AccountType ResourceAccount |  Where-Object {$_.SipAddress -eq $userCallingSettings.ForwardingTarget}) {
 
-                            $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.ForwardingTarget).Replace("sip:","")
+                            # $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.ForwardingTarget).Replace("sip:","")
+
+                            $checkUserAccountType = $allResourceAccounts | Where-Object { $_.UserPrincipalName -eq $($userCallingSettings.UnansweredTarget).Replace("sip:", "") }
                             
                         }
                 
@@ -2183,7 +2193,9 @@ $allSubgraphs += "subgraphCallGroups$UserId"
 
                         if (Get-CsOnlineUser -AccountType ResourceAccount |  Where-Object {$_.SipAddress -eq $userCallingSettings.UnansweredTarget}) {
 
-                            $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.UnansweredTarget).Replace("sip:","")
+                            # $checkUserAccountType = Get-CsOnlineApplicationInstance -Identity $($userCallingSettings.UnansweredTarget).Replace("sip:","")
+
+                            $checkUserAccountType = $allResourceAccounts | Where-Object { $_.UserPrincipalName -eq $($userCallingSettings.UnansweredTarget).Replace("sip:", "") }
                             
                         }
 

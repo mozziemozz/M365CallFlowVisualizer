@@ -5,7 +5,7 @@
     
     .DESCRIPTION
     Author:             Martin Heusser
-    Version:            1.1.2
+    Version:            1.1.3
     Changelog:          .\Changelog.md
 
 #>
@@ -14,7 +14,7 @@ function Connect-M365CFV {
     param (
     )
 
-    if ($ShowSharedVoicemailGroupSubscribers -eq $true) {
+    if ($ShowSharedVoicemailGroupSubscribers -eq $true -or $HardcoreMode -eq $true) {
    
         $exoConnection = Get-ConnectionInformation
 
@@ -147,7 +147,7 @@ function Connect-M365CFV {
         }
     }
 
-    if ($ShowSharedVoicemailGroupSubscribers -eq $true) {
+    if ($ShowSharedVoicemailGroupSubscribers -eq $true -or $HardcoreMode -eq $true) {
 
         if ($exoTenantId -eq $msTeamsTenantId -and $exoTenantId -eq $msGraphContext) {
 

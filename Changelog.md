@@ -154,3 +154,7 @@
 |07.02.2024|M365CallFlowVisualizerV2.ps1|3.1.4|Add parameter `-ShowSharedVoicemailGroupSubscribers` to display if people are following the group in their inbox.|
 |07.02.2024|Get-SharedVoicemailGroupMembers.ps1|1.0.2|Add parameter `-ShowSharedVoicemailGroupSubscribers` to display if people are following the group in their inbox.|
 |06.04.2024|Connect-M365CFV.ps1|1.1.2|Add `Connect-ExchangeOnline`.|
+|15.04.2024|M365CallFlowVisualizerV2.ps1|3.1.5|Add support for app only auth for some features Use `-ConnectWithServicePrincipal` (Exchange Online/ `-ShowSharedVoicemailGroupSubscribers` are not supported yet).|
+|15.04.2024|Get-AllVoiceAppsAndResourceAccountsAppAuth.ps1|1.0.1|Add support for app only auth for some features Use `-ConnectWithServicePrincipal` (Exchange Online/ `-ShowSharedVoicemailGroupSubscribers` are not supported yet).|
+|15.04.2024|Connect-M365CFV.ps1|1.1.3|Add checks to also prompt for Exchange credentials when using Hardcore mode.|
+|15.04.2024|Get-TeamsUserCallFlow.ps1|1.0.9|Optimize performance by checking objects in memory instead of using `Get-CsOnlineApplicationInstance`.|

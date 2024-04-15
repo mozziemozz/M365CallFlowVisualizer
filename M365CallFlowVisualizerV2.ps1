@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.1.4
+    Version:            3.1.5
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -435,6 +435,7 @@ $ErrorActionPreference = "Continue"
 . .\Functions\Get-IvrTransferMessage.ps1
 . .\Functions\Get-AutoAttendantDirectorySearchConfig.ps1
 . .\Functions\Get-AllVoiceAppsAndResourceAccounts.ps1
+. .\Functions\Get-AllVoiceAppsAndResourceAccountsAppAuth.ps1
 . .\Functions\SecureCredsMgmt.ps1
 . .\Functions\Connect-MsTeamsServicePrincipal.ps1
 
@@ -442,20 +443,30 @@ $ErrorActionPreference = "Continue"
 
 if ($ConnectWithServicePrincipal) {
 
+    if ($ShowSharedVoicemailGroupSubscribers -eq $true -or $HardcoreMode -eq $true) {
+
+        Write-Warning -Message "Shared voicemail group subscribers are not supported with ConnectWithServicePrincipal. Please disable this switch."
+
+        Read-Host -Prompt "Press Enter to exit..."
+
+        exit
+
+    }
+
     Write-Warning -Message "Connecting to Microsoft Teams and Microsoft Graph using your own Entra ID App Registration is not supported yet because it doesn't support [Get|Set|New|Sync]-CsOnlineApplicationInstance yet. Please don't use this parameter yet. https://learn.microsoft.com/en-us/MicrosoftTeams/teams-powershell-application-authentication#cmdlets-supported"
 
-    # . Get-MZZTenantIdTxt -FileName $EntraTenantIdFileName
-    # . Get-MZZAppIdTxt -FileName $EntraApplicationIdFileName
-    # . Get-MZZSecureCreds -FileName $EntraClientSecretFileName -NoClipboard > $null
-    # $AppSecret = $passwordDecrypted
+    . Get-MZZTenantIdTxt -FileName $EntraTenantIdFileName
+    . Get-MZZAppIdTxt -FileName $EntraApplicationIdFileName
+    . Get-MZZSecureCreds -FileName $EntraClientSecretFileName -NoClipboard > $null
+    $AppSecret = $passwordDecrypted
 
-    # . Connect-MsTeamsServicePrincipal -TenantId $TenantId -AppId $AppId -AppSecret $AppSecret
+    . Connect-MsTeamsServicePrincipal -TenantId $TenantId -AppId $AppId -AppSecret $AppSecret
 
-    # $graphTokenSecureString = $graphToken | ConvertTo-SecureString -AsPlainText -Force
+    $graphTokenSecureString = $graphToken | ConvertTo-SecureString -AsPlainText -Force
 
-    # $graphTokenSecureString = $graphToken | ConvertTo-SecureString -AsPlainText -Force
+    $graphTokenSecureString = $graphToken | ConvertTo-SecureString -AsPlainText -Force
 
-    # Connect-MgGraph -AccessToken $graphTokenSecureString
+    Connect-MgGraph -AccessToken $graphTokenSecureString
 
 }
 
@@ -466,6 +477,16 @@ else {
 }
 
 if ($HardcoreMode -eq $true) {
+
+    if ($ConnectWithServicePrincipal -eq $true) {
+
+        Write-Warning -Message "Hardcore Mode is not supported with ConnectWithServicePrincipal. Please disable this switch."
+
+        Read-Host -Prompt "Press Enter to exit..."
+
+        exit
+
+    }
 
     Write-Host "Hardcore Mode is enabled. This means that all options will be enabled and included in the output. This may overwrite individual values you set in other parameters!" -ForegroundColor Magenta
 
@@ -539,7 +560,18 @@ $audioFileNames = @()
 $ttsGreetings = @()
 
 # Get all voice apps and resource accounts from external function
-. Get-AllVoiceAppsAndResourceAccounts
+
+if ($ConnectWithServicePrincipal) {
+
+    . Get-AllVoiceAppsAndResourceAccountsAppAuth
+
+}
+
+else {
+
+    . Get-AllVoiceAppsAndResourceAccounts
+
+}
 
 $allAutoAttendantIds = $allAutoAttendants.Identity
 $allCallQueueIds = $allCallQueues.Identity
@@ -5278,7 +5310,7 @@ function Get-NestedCallFlow {
 
             if ($accountType -eq "UserAccount" -and $ShowUserCallingSettings) {
 
-                Get-TeamsUserCallFlow -UserId $nestedVoiceApp -PreviewSvg $false -SetClipBoard $false -StandAlone $false -ExportSvg $false -CustomFilePath $CustomFilePath -ObfuscatePhoneNumbers $ObfuscatePhoneNumbers
+                . Get-TeamsUserCallFlow -UserId $nestedVoiceApp -PreviewSvg $false -SetClipBoard $false -StandAlone $false -ExportSvg $false -CustomFilePath $CustomFilePath -ObfuscatePhoneNumbers $ObfuscatePhoneNumbers
 
                 if ($mermaidCode -notcontains $mdUserCallingSettings) {
     
@@ -5318,6 +5350,9 @@ else {
     }
 
 }
+
+# Convert mermaid diagram to string
+$mermaidCode = $mermaidCode | Out-String
 
 #Remove invalid characters from mermaid syntax
 $mermaidCode = $mermaidCode.Replace(";",",")
@@ -5468,7 +5503,7 @@ if ($ExportPng -eq $true) {
 
     }
 
-    mmdc -i "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -o "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png" -b transparent -t "$pngTheme" -s 20 --configFile=".\mermaidRenderConfig.json"
+    mmdc -i "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -o "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png" -b transparent -t "$pngTheme" -s 10 --configFile=".\mermaidRenderConfig.json"
 
     if ($DocType -eq "Markdown") {
 
