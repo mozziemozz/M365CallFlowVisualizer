@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.1.5
+    Version:            3.1.6
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -455,18 +455,25 @@ if ($ConnectWithServicePrincipal) {
 
     Write-Warning -Message "Connecting to Microsoft Teams and Microsoft Graph using your own Entra ID App Registration is not supported yet because it doesn't support [Get|Set|New|Sync]-CsOnlineApplicationInstance yet. Please don't use this parameter yet. https://learn.microsoft.com/en-us/MicrosoftTeams/teams-powershell-application-authentication#cmdlets-supported"
 
-    . Get-MZZTenantIdTxt -FileName $EntraTenantIdFileName
-    . Get-MZZAppIdTxt -FileName $EntraApplicationIdFileName
-    . Get-MZZSecureCreds -FileName $EntraClientSecretFileName -NoClipboard > $null
-    $AppSecret = $passwordDecrypted
+    $checkGetCsOnlineUser = Get-CsOnlineUser -ResultSize 1 -ErrorAction SilentlyContinue
 
-    . Connect-MsTeamsServicePrincipal -TenantId $TenantId -AppId $AppId -AppSecret $AppSecret
+    if (!$checkGetCsOnlineUser) {
 
-    $graphTokenSecureString = $graphToken | ConvertTo-SecureString -AsPlainText -Force
+        . Get-MZZTenantIdTxt -FileName $EntraTenantIdFileName
+        . Get-MZZAppIdTxt -FileName $EntraApplicationIdFileName
+        . Get-MZZSecureCreds -FileName $EntraClientSecretFileName -NoClipboard > $null
+        $AppSecret = $passwordDecrypted
 
-    $graphTokenSecureString = $graphToken | ConvertTo-SecureString -AsPlainText -Force
+        . Connect-MsTeamsServicePrincipal -TenantId $TenantId -AppId $AppId -AppSecret $AppSecret
 
-    Connect-MgGraph -AccessToken $graphTokenSecureString
+        $graphTokenSecureString = $graphToken | ConvertTo-SecureString -AsPlainText -Force
+
+        $graphTokenSecureString = $graphToken | ConvertTo-SecureString -AsPlainText -Force
+
+        Connect-MgGraph -AccessToken $graphTokenSecureString
+
+
+    }
 
 }
 
@@ -3693,6 +3700,89 @@ function Get-CallQueueCallFlow {
             
             }
 
+            if ($MatchingCQ.OverflowDisconnectAudioFilePrompt -or $MatchingCQ.OverflowDisconnectTextToSpeechPrompt) {
+
+                if ($MatchingCQ.OverflowDisconnectAudioFilePrompt) {
+
+                    if ($ShowAudioFileName) {
+
+                        $audioFileName = Optimize-DisplayName -String ($MatchingCQ.OverflowDisconnectAudioFilePromptFileName)
+
+                        # If audio file name is not present on call queue properties
+                        if (!$audioFileName) {
+
+                            $audioFileName = Optimize-DisplayName -String (Get-CsOnlineAudioFile -Identity $MatchingCQ.OverflowDisconnectAudioFilePrompt -ApplicationId HuntGroup).FileName
+
+                        }
+
+                        if ($ExportAudioFiles) {
+
+                            $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.OverflowDisconnectAudioFilePrompt -ApplicationId HuntGroup
+                            [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+        
+                            $audioFileNames += ("click cqOverflowDisconnectAudioFilePrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+        
+                        }
+        
+                    
+                        if ($audioFileName.Length -gt $truncateGreetings) {
+                
+                            $audioFileNameExtension = ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[3]
+                            $audioFileName = $audioFileName.Remove($audioFileName.Length - ($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
+        
+                        }
+        
+                        $CqOverFlowActionFriendly = "cqOverflowDisconnectAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile <br> $audioFileName] --> $cqOverFlowActionFriendly"
+        
+                    }
+
+                    else {
+
+                        $CqOverFlowActionFriendly = "cqOverflowDisconnectAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile] --> $cqOverFlowActionFriendly"
+
+                    }
+
+                    $allMermaidNodes += "cqOverflowDisconnectAudioFilePrompt$($cqCallFlowObjectId)"
+
+                }
+
+                else {
+
+                    if ($ShowTTSGreetingText) {
+
+                        $overflowDisconnectTextToSpeechPromptExport = $MatchingCQ.OverflowDisconnectTextToSpeechPrompt
+                        $overflowDisconnectTextToSpeechPromptValue = Optimize-DisplayName -String $MatchingCQ.OverflowDisconnectTextToSpeechPrompt
+
+                        if ($ExportTTSGreetings) {
+
+                            $overflowDisconnectTextToSpeechPromptExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqOverFlowDisconnectGreeting.txt"
+        
+                            $ttsGreetings += ("click cqOverflowDisconnectTextToSpeechPrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqOverFlowDisconnectGreeting.txt" + '"')
+        
+                        }    
+
+                        if ($overflowDisconnectTextToSpeechPromptValue.Length -gt $truncateGreetings) {
+
+                            $overflowDisconnectTextToSpeechPromptValue = $overflowDisconnectTextToSpeechPromptValue.Remove($overflowDisconnectTextToSpeechPromptValue.Length - ($overflowDisconnectTextToSpeechPromptValue.Length - $truncateGreetings)).TrimEnd() + "..."
+
+                        }
+
+                        $CqOverFlowActionFriendly = "cqOverflowDisconnectTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech <br> $overflowDisconnectTextToSpeechPromptValue] --> $cqOverFlowActionFriendly"
+
+                    }
+
+                    else {
+
+                        $CqOverFlowActionFriendly = "cqOverflowDisconnectTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech] --> $cqOverFlowActionFriendly"
+
+                    }
+
+                    $allMermaidNodes += "cqOverflowDisconnectTextToSpeechPrompt$($cqCallFlowObjectId)"
+
+                }
+
+            }
+
         }
         Forward {
 
@@ -3733,6 +3823,89 @@ function Get-CallQueueCallFlow {
                 $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($cqOverFlowPhoneNumber)(External Number <br> $cqOverFlowPhoneNumber)"
 
                 $allMermaidNodes += @("cqOverFlowAction$($cqCallFlowObjectId)","$($cqOverFlowPhoneNumber)")
+
+                if ($MatchingCQ.OverflowRedirectPhoneNumberAudioFilePrompt -or $MatchingCQ.OverflowRedirectPhoneNumberTextToSpeechPrompt) {
+
+                    if ($MatchingCQ.OverflowRedirectPhoneNumberAudioFilePrompt) {
+
+                        if ($ShowAudioFileName) {
+
+                            $audioFileName = Optimize-DisplayName -String ($MatchingCQ.OverflowRedirectPhoneNumberAudioFilePromptFileName)
+
+                            # If audio file name is not present on call queue properties
+                            if (!$audioFileName) {
+
+                                $audioFileName = Optimize-DisplayName -String (Get-CsOnlineAudioFile -Identity $MatchingCQ.OverflowRedirectPhoneNumberAudioFilePrompt -ApplicationId HuntGroup).FileName
+
+                            }
+
+                            if ($ExportAudioFiles) {
+
+                                $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.OverflowRedirectPhoneNumberAudioFilePrompt -ApplicationId HuntGroup
+                                [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+        
+                                $audioFileNames += ("click cqOverflowRedirectPhoneNumberAudioFilePrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+        
+                            }
+        
+                    
+                            if ($audioFileName.Length -gt $truncateGreetings) {
+                
+                                $audioFileNameExtension = ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[3]
+                                $audioFileName = $audioFileName.Remove($audioFileName.Length - ($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
+        
+                            }
+        
+                            $CqOverFlowActionFriendly = "cqOverflowRedirectPhoneNumberAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile <br> $audioFileName] --> $CqOverFlowActionFriendly"
+        
+                        }
+
+                        else {
+
+                            $CqOverFlowActionFriendly = "cqOverflowRedirectPhoneNumberAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile] --> $CqOverFlowActionFriendly"
+
+                        }
+
+                        $allMermaidNodes += "cqOverflowRedirectPhoneNumberAudioFilePrompt$($cqCallFlowObjectId)"
+
+                    }
+
+                    else {
+
+                        if ($ShowTTSGreetingText) {
+
+                            $OverflowRedirectPhoneNumberTextToSpeechPromptExport = $MatchingCQ.OverflowRedirectPhoneNumberTextToSpeechPrompt
+                            $OverflowRedirectPhoneNumberTextToSpeechPromptValue = Optimize-DisplayName -String $MatchingCQ.OverflowRedirectPhoneNumberTextToSpeechPrompt
+
+                            if ($ExportTTSGreetings) {
+
+                                $OverflowRedirectPhoneNumberTextToSpeechPromptExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqOverflowRedirectPhoneNumberGreeting.txt"
+        
+                                $ttsGreetings += ("click cqOverflowRedirectPhoneNumberTextToSpeechPrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqOverflowRedirectPhoneNumberGreeting.txt" + '"')
+        
+                            }    
+
+                            if ($OverflowRedirectPhoneNumberTextToSpeechPromptValue.Length -gt $truncateGreetings) {
+
+                                $OverflowRedirectPhoneNumberTextToSpeechPromptValue = $OverflowRedirectPhoneNumberTextToSpeechPromptValue.Remove($OverflowRedirectPhoneNumberTextToSpeechPromptValue.Length - ($OverflowRedirectPhoneNumberTextToSpeechPromptValue.Length - $truncateGreetings)).TrimEnd() + "..."
+
+                            }
+
+                            $CqOverFlowActionFriendly = "cqOverflowRedirectPhoneNumberTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech <br> $OverflowRedirectPhoneNumberTextToSpeechPromptValue] --> $CqOverFlowActionFriendly"
+
+                        }
+
+                        else {
+
+                            $CqOverFlowActionFriendly = "cqOverflowRedirectPhoneNumberTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech] --> $CqOverFlowActionFriendly"
+
+                        }
+
+                        $allMermaidNodes += "cqOverflowRedirectPhoneNumberTextToSpeechPrompt$($cqCallFlowObjectId)"
+
+                    }
+
+                }
                 
             }
 
@@ -3773,6 +3946,89 @@ function Get-CallQueueCallFlow {
                     }
 
                     $allMermaidNodes += @("cqOverFlowAction$($cqCallFlowObjectId)","$($MatchingOverFlowCQ.Identity)")
+
+                }
+
+                if ($MatchingCQ.OverflowRedirectVoiceAppAudioFilePrompt -or $MatchingCQ.OverflowRedirectVoiceAppTextToSpeechPrompt) {
+
+                    if ($MatchingCQ.OverflowRedirectVoiceAppAudioFilePrompt) {
+
+                        if ($ShowAudioFileName) {
+
+                            $audioFileName = Optimize-DisplayName -String ($MatchingCQ.OverflowRedirectVoiceAppAudioFilePromptFileName)
+
+                            # If audio file name is not present on call queue properties
+                            if (!$audioFileName) {
+
+                                $audioFileName = Optimize-DisplayName -String (Get-CsOnlineAudioFile -Identity $MatchingCQ.OverflowRedirectVoiceAppAudioFilePrompt -ApplicationId HuntGroup).FileName
+
+                            }
+
+                            if ($ExportAudioFiles) {
+
+                                $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.OverflowRedirectVoiceAppAudioFilePrompt -ApplicationId HuntGroup
+                                [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+        
+                                $audioFileNames += ("click cqOverflowRedirectVoiceAppAudioFilePrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+        
+                            }
+        
+                    
+                            if ($audioFileName.Length -gt $truncateGreetings) {
+                
+                                $audioFileNameExtension = ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[3]
+                                $audioFileName = $audioFileName.Remove($audioFileName.Length - ($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
+        
+                            }
+        
+                            $CqOverFlowActionFriendly = "cqOverflowRedirectVoiceAppAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile <br> $audioFileName] --> $CqOverFlowActionFriendly"
+        
+                        }
+
+                        else {
+
+                            $CqOverFlowActionFriendly = "cqOverflowRedirectVoiceAppAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile] --> $CqOverFlowActionFriendly"
+
+                        }
+
+                        $allMermaidNodes += "cqOverflowRedirectVoiceAppAudioFilePrompt$($cqCallFlowObjectId)"
+
+                    }
+
+                    else {
+
+                        if ($ShowTTSGreetingText) {
+
+                            $OverflowRedirectVoiceAppTextToSpeechPromptExport = $MatchingCQ.OverflowRedirectVoiceAppTextToSpeechPrompt
+                            $OverflowRedirectVoiceAppTextToSpeechPromptValue = Optimize-DisplayName -String $MatchingCQ.OverflowRedirectVoiceAppTextToSpeechPrompt
+
+                            if ($ExportTTSGreetings) {
+
+                                $OverflowRedirectVoiceAppTextToSpeechPromptExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqOverflowRedirectVoiceAppGreeting.txt"
+        
+                                $ttsGreetings += ("click cqOverflowRedirectVoiceAppTextToSpeechPrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqOverflowRedirectVoiceAppGreeting.txt" + '"')
+        
+                            }    
+
+                            if ($OverflowRedirectVoiceAppTextToSpeechPromptValue.Length -gt $truncateGreetings) {
+
+                                $OverflowRedirectVoiceAppTextToSpeechPromptValue = $OverflowRedirectVoiceAppTextToSpeechPromptValue.Remove($OverflowRedirectVoiceAppTextToSpeechPromptValue.Length - ($OverflowRedirectVoiceAppTextToSpeechPromptValue.Length - $truncateGreetings)).TrimEnd() + "..."
+
+                            }
+
+                            $CqOverFlowActionFriendly = "cqOverflowRedirectVoiceAppTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech <br> $OverflowRedirectVoiceAppTextToSpeechPromptValue] --> $CqOverFlowActionFriendly"
+
+                        }
+
+                        else {
+
+                            $CqOverFlowActionFriendly = "cqOverflowRedirectVoiceAppTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech] --> $CqOverFlowActionFriendly"
+
+                        }
+
+                        $allMermaidNodes += "cqOverflowRedirectVoiceAppTextToSpeechPrompt$($cqCallFlowObjectId)"
+
+                    }
 
                 }
 
@@ -3822,8 +4078,7 @@ function Get-CallQueueCallFlow {
         
                         $ttsGreetings += ("click cqOverFlowVoicemailGreeting$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqOverFlowVoicemailGreeting.txt" + '"')
         
-                    }    
-    
+                    }
 
                     if ($overFlowVoicemailTTSGreetingValue.Length -gt $truncateGreetings) {
 
@@ -3980,6 +4235,89 @@ function Get-CallQueueCallFlow {
                 
             }
 
+            if ($MatchingCQ.TimeoutDisconnectAudioFilePrompt -or $MatchingCQ.TimeoutDisconnectTextToSpeechPrompt) {
+
+                if ($MatchingCQ.TimeoutDisconnectAudioFilePrompt) {
+
+                    if ($ShowAudioFileName) {
+
+                        $audioFileName = Optimize-DisplayName -String ($MatchingCQ.TimeoutDisconnectAudioFilePromptFileName)
+
+                        # If audio file name is not present on call queue properties
+                        if (!$audioFileName) {
+
+                            $audioFileName = Optimize-DisplayName -String (Get-CsOnlineAudioFile -Identity $MatchingCQ.TimeoutDisconnectAudioFilePrompt -ApplicationId HuntGroup).FileName
+
+                        }
+
+                        if ($ExportAudioFiles) {
+
+                            $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.TimeoutDisconnectAudioFilePrompt -ApplicationId HuntGroup
+                            [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+        
+                            $audioFileNames += ("click cqTimeoutDisconnectAudioFilePrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+        
+                        }
+        
+                    
+                        if ($audioFileName.Length -gt $truncateGreetings) {
+                
+                            $audioFileNameExtension = ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[3]
+                            $audioFileName = $audioFileName.Remove($audioFileName.Length - ($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
+        
+                        }
+        
+                        $CqTimeoutActionFriendly = "cqTimeoutDisconnectAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile <br> $audioFileName] --> $cqTimeoutActionFriendly"
+        
+                    }
+
+                    else {
+
+                        $CqTimeoutActionFriendly = "cqTimeoutDisconnectAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile] --> $cqTimeoutActionFriendly"
+
+                    }
+
+                    $allMermaidNodes += "cqTimeoutDisconnectAudioFilePrompt$($cqCallFlowObjectId)"
+
+                }
+
+                else {
+
+                    if ($ShowTTSGreetingText) {
+
+                        $TimeoutDisconnectTextToSpeechPromptExport = $MatchingCQ.TimeoutDisconnectTextToSpeechPrompt
+                        $TimeoutDisconnectTextToSpeechPromptValue = Optimize-DisplayName -String $MatchingCQ.TimeoutDisconnectTextToSpeechPrompt
+
+                        if ($ExportTTSGreetings) {
+
+                            $TimeoutDisconnectTextToSpeechPromptExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeoutDisconnectGreeting.txt"
+        
+                            $ttsGreetings += ("click cqTimeoutDisconnectTextToSpeechPrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqTimeoutDisconnectGreeting.txt" + '"')
+        
+                        }    
+
+                        if ($TimeoutDisconnectTextToSpeechPromptValue.Length -gt $truncateGreetings) {
+
+                            $TimeoutDisconnectTextToSpeechPromptValue = $TimeoutDisconnectTextToSpeechPromptValue.Remove($TimeoutDisconnectTextToSpeechPromptValue.Length - ($TimeoutDisconnectTextToSpeechPromptValue.Length - $truncateGreetings)).TrimEnd() + "..."
+
+                        }
+
+                        $CqTimeoutActionFriendly = "cqTimeoutDisconnectTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech <br> $TimeoutDisconnectTextToSpeechPromptValue] --> $cqTimeoutActionFriendly"
+
+                    }
+
+                    else {
+
+                        $CqTimeoutActionFriendly = "cqTimeoutDisconnectTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech] --> $cqTimeoutActionFriendly"
+
+                    }
+
+                    $allMermaidNodes += "cqTimeoutDisconnectTextToSpeechPrompt$($cqCallFlowObjectId)"
+
+                }
+
+            }
+
         }
         Forward {
     
@@ -4020,6 +4358,89 @@ function Get-CallQueueCallFlow {
                 $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($cqTimeoutPhoneNumber)(External Number <br> $cqTimeoutPhoneNumber)"
 
                 $allMermaidNodes += @("cqTimeoutAction$($cqCallFlowObjectId)","$($cqTimeoutPhoneNumber)")
+
+                if ($MatchingCQ.TimeoutRedirectPhoneNumberAudioFilePrompt -or $MatchingCQ.TimeoutRedirectPhoneNumberTextToSpeechPrompt) {
+
+                    if ($MatchingCQ.TimeoutRedirectPhoneNumberAudioFilePrompt) {
+
+                        if ($ShowAudioFileName) {
+
+                            $audioFileName = Optimize-DisplayName -String ($MatchingCQ.TimeoutRedirectPhoneNumberAudioFilePromptFileName)
+
+                            # If audio file name is not present on call queue properties
+                            if (!$audioFileName) {
+
+                                $audioFileName = Optimize-DisplayName -String (Get-CsOnlineAudioFile -Identity $MatchingCQ.TimeoutRedirectPhoneNumberAudioFilePrompt -ApplicationId HuntGroup).FileName
+
+                            }
+
+                            if ($ExportAudioFiles) {
+
+                                $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.TimeoutRedirectPhoneNumberAudioFilePrompt -ApplicationId HuntGroup
+                                [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+        
+                                $audioFileNames += ("click cqTimeoutRedirectPhoneNumberAudioFilePrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+        
+                            }
+        
+                    
+                            if ($audioFileName.Length -gt $truncateGreetings) {
+                
+                                $audioFileNameExtension = ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[3]
+                                $audioFileName = $audioFileName.Remove($audioFileName.Length - ($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
+        
+                            }
+        
+                            $CqTimeoutActionFriendly = "cqTimeoutRedirectPhoneNumberAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile <br> $audioFileName] --> $CqTimeoutActionFriendly"
+        
+                        }
+
+                        else {
+
+                            $CqTimeoutActionFriendly = "cqTimeoutRedirectPhoneNumberAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile] --> $CqTimeoutActionFriendly"
+
+                        }
+
+                        $allMermaidNodes += "cqTimeoutRedirectPhoneNumberAudioFilePrompt$($cqCallFlowObjectId)"
+
+                    }
+
+                    else {
+
+                        if ($ShowTTSGreetingText) {
+
+                            $TimeoutRedirectPhoneNumberTextToSpeechPromptExport = $MatchingCQ.TimeoutRedirectPhoneNumberTextToSpeechPrompt
+                            $TimeoutRedirectPhoneNumberTextToSpeechPromptValue = Optimize-DisplayName -String $MatchingCQ.TimeoutRedirectPhoneNumberTextToSpeechPrompt
+
+                            if ($ExportTTSGreetings) {
+
+                                $TimeoutRedirectPhoneNumberTextToSpeechPromptExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeoutRedirectPhoneNumberGreeting.txt"
+        
+                                $ttsGreetings += ("click cqTimeoutRedirectPhoneNumberTextToSpeechPrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqTimeoutRedirectPhoneNumberGreeting.txt" + '"')
+        
+                            }    
+
+                            if ($TimeoutRedirectPhoneNumberTextToSpeechPromptValue.Length -gt $truncateGreetings) {
+
+                                $TimeoutRedirectPhoneNumberTextToSpeechPromptValue = $TimeoutRedirectPhoneNumberTextToSpeechPromptValue.Remove($TimeoutRedirectPhoneNumberTextToSpeechPromptValue.Length - ($TimeoutRedirectPhoneNumberTextToSpeechPromptValue.Length - $truncateGreetings)).TrimEnd() + "..."
+
+                            }
+
+                            $CqTimeoutActionFriendly = "cqTimeoutRedirectPhoneNumberTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech <br> $TimeoutRedirectPhoneNumberTextToSpeechPromptValue] --> $CqTimeoutActionFriendly"
+
+                        }
+
+                        else {
+
+                            $CqTimeoutActionFriendly = "cqTimeoutRedirectPhoneNumberTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech] --> $CqTimeoutActionFriendly"
+
+                        }
+
+                        $allMermaidNodes += "cqTimeoutRedirectPhoneNumberTextToSpeechPrompt$($cqCallFlowObjectId)"
+
+                    }
+
+                }
                 
             }
     
@@ -4062,7 +4483,90 @@ function Get-CallQueueCallFlow {
                     $allMermaidNodes += @("cqTimeoutAction$($cqCallFlowObjectId)","$($MatchingTimeoutCQ.Identity)")
     
                 }
-    
+
+                if ($MatchingCQ.TimeoutRedirectVoiceAppAudioFilePrompt -or $MatchingCQ.TimeoutRedirectVoiceAppTextToSpeechPrompt) {
+
+                    if ($MatchingCQ.TimeoutRedirectVoiceAppAudioFilePrompt) {
+
+                        if ($ShowAudioFileName) {
+
+                            $audioFileName = Optimize-DisplayName -String ($MatchingCQ.TimeoutRedirectVoiceAppAudioFilePromptFileName)
+
+                            # If audio file name is not present on call queue properties
+                            if (!$audioFileName) {
+
+                                $audioFileName = Optimize-DisplayName -String (Get-CsOnlineAudioFile -Identity $MatchingCQ.TimeoutRedirectVoiceAppAudioFilePrompt -ApplicationId HuntGroup).FileName
+
+                            }
+
+                            if ($ExportAudioFiles) {
+
+                                $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.TimeoutRedirectVoiceAppAudioFilePrompt -ApplicationId HuntGroup
+                                [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+        
+                                $audioFileNames += ("click cqTimeoutRedirectVoiceAppAudioFilePrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+        
+                            }
+        
+                    
+                            if ($audioFileName.Length -gt $truncateGreetings) {
+                
+                                $audioFileNameExtension = ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[3]
+                                $audioFileName = $audioFileName.Remove($audioFileName.Length - ($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
+        
+                            }
+        
+                            $CqTimeoutActionFriendly = "cqTimeoutRedirectVoiceAppAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile <br> $audioFileName] --> $CqTimeoutActionFriendly"
+        
+                        }
+
+                        else {
+
+                            $CqTimeoutActionFriendly = "cqTimeoutRedirectVoiceAppAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile] --> $CqTimeoutActionFriendly"
+
+                        }
+
+                        $allMermaidNodes += "cqTimeoutRedirectVoiceAppAudioFilePrompt$($cqCallFlowObjectId)"
+
+                    }
+
+                    else {
+
+                        if ($ShowTTSGreetingText) {
+
+                            $TimeoutRedirectVoiceAppTextToSpeechPromptExport = $MatchingCQ.TimeoutRedirectVoiceAppTextToSpeechPrompt
+                            $TimeoutRedirectVoiceAppTextToSpeechPromptValue = Optimize-DisplayName -String $MatchingCQ.TimeoutRedirectVoiceAppTextToSpeechPrompt
+
+                            if ($ExportTTSGreetings) {
+
+                                $TimeoutRedirectVoiceAppTextToSpeechPromptExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqTimeoutRedirectVoiceAppGreeting.txt"
+        
+                                $ttsGreetings += ("click cqTimeoutRedirectVoiceAppTextToSpeechPrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqTimeoutRedirectVoiceAppGreeting.txt" + '"')
+        
+                            }    
+
+                            if ($TimeoutRedirectVoiceAppTextToSpeechPromptValue.Length -gt $truncateGreetings) {
+
+                                $TimeoutRedirectVoiceAppTextToSpeechPromptValue = $TimeoutRedirectVoiceAppTextToSpeechPromptValue.Remove($TimeoutRedirectVoiceAppTextToSpeechPromptValue.Length - ($TimeoutRedirectVoiceAppTextToSpeechPromptValue.Length - $truncateGreetings)).TrimEnd() + "..."
+
+                            }
+
+                            $CqTimeoutActionFriendly = "cqTimeoutRedirectVoiceAppTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech <br> $TimeoutRedirectVoiceAppTextToSpeechPromptValue] --> $CqTimeoutActionFriendly"
+
+                        }
+
+                        else {
+
+                            $CqTimeoutActionFriendly = "cqTimeoutRedirectVoiceAppTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech] --> $CqTimeoutActionFriendly"
+
+                        }
+
+                        $allMermaidNodes += "cqTimeoutRedirectVoiceAppTextToSpeechPrompt$($cqCallFlowObjectId)"
+
+                    }
+
+                }
+
             }
     
         }
@@ -4257,7 +4761,7 @@ function Get-CallQueueCallFlow {
         Queue {
 
             $mdCqNoAgentAction = @"
-cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($cqCallFlowObjectId)(Queue Call) --> $mdNoAgentApplyTo cqResult$($cqCallFlowObjectId)
+cqNoAgent$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentAction$($cqCallFlowObjectId)(Queue Call) --> $mdNoAgentApplyTo cqResult$($cqCallFlowObjectId)
 "@
 
             $mdCqNoAgentActionDisconnect = $null
@@ -4268,11 +4772,100 @@ cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($c
 
             $mdCqNoAgentActionForward = $null
 
+            if ($MatchingCQ.NoAgentDisconnectAudioFilePrompt -or $MatchingCQ.NoAgentDisconnectTextToSpeechPrompt) {
+
+                if ($MatchingCQ.NoAgentDisconnectAudioFilePrompt) {
+
+                    if ($ShowAudioFileName) {
+
+                        $audioFileName = Optimize-DisplayName -String ($MatchingCQ.NoAgentDisconnectAudioFilePromptFileName)
+
+                        # If audio file name is not present on call queue properties
+                        if (!$audioFileName) {
+
+                            $audioFileName = Optimize-DisplayName -String (Get-CsOnlineAudioFile -Identity $MatchingCQ.NoAgentDisconnectAudioFilePrompt -ApplicationId HuntGroup).FileName
+
+                        }
+
+                        if ($ExportAudioFiles) {
+
+                            $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.NoAgentDisconnectAudioFilePrompt -ApplicationId HuntGroup
+                            [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+        
+                            $audioFileNames += ("click cqNoAgentDisconnectAudioFilePrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+        
+                        }
+        
+                    
+                        if ($audioFileName.Length -gt $truncateGreetings) {
+                
+                            $audioFileNameExtension = ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[3]
+                            $audioFileName = $audioFileName.Remove($audioFileName.Length - ($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
+        
+                        }
+        
+                        $mdCqNoAgentDisconnectGreeting = " cqNoAgentDisconnectAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile <br> $audioFileName] -->"
+        
+                    }
+
+                    else {
+
+                        $mdCqNoAgentDisconnectGreeting = " cqNoAgentDisconnectAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile] -->"
+
+                    }
+
+                    $allMermaidNodes += "cqNoAgentDisconnectAudioFilePrompt$($cqCallFlowObjectId)"
+
+                }
+
+                else {
+
+                    if ($ShowTTSGreetingText) {
+
+                        $NoAgentDisconnectTextToSpeechPromptExport = $MatchingCQ.NoAgentDisconnectTextToSpeechPrompt
+                        $NoAgentDisconnectTextToSpeechPromptValue = Optimize-DisplayName -String $MatchingCQ.NoAgentDisconnectTextToSpeechPrompt
+
+                        if ($ExportTTSGreetings) {
+
+                            $NoAgentDisconnectTextToSpeechPromptExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqNoAgentDisconnectGreeting.txt"
+        
+                            $ttsGreetings += ("click cqNoAgentDisconnectTextToSpeechPrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqNoAgentDisconnectGreeting.txt" + '"')
+        
+                        }    
+
+                        if ($NoAgentDisconnectTextToSpeechPromptValue.Length -gt $truncateGreetings) {
+
+                            $NoAgentDisconnectTextToSpeechPromptValue = $NoAgentDisconnectTextToSpeechPromptValue.Remove($NoAgentDisconnectTextToSpeechPromptValue.Length - ($NoAgentDisconnectTextToSpeechPromptValue.Length - $truncateGreetings)).TrimEnd() + "..."
+
+                        }
+
+                        $mdCqNoAgentDisconnectGreeting = " cqNoAgentDisconnectTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech <br> $NoAgentDisconnectTextToSpeechPromptValue] -->"
+
+                    }
+
+                    else {
+
+                        $mdCqNoAgentDisconnectGreeting = " cqNoAgentDisconnectTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech] -->"
+
+                    }
+
+                    $allMermaidNodes += "cqNoAgentDisconnectTextToSpeechPrompt$($cqCallFlowObjectId)"
+
+                }
+
+            }
+
+            else {
+
+                $mdCqNoAgentDisconnectGreeting = $null
+
+            }
+
             if ($CombineDisconnectCallNodes -eq $true) {
 
-                $mdCqNoAgentAction = "cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($cqCallFlowObjectId)(ApplyTo)"
+                $mdCqNoAgentAction = "cqNoAgent$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentAction$($cqCallFlowObjectId)(ApplyTo)"
 
-                $mdCqNoAgentActionDisconnect = "cqNoAgentsAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo disconnectCall((DisconnectCall))"
+                $mdCqNoAgentActionDisconnect = "cqNoAgentAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo$mdCqNoAgentDisconnectGreeting disconnectCall((DisconnectCall))"
 
                 $allMermaidNodes += "disconnectCall"
     
@@ -4280,11 +4873,11 @@ cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($c
     
             else {
     
-                $mdCqNoAgentAction = "cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($cqCallFlowObjectId)(ApplyTo)"
+                $mdCqNoAgentAction = "cqNoAgent$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentAction$($cqCallFlowObjectId)(ApplyTo)"
 
-                $mdCqNoAgentActionDisconnect = "cqNoAgentsAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo cqNoAgentsDisconnect$($cqCallFlowObjectId)((DisconnectCall))"
+                $mdCqNoAgentActionDisconnect = "cqNoAgentAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo$mdCqNoAgentDisconnectGreeting cqNoAgentDisconnect$($cqCallFlowObjectId)((DisconnectCall))"
 
-                $allMermaidNodes += "cqNoAgentsDisconnect$($cqCallFlowObjectId)"
+                $allMermaidNodes += "cqNoAgentDisconnect$($cqCallFlowObjectId)"
                 
             }
 
@@ -4311,9 +4904,9 @@ cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($c
         
                 }
         
-                $CqNoAgentActionFriendly = "cqNoAgentAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingNoAgentIdentity)(User <br> $MatchingNoAgentUser)"
+                $CqNoAgentActionFriendly = "cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingNoAgentIdentity)(User <br> $MatchingNoAgentUser)"
         
-                $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)","$($MatchingNoAgentIdentity)")
+                $allMermaidNodes += @("cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)", "$($MatchingNoAgentIdentity)")
         
             }
         
@@ -4327,9 +4920,92 @@ cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($c
         
                 }
         
-                $CqNoAgentActionFriendly = "cqNoAgentAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($cqNoAgentPhoneNumber)(External Number <br> $cqNoAgentPhoneNumber)"
+                $CqNoAgentActionFriendly = "cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)(TransferCallToTarget) --> $($cqNoAgentPhoneNumber)(External Number <br> $cqNoAgentPhoneNumber)"
         
-                $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)","$($cqNoAgentPhoneNumber)")
+                $allMermaidNodes += @("cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)","$($cqNoAgentPhoneNumber)")
+
+                if ($MatchingCQ.NoAgentRedirectPhoneNumberAudioFilePrompt -or $MatchingCQ.NoAgentRedirectPhoneNumberTextToSpeechPrompt) {
+
+                    if ($MatchingCQ.NoAgentRedirectPhoneNumberAudioFilePrompt) {
+
+                        if ($ShowAudioFileName) {
+
+                            $audioFileName = Optimize-DisplayName -String ($MatchingCQ.NoAgentRedirectPhoneNumberAudioFilePromptFileName)
+
+                            # If audio file name is not present on call queue properties
+                            if (!$audioFileName) {
+
+                                $audioFileName = Optimize-DisplayName -String (Get-CsOnlineAudioFile -Identity $MatchingCQ.NoAgentRedirectPhoneNumberAudioFilePrompt -ApplicationId HuntGroup).FileName
+
+                            }
+
+                            if ($ExportAudioFiles) {
+
+                                $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.NoAgentRedirectPhoneNumberAudioFilePrompt -ApplicationId HuntGroup
+                                [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+        
+                                $audioFileNames += ("click cqNoAgentRedirectPhoneNumberAudioFilePrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+        
+                            }
+        
+                    
+                            if ($audioFileName.Length -gt $truncateGreetings) {
+                
+                                $audioFileNameExtension = ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[3]
+                                $audioFileName = $audioFileName.Remove($audioFileName.Length - ($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
+        
+                            }
+        
+                            $CqNoAgentActionFriendly = "cqNoAgentRedirectPhoneNumberAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile <br> $audioFileName] --> $CqNoAgentActionFriendly"
+        
+                        }
+
+                        else {
+
+                            $CqNoAgentActionFriendly = "cqNoAgentRedirectPhoneNumberAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile] --> $CqNoAgentActionFriendly"
+
+                        }
+
+                        $allMermaidNodes += "cqNoAgentRedirectPhoneNumberAudioFilePrompt$($cqCallFlowObjectId)"
+
+                    }
+
+                    else {
+
+                        if ($ShowTTSGreetingText) {
+
+                            $NoAgentRedirectPhoneNumberTextToSpeechPromptExport = $MatchingCQ.NoAgentRedirectPhoneNumberTextToSpeechPrompt
+                            $NoAgentRedirectPhoneNumberTextToSpeechPromptValue = Optimize-DisplayName -String $MatchingCQ.NoAgentRedirectPhoneNumberTextToSpeechPrompt
+
+                            if ($ExportTTSGreetings) {
+
+                                $NoAgentRedirectPhoneNumberTextToSpeechPromptExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqNoAgentRedirectPhoneNumberGreeting.txt"
+        
+                                $ttsGreetings += ("click cqNoAgentRedirectPhoneNumberTextToSpeechPrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqNoAgentRedirectPhoneNumberGreeting.txt" + '"')
+        
+                            }    
+
+                            if ($NoAgentRedirectPhoneNumberTextToSpeechPromptValue.Length -gt $truncateGreetings) {
+
+                                $NoAgentRedirectPhoneNumberTextToSpeechPromptValue = $NoAgentRedirectPhoneNumberTextToSpeechPromptValue.Remove($NoAgentRedirectPhoneNumberTextToSpeechPromptValue.Length - ($NoAgentRedirectPhoneNumberTextToSpeechPromptValue.Length - $truncateGreetings)).TrimEnd() + "..."
+
+                            }
+
+                            $CqNoAgentActionFriendly = "cqNoAgentRedirectPhoneNumberTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech <br> $NoAgentRedirectPhoneNumberTextToSpeechPromptValue] --> $CqNoAgentActionFriendly"
+
+                        }
+
+                        else {
+
+                            $CqNoAgentActionFriendly = "cqNoAgentRedirectPhoneNumberTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech] --> $CqNoAgentActionFriendly"
+
+                        }
+
+                        $allMermaidNodes += "cqNoAgentRedirectPhoneNumberTextToSpeechPrompt$($cqCallFlowObjectId)"
+
+                    }
+
+                }
                 
             }
         
@@ -4343,7 +5019,7 @@ cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($c
         
                     $MatchingNoAgentAA.Name = Optimize-DisplayName -String $MatchingNoAgentAA.Name
         
-                    $CqNoAgentActionFriendly = "cqNoAgentAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingNoAgentAA.Identity)([Auto Attendant <br> $($MatchingNoAgentAA.Name)])"
+                    $CqNoAgentActionFriendly = "cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingNoAgentAA.Identity)([Auto Attendant <br> $($MatchingNoAgentAA.Name)])"
         
                     if ($nestedVoiceApps -notcontains $MatchingNoAgentAA.Identity -and $MatchingCQ.OverflowThreshold -ge 1 -and $MatchingCQ.TimeoutThreshold -ge 1) {
         
@@ -4351,7 +5027,7 @@ cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($c
         
                     }
         
-                    $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)","$($MatchingNoAgentAA.Identity)")
+                    $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)", "$($MatchingNoAgentAA.Identity)", "cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)")
         
                 }
         
@@ -4361,7 +5037,7 @@ cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($c
         
                     $MatchingNoAgentCQ.Name = Optimize-DisplayName -String $MatchingNoAgentCQ.Name
         
-                    $CqNoAgentActionFriendly = "cqNoAgentAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingNoAgentCQ.Identity)([Call Queue <br> $($MatchingNoAgentCQ.Name)])"
+                    $CqNoAgentActionFriendly = "cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingNoAgentCQ.Identity)([Call Queue <br> $($MatchingNoAgentCQ.Name)])"
         
                     if ($nestedVoiceApps -notcontains $MatchingNoAgentCQ.Identity -and $MatchingCQ.OverflowThreshold -ge 1 -and $MatchingCQ.TimeoutThreshold -ge 1) {
         
@@ -4369,15 +5045,98 @@ cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($c
         
                     }
         
-                    $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)","$($MatchingNoAgentCQ.Identity)")
+                    $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)", "$($MatchingNoAgentCQ.Identity)", "cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)")
         
+                }
+
+                if ($MatchingCQ.NoAgentRedirectVoiceAppAudioFilePrompt -or $MatchingCQ.NoAgentRedirectVoiceAppTextToSpeechPrompt) {
+
+                    if ($MatchingCQ.NoAgentRedirectVoiceAppAudioFilePrompt) {
+
+                        if ($ShowAudioFileName) {
+
+                            $audioFileName = Optimize-DisplayName -String ($MatchingCQ.NoAgentRedirectVoiceAppAudioFilePromptFileName)
+
+                            # If audio file name is not present on call queue properties
+                            if (!$audioFileName) {
+
+                                $audioFileName = Optimize-DisplayName -String (Get-CsOnlineAudioFile -Identity $MatchingCQ.NoAgentRedirectVoiceAppAudioFilePrompt -ApplicationId HuntGroup).FileName
+
+                            }
+
+                            if ($ExportAudioFiles) {
+
+                                $content = Export-CsOnlineAudioFile -Identity $MatchingCQ.NoAgentRedirectVoiceAppAudioFilePrompt -ApplicationId HuntGroup
+                                [System.IO.File]::WriteAllBytes("$FilePath\$audioFileName", $content)
+        
+                                $audioFileNames += ("click cqNoAgentRedirectVoiceAppAudioFilePrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$audioFileName" + '"')
+        
+                            }
+        
+                    
+                            if ($audioFileName.Length -gt $truncateGreetings) {
+                
+                                $audioFileNameExtension = ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[0] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[1] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[2] + ($audioFileName[($audioFileName.Length - 4)..$audioFileName.Length])[3]
+                                $audioFileName = $audioFileName.Remove($audioFileName.Length - ($audioFileName.Length - $truncateGreetings)) + "... $audioFileNameExtension"
+        
+                            }
+        
+                            $CqNoAgentActionFriendly = "cqNoAgentRedirectVoiceAppAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile <br> $audioFileName] --> $CqNoAgentActionFriendly"
+        
+                        }
+
+                        else {
+
+                            $CqNoAgentActionFriendly = "cqNoAgentRedirectVoiceAppAudioFilePrompt$($cqCallFlowObjectId)>Greeting <br> AudioFile] --> $CqNoAgentActionFriendly"
+
+                        }
+
+                        $allMermaidNodes += "cqNoAgentRedirectVoiceAppAudioFilePrompt$($cqCallFlowObjectId)"
+
+                    }
+
+                    else {
+
+                        if ($ShowTTSGreetingText) {
+
+                            $NoAgentRedirectVoiceAppTextToSpeechPromptExport = $MatchingCQ.NoAgentRedirectVoiceAppTextToSpeechPrompt
+                            $NoAgentRedirectVoiceAppTextToSpeechPromptValue = Optimize-DisplayName -String $MatchingCQ.NoAgentRedirectVoiceAppTextToSpeechPrompt
+
+                            if ($ExportTTSGreetings) {
+
+                                $NoAgentRedirectVoiceAppTextToSpeechPromptExport | Out-File "$FilePath\$($cqCallFlowObjectId)_cqNoAgentRedirectVoiceAppGreeting.txt"
+        
+                                $ttsGreetings += ("click cqNoAgentRedirectVoiceAppTextToSpeechPrompt$($cqCallFlowObjectId) " + '"' + "$FilePath\$($cqCallFlowObjectId)_cqNoAgentRedirectVoiceAppGreeting.txt" + '"')
+        
+                            }    
+
+                            if ($NoAgentRedirectVoiceAppTextToSpeechPromptValue.Length -gt $truncateGreetings) {
+
+                                $NoAgentRedirectVoiceAppTextToSpeechPromptValue = $NoAgentRedirectVoiceAppTextToSpeechPromptValue.Remove($NoAgentRedirectVoiceAppTextToSpeechPromptValue.Length - ($NoAgentRedirectVoiceAppTextToSpeechPromptValue.Length - $truncateGreetings)).TrimEnd() + "..."
+
+                            }
+
+                            $CqNoAgentActionFriendly = "cqNoAgentRedirectVoiceAppTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech <br> $NoAgentRedirectVoiceAppTextToSpeechPromptValue] --> $CqNoAgentActionFriendly"
+
+                        }
+
+                        else {
+
+                            $CqNoAgentActionFriendly = "cqNoAgentRedirectVoiceAppTextToSpeechPrompt$($cqCallFlowObjectId)>Greeting <br> TextToSpeech] --> $CqNoAgentActionFriendly"
+
+                        }
+
+                        $allMermaidNodes += "cqNoAgentRedirectVoiceAppTextToSpeechPrompt$($cqCallFlowObjectId)"
+
+                    }
+
                 }
         
             }
 
-            $mdCqNoAgentAction = "cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($cqCallFlowObjectId)(ApplyTo)"
+            $mdCqNoAgentAction = "cqNoAgent$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentAction$($cqCallFlowObjectId)(ApplyTo)"
 
-            $mdCqNoAgentActionForward = "cqNoAgentsAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo $CqNoAgentActionFriendly"
+            $mdCqNoAgentActionForward = "cqNoAgentAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo $CqNoAgentActionFriendly"
         
         }
         Voicemail {
@@ -4394,13 +5153,13 @@ cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($c
             
             }
         
-            $CqNoAgentActionFriendly = "cqNoAgentAction$($cqCallFlowObjectId)(TransferCallToTarget) --> cqPersonalVoicemail$($MatchingNoAgentPersonalVoicemailIdentity)(Personal Voicemail <br> $MatchingNoAgentPersonalVoicemailUser)"
+            $CqNoAgentActionFriendly = "cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)(TransferCallToTarget) --> cqPersonalVoicemail$($MatchingNoAgentPersonalVoicemailIdentity)(Personal Voicemail <br> $MatchingNoAgentPersonalVoicemailUser)"
         
-            $mdCqNoAgentAction = "cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($cqCallFlowObjectId)(ApplyTo)"
+            $mdCqNoAgentAction = "cqNoAgent$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentAction$($cqCallFlowObjectId)(ApplyTo)"
         
-            $mdCqNoAgentActionForward = "cqNoAgentsAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo $CqNoAgentActionFriendly"
+            $mdCqNoAgentActionForward = "cqNoAgentAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo $CqNoAgentActionFriendly"
         
-            $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)","$($MatchingNoAgentPersonalVoicemailIdentity)","cqPersonalVoicemail$($MatchingNoAgentPersonalVoicemailIdentity)")
+            $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)", "$($MatchingNoAgentPersonalVoicemailIdentity)", "cqPersonalVoicemail$($MatchingNoAgentPersonalVoicemailIdentity)", "cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)")
         
         }
         SharedVoicemail {
@@ -4560,19 +5319,19 @@ cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($c
         
             }
         
-            $CqNoAgentActionFriendly = "cqNoAgentVoicemailGreeting$($cqCallFlowObjectId)>Greeting <br> $CqNoAgentVoicemailGreeting] $CQNoAgentVoicemailSystemGreeting--> cqNoAgentAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingNoAgentIdentity)(Shared Voicemail <br> $MatchingNoAgentVoicemail)"
+            $CqNoAgentActionFriendly = "cqNoAgentVoicemailGreeting$($cqCallFlowObjectId)>Greeting <br> $CqNoAgentVoicemailGreeting] $CQNoAgentVoicemailSystemGreeting--> cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingNoAgentIdentity)(Shared Voicemail <br> $MatchingNoAgentVoicemail)"
         
-            $mdCqNoAgentAction = "cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentsAction$($cqCallFlowObjectId)(ApplyTo)"
+            $mdCqNoAgentAction = "cqNoAgent$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentAction$($cqCallFlowObjectId)(ApplyTo)"
         
-            $mdCqNoAgentActionForward = "cqNoAgentsAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo $CqNoAgentActionFriendly"
+            $mdCqNoAgentActionForward = "cqNoAgentAction$($cqCallFlowObjectId) ---> $mdNoAgentApplyTo $CqNoAgentActionFriendly"
 
-            $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)","cqNoAgentVoicemailGreeting$($cqCallFlowObjectId)","$($MatchingNoAgentIdentity)")
+            $allMermaidNodes += @("cqNoAgentAction$($cqCallFlowObjectId)", "cqNoAgentVoicemailGreeting$($cqCallFlowObjectId)", "$($MatchingNoAgentIdentity)", "cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)")
         
         }
         Default {}
     }
 
-    $allMermaidNodes += @("cqNoAgents$($cqCallFlowObjectId)","cqNoAgentsApplyTo$($cqCallFlowObjectId)","cqNoAgentsAction$($cqCallFlowObjectId)")
+    $allMermaidNodes += @("cqNoAgent$($cqCallFlowObjectId)","cqNoAgentApplyTo$($cqCallFlowObjectId)","cqNoAgentAction$($cqCallFlowObjectId)")
 
     # Create empty mermaid element for agent list
     $mdCqAgentsDisplayNames = @"
@@ -4874,7 +5633,7 @@ subgraph subgraphAgents$($cqCallFlowObjectId)[Agents List]
 agentListType$($cqCallFlowObjectId)[(Agent List Type: $CqAgentListType)]
 $mdCqAgentsDisplayNames
 end
-subgraphAgents$($cqCallFlowObjectId) --> cqNoAgents$($cqCallFlowObjectId){Agent Available?} --> |Yes| cqResult$($cqCallFlowObjectId){Agent Answered?}
+subgraphAgents$($cqCallFlowObjectId) --> cqNoAgent$($cqCallFlowObjectId){Agent Available?} --> |Yes| cqResult$($cqCallFlowObjectId){Agent Answered?}
 $mdCqNoAgentAction
 end
 
@@ -5350,9 +6109,6 @@ else {
     }
 
 }
-
-# Convert mermaid diagram to string
-$mermaidCode = $mermaidCode | Out-String
 
 #Remove invalid characters from mermaid syntax
 $mermaidCode = $mermaidCode.Replace(";",",")
