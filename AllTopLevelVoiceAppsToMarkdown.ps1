@@ -75,7 +75,9 @@ Set-Content -Path ".\Output\AllTopLevelVoiceApps\TopLevelVoiceApps.md" -Value "#
 
 foreach ($VoiceAppIdentity in $VoiceApps) {
 
-    . .\M365CallFlowVisualizerV2.ps1 -Identity $VoiceAppIdentity -Theme dark -CustomFilePath ".\Output\AllTopLevelVoiceApps" -ShowCqAgentPhoneNumbers -ExportAudioFiles -ExportTTSGreetings -ShowAudioFileName -ShowTTSGreetingText -ExportPng $true -CacheResults $true
+    # . .\M365CallFlowVisualizerV2.ps1 -Identity $VoiceAppIdentity -Theme dark -CustomFilePath ".\Output\AllTopLevelVoiceApps" -ShowCqAgentPhoneNumbers -ExportAudioFiles -ExportTTSGreetings -ShowAudioFileName -ShowTTSGreetingText -ExportPng $true -CacheResults $true
+
+    . .\M365CallFlowVisualizerV2.ps1 -Identity $VoiceAppIdentity -Theme dark -CustomFilePath ".\Output\AllTopLevelVoiceApps" -HardcoreMode
 
     $MarkdownInclude = "[!include[$($VoiceAppFileName)]($(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension)]"
 

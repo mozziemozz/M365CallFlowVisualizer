@@ -77,8 +77,27 @@ $VoiceApps = $VoiceApps | Sort-Object -Unique
 
 foreach ($VoiceAppIdentity in $VoiceApps) {
 
-    . .\M365CallFlowVisualizerV2.ps1 -Identity $VoiceAppIdentity -Theme dark -CustomFilePath "$localRepoPath\Docs\articles\$ArticlesRelativePath\$voiceAppIdentity" -ShowCqAgentPhoneNumbers -ExportAudioFiles -ExportTTSGreetings -ShowAudioFileName -ShowTTSGreetingText -ExportPng $true -CacheResults $true -ExportHtml $true -DocFxMode -ShowCqAgentOptInStatus -ShowSharedVoicemailGroupMembers $true
-
+    . .\M365CallFlowVisualizerV2.ps1 -Identity $VoiceAppIdentity `
+        -Theme dark `
+        -CustomFilePath "$localRepoPathOps\Docs\articles\$ArticlesRelativePath\$voiceAppIdentity" `
+        -ShowCqAgentPhoneNumbers `
+        -ExportAudioFiles `
+        -ExportTTSGreetings `
+        -ShowAudioFileName `
+        -ShowTTSGreetingText `
+        -CacheResults $true `
+        -ExportHtml $true `
+        -ExportPng $true `
+        -DocFxMode `
+        -ShowCqAgentOptInStatus `
+        -ShowSharedVoicemailGroupMembers $true `
+        -OverrideVoiceIdToFemale `
+        -ShowUserCallingSettings $true `
+        -ShowNestedHolidayCallFlows $true `
+        -CheckCallFlowRouting `
+        -TruncateGreetings 50 `
+        -ShowSharedVoicemailGroupSubscribers $true
+    
     $markdownInclude = "&nbsp;`n[!include[$($VoiceAppFileName)]($voiceAppIdentity/$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension)]`n- [Enlarge View]($voiceAppIdentity/$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.htm)`n- [PNG Download]($voiceAppIdentity/$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png) `n&nbsp;`n"
 
     Add-Content -Path "$localRepoPath\Docs\articles\$ArticlesRelativePath\call-flows.md" -Value $markdownInclude
