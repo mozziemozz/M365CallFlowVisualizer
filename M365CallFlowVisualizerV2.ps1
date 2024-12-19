@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.1.6
+    Version:            3.1.7
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -5659,8 +5659,20 @@ $mdCqNoAgentActionForward
             # Add only overflow call flow if overflow threshold is 0
             if ($MatchingCQ.OverflowThreshold -eq 0) {
 
+                if ($ShowCqOutboundCallingIds -eq $true) {
+
+                    $mdOutboundCallingIds = " -.- " + $mdOutboundCallingIds.Split(" -.- ")[1]
+
+                }
+
+                else {
+
+                    $mdOutboundCallingIds = $null
+
+                }
+
                 $mdCallQueueCallFlow =@"
-$($MatchingCQIdentity)([Call Queue <br> $($CqName)]) -->$cqGreetingNode overFlow$($cqCallFlowObjectId)[(Overflow Threshold: $CqOverFlowThreshold <br> Immediate Overflow Action <br> TTS Greeting Language: $CqLanguageId)]
+$($MatchingCQIdentity)([Call Queue <br> $($CqName)]) -->$cqGreetingNode overFlow$($cqCallFlowObjectId)[(Overflow Threshold: $CqOverFlowThreshold <br> Immediate Overflow Action <br> TTS Greeting Language: $CqLanguageId)]$mdOutboundCallingIds
 overFlow$($cqCallFlowObjectId) --> $CqOverFlowActionFriendly
 
 "@

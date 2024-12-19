@@ -159,4 +159,4 @@
 |15.04.2024|Connect-M365CFV.ps1|1.1.3|Add checks to also prompt for Exchange credentials when using Hardcore mode.|
 |15.04.2024|Get-TeamsUserCallFlow.ps1|1.0.9|Optimize performance by checking objects in memory instead of using `Get-CsOnlineApplicationInstance`.|
 |29.04.2024|M365CallFlowVisualizerV2.ps1|3.1.6|Add support for greetings on disconnect and redirect to phone number and voice app for overflow, timeout and no agent exceptions.|
-
+|19.12.2024|M365CallFlowVisualizerV2.ps1|3.1.7|Fix outbound calling line ids of CQs not shown when CQ is configured for immediate overflow (threshold 0).|
