@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.1.7
+    Version:            3.1.8
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -565,6 +565,7 @@ $allMermaidNodes = @()
 $allSubgraphs = @()
 $audioFileNames = @()
 $ttsGreetings = @()
+$allCallFlowRoutingChecks = @()
 
 # Get all voice apps and resource accounts from external function
 
@@ -763,6 +764,33 @@ function Find-Holidays {
                 $AddOperatorToNestedVoiceApps = $true
 
             }
+            ConfigurationEndpoint {
+
+                # Check if application endpoint is auto attendant or call queue
+
+                if ($allAutoAttendantIds -contains $Operator.Id) {
+
+                    $MatchingOperatorAa = $allAutoAttendants | Where-Object { $_.Identity -eq $Operator.Id }
+
+                    $OperatorTypeFriendly = "[Auto Attendant"
+                    $OperatorName = "$($MatchingOperatorAa.Name)]"
+                    $OperatorIdentity = $MatchingOperatorAa.Identity
+
+                }
+
+                else {
+
+                    $MatchingOperatorCq = $allCallQueues | Where-Object { $_.Identity -eq $Operator.Id }
+
+                    $OperatorTypeFriendly = "[Call Queue"
+                    $OperatorName = "$($MatchingOperatorCq.Name)]"
+                    $OperatorIdentity = $MatchingOperatorCq.Identity
+
+                }
+
+                $AddOperatorToNestedVoiceApps = $true
+
+            }
 
         }
 
@@ -824,7 +852,7 @@ function Find-AfterHours {
 
         if ($aaAfterHoursScheduleProperties.ComplementEnabled -eq $false) {
 
-            Write-Warning -Message "Complement is disabled. This can only be set through PowerShell. Any time you change business hours in TAC, coplement will be enabled again."
+            Write-Warning -Message "Complement is disabled. This can only be set through PowerShell. Any time you change business hours in TAC, complement will be enabled again."
 
             $mdComplementNo = "Yes"
             $mdComplementYes = "No"
@@ -965,6 +993,8 @@ function Find-AfterHours {
 
                     Write-Host "Check Call Flow Diagram to see where calls are routed to during business hours..." -ForegroundColor Cyan
 
+                    $autoAttendantIsOpen = $true
+
                 }
 
                 elseif ($openTimeRange -and $complementEnabled -eq $false) {
@@ -976,6 +1006,8 @@ function Find-AfterHours {
 
                     Write-Host "Check Call Flow Diagram to see where calls are routed to during after hours..." -ForegroundColor Cyan
 
+                    $autoAttendantIsOpen = $false
+
                 }
 
                 elseif (!$openTimeRange -and $complementEnabled -eq $false) {
@@ -986,6 +1018,8 @@ function Find-AfterHours {
 
                     Write-Host "Check Call Flow Diagram to see where calls are routed to during business hours..." -ForegroundColor Cyan
 
+                    $autoAttendantIsOpen = $true
+
                 }
 
                 else {
@@ -995,6 +1029,8 @@ function Find-AfterHours {
                     Write-Host "Auto Attendant: '$($aa.Name)' $topLevelAaInfo is currently in after hours schedule (closed)" -ForegroundColor Red
 
                     Write-Host "Check Call Flow Diagram to see where calls are routed to during after hours..." -ForegroundColor Cyan
+
+                    $autoAttendantIsOpen = $false
 
                 }
 
@@ -1016,11 +1052,15 @@ function Find-AfterHours {
 
             $topLevelAaInfo = "(initially queried Auto Attendant)"
 
+            $autoAttendantNestedType = "Top-Level"
+
         }
 
         else {
 
             $topLevelAaInfo = "(nested Auto Attendant of initially queried Auto Attendant '$($VoiceAppFileName)')"
+
+            $autoAttendantNestedType = "Nested"
 
         }
 
@@ -1030,19 +1070,25 @@ function Find-AfterHours {
      
         Write-Host "Check Call Flow Diagram to see where calls are permanently routed to (during business hours / default call flow)..." -ForegroundColor Cyan
 
+        $autoAttendantIsOpen = $true
+
     }
 
-    if ($CheckCallFlowRouting -eq $true -and $aaHasHolidays -eq $false -and $aaHasHolidays -eq $false) {
+    if ($CheckCallFlowRouting -eq $true -and $aaHasHolidays -eq $false) {
 
         if ($VoiceAppFileName -eq $aa.Name) {
 
             $topLevelAaInfo = "(initially queried Auto Attendant)"
+
+            $autoAttendantNestedType = "Top-Level"
 
         }
 
         else {
 
             $topLevelAaInfo = "(nested Auto Attendant of initially queried Auto Attendant '$($VoiceAppFileName)')"
+
+            $autoAttendantNestedType = "Nested"
 
         }
 
@@ -1052,6 +1098,22 @@ function Find-AfterHours {
 
         Write-Host "Check Call Flow Diagram to see where calls are routed to during normal operation (when it's not a holiday)..." -ForegroundColor Cyan
 
+        # $autoAttendantIsOpen = $true
+
+    }
+
+    $allCallFlowRoutingChecks += [PSCustomObject]@{
+        AutoAttendantName = "$($aa.Name)"
+        CheckedDateTime = $localDateTime
+        AutoAttendantIsOpen = $autoAttendantIsOpen
+        AutoAttendantNestedType    = $autoAttendantNestedType
+        AutoAttendantScheduleType = "BusinessHours"
+        AutoAttendantScheduleName = "After Hours Call Flow"
+        AutoAttendantScheduleRange        = "$($businessHoursTimeRangesString)"
+        # AutoAttendantActiveBusinessHours = "$($openTimeRange.Start) - $(($openTimeRange.End).ToString().Replace("1.00:00:00","23:59:59"))"
+        AutoAttendantTimeZone = "$($toTimeZone)"
+        LocalTimeZone = "$($localTimeZone)"
+        AutoAttendantId            = "$($aa.Identity)"
     }
    
 }
@@ -1128,11 +1190,15 @@ subgraph $holidaySubgraphName
 
                         $topLevelAaInfo = "(initially queried Auto Attendant)"
 
+                        $autoAttendantNestedType = "Top-Level"
+
                     }
 
                     else {
 
                         $topLevelAaInfo = "(nested Auto Attendant of initially queried Auto Attendant '$($VoiceAppFileName)')"
+
+                        $autoAttendantNestedType = "Nested"
 
                     }
 
@@ -1413,6 +1479,54 @@ subgraph $holidaySubgraphName
                             $holidayVoicemailSystemGreeting = $null
 
                         }
+                        ConfigurationEndpoint {
+                        
+                            if ($allAutoAttendantIds -contains $holidayCallFlow.Menu.MenuOptions.CallTarget.Id) {
+
+                                $MatchingAA = $allAutoAttendants | Where-Object { $_.Identity -eq $holidayCallFlow.Menu.MenuOptions.CallTarget.Id }
+
+                                $holidayActionTargetTypeFriendly = "[Auto Attendant"
+                                $holidayActionTargetName = (Optimize-DisplayName -String $($MatchingAA.Name)) + "]"
+
+                                if ($ShowNestedHolidayCallFlows) {
+
+                                    if ($nestedVoiceApps -notcontains $MatchingAA.Identity) {
+        
+                                        $nestedVoiceApps += $MatchingAA.Identity
+            
+                                    }
+
+                                    $holidayActionTargetVoiceAppId = $MatchingAA.Identity
+        
+                                }
+
+                            }
+
+                            else {
+
+                                $MatchingCQ = $allCallQueues | Where-Object { $_.Identity -eq $holidayCallFlow.Menu.MenuOptions.CallTarget.Id }
+
+                                $holidayActionTargetTypeFriendly = "[Call Queue"
+                                $holidayActionTargetName = (Optimize-DisplayName -String $($MatchingCQ.Name)) + "]"
+
+                                if ($ShowNestedHolidayCallFlows) {
+
+                                    if ($nestedVoiceApps -notcontains $MatchingCQ.Identity) {
+        
+                                        $nestedVoiceApps += $MatchingCQ.Identity
+            
+                                    }
+
+                                    $holidayActionTargetVoiceAppId = $MatchingCQ.Identity
+        
+                                }
+
+                            }
+
+                            $holidayVoicemailSystemGreeting = $null
+
+                        }
+
                     
                     }
 
@@ -1467,7 +1581,7 @@ subgraph $holidaySubgraphName
 
             }
 
-            if ($ShowNestedHolidayCallFlows -and !$holidayCallFlow.Menu.Prompts.ActiveType -and $holidayCallFlow.Menu.MenuOptions.CallTarget.Type -eq "ApplicationEndpoint") {
+            if ($ShowNestedHolidayCallFlows -and !$holidayCallFlow.Menu.Prompts.ActiveType -and $holidayCallFlow.Menu.MenuOptions.CallTarget.Type -eq "ApplicationEndpoint" -or $holidayCallFlow.Menu.MenuOptions.CallTarget.Type -eq "ConfigurationEndpoint") {
 
                 # Display holiday name on link text
                 $mdHolidayNestedCallFlowLinks += "$holidaySubgraphName -. Holiday: $mermaidFriendlyHolidayName .- $holidayActionTargetVoiceAppId`n"
@@ -1526,6 +1640,19 @@ subgraph $holidaySubgraphName
             Write-Host "Auto Attendant: '$($aa.Name)' $topLevelAaInfo is currently in holiday schedule (exception)" -ForegroundColor Red
 
             Write-Host "Check Call Flow Diagram to see where calls are routed to on Holiday '$($activeHolidayException.HolidayCallFlowName)'..." -ForegroundColor Cyan
+
+            $allCallFlowRoutingChecks += [PSCustomObject]@{
+                AutoAttendantName = "$($aa.Name)"
+                CheckedDateTime            = $localDateTime
+                AutoAttendantIsOpen        = $false
+                AutoAttendantNestedType    = $autoAttendantNestedType
+                AutoAttendantScheduleType = "Holiday"
+                AutoAttendantScheduleName = "$($activeHolidayException.HolidayScheduleName)"
+                AutoAttendantScheduleRange = "$($activeHolidayException.HolidayScheduleStart.ToString('dddd, yyyy-MM-dd HH:mm:ss')) - $($activeHolidayException.HolidayScheduleEnd.ToString('dddd, yyyy-MM-dd HH:mm:ss'))"
+                AutoAttendantTimeZone = "$($toTimeZone)"
+                LocalTimeZone = "$($localTimeZone)"
+                AutoAttendantId            = "$($aa.Identity)"
+            }
 
         }
 
@@ -2540,6 +2667,31 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                         $defaultCallFlowVoicemailSystemGreeting = $null
 
                     }
+                    ConfigurationEndpoint {
+
+                        # Check if application endpoint is auto attendant or call queue
+
+                        if ($allAutoAttendantIds -contains $MenuOption.CallTarget.Id) {
+
+                            $MatchingAaDefaultCallFlowAa = $allAutoAttendants | Where-Object { $_.Identity -eq $MenuOption.CallTarget.Id }
+
+                            $defaultCallFlowTargetTypeFriendly = "[Auto Attendant"
+                            $defaultCallFlowTargetName = (Optimize-DisplayName -String $($MatchingAaDefaultCallFlowAa.Name)) + "]"
+
+                        }
+
+                        else {
+
+                            $MatchingCqAaDefaultCallFlow = $allCallQueues | Where-Object { $_.Identity -eq $MenuOption.CallTarget.Id }
+
+                            $defaultCallFlowTargetTypeFriendly = "[Call Queue"
+                            $defaultCallFlowTargetName = (Optimize-DisplayName -String $($MatchingCqAaDefaultCallFlow.Name)) + "]"
+
+                        }
+
+                        $defaultCallFlowVoicemailSystemGreeting = $null
+
+                    }
                     SharedVoicemail {
 
                         $defaultCallFlowTargetTypeFriendly = "Shared Voicemail"
@@ -3280,6 +3432,31 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                         $afterHoursCallFlowVoicemailSystemGreeting = $null
 
                     }
+                    ConfigurationEndpoint {
+
+                        # Check if application endpoint is auto attendant or call queue
+
+                        if ($allAutoAttendantIds -contains $MenuOption.CallTarget.Id) {
+
+                            $MatchingAaafterHoursCallFlowAa = $allAutoAttendants | Where-Object { $_.Identity -eq $MenuOption.CallTarget.Id }
+
+                            $afterHoursCallFlowTargetTypeFriendly = "[Auto Attendant"
+                            $afterHoursCallFlowTargetName = (Optimize-DisplayName -String $($MatchingAaafterHoursCallFlowAa.Name)) + "]"
+
+                        }
+
+                        else {
+
+                            $MatchingCqAaafterHoursCallFlow = $allCallQueues | Where-Object { $_.Identity -eq $MenuOption.CallTarget.Id }
+
+                            $afterHoursCallFlowTargetTypeFriendly = "[Call Queue"
+                            $afterHoursCallFlowTargetName = (Optimize-DisplayName -String $($MatchingCqAaafterHoursCallFlow.Name)) + "]"
+
+                        }
+
+                        $afterHoursCallFlowVoicemailSystemGreeting = $null
+
+                    }
                     SharedVoicemail {
 
                         $afterHoursCallFlowTargetTypeFriendly = "Shared Voicemail"
@@ -3913,9 +4090,9 @@ function Get-CallQueueCallFlow {
 
                 $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $MatchingCQ.OverflowActionTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
 
-                if ($matchingApplicationInstanceCheckAa) {
+                if ($matchingApplicationInstanceCheckAa -or $allAutoAttendantIds -contains $MatchingCQ.OverflowActionTarget.Id) {
 
-                    $MatchingOverFlowAA = ($allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.OverflowActionTarget.Id})
+                    $MatchingOverFlowAA = ($allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.OverflowActionTarget.Id -or $_.Identity -eq $MatchingCQ.OverflowActionTarget.Id})
 
                     $MatchingOverFlowAA.Name = Optimize-DisplayName -String $MatchingOverFlowAA.Name
                     $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowAA.Identity)([Auto Attendant <br> $($MatchingOverFlowAA.Name)])"
@@ -3933,7 +4110,7 @@ function Get-CallQueueCallFlow {
 
                 else {
 
-                    $MatchingOverFlowCQ = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.OverflowActionTarget.Id})
+                    $MatchingOverFlowCQ = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.OverflowActionTarget.Id -or $_.Identity -eq $MatchingCQ.OverflowActionTarget.Id})
 
                     $MatchingOverFlowCQ.Name = Optimize-DisplayName -String $MatchingOverFlowCQ.Name
 
@@ -4448,9 +4625,9 @@ function Get-CallQueueCallFlow {
 
                 $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $MatchingCQ.TimeoutActionTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
         
-                if ($matchingApplicationInstanceCheckAa) {
+                if ($matchingApplicationInstanceCheckAa -or $allAutoAttendantIds -contains $MatchingCQ.TimeoutActionTarget.Id) {
 
-                    $MatchingTimeoutAA = ($allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.TimeoutActionTarget.Id})
+                    $MatchingTimeoutAA = ($allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.TimeoutActionTarget.Id -or $_.Identity -eq $MatchingCQ.TimeoutActionTarget.Id})
 
                     $MatchingTimeoutAA.Name = Optimize-DisplayName -String $MatchingTimeoutAA.Name
     
@@ -4468,7 +4645,7 @@ function Get-CallQueueCallFlow {
     
                 else {
     
-                    $MatchingTimeoutCQ = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.TimeoutActionTarget.Id})
+                    $MatchingTimeoutCQ = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.TimeoutActionTarget.Id -or $_.Identity -eq $MatchingCQ.TimeoutActionTarget.Id})
 
                     $MatchingTimeoutCQ.Name = Optimize-DisplayName -String $MatchingTimeoutCQ.Name
 
@@ -5013,9 +5190,9 @@ cqNoAgent$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentAction$($cqC
         
                 $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $MatchingCQ.NoAgentActionTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
         
-                if ($matchingApplicationInstanceCheckAa) {
+                if ($matchingApplicationInstanceCheckAa -or $allAutoAttendantIds -contains $MatchingCQ.NoAgentActionTarget.Id) {
         
-                    $MatchingNoAgentAA = ($allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.NoAgentActionTarget.Id})
+                    $MatchingNoAgentAA = ($allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.NoAgentActionTarget.Id -or $_.Identity -eq $MatchingCQ.NoAgentActionTarget.Id})
         
                     $MatchingNoAgentAA.Name = Optimize-DisplayName -String $MatchingNoAgentAA.Name
         
@@ -5033,7 +5210,7 @@ cqNoAgent$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentAction$($cqC
         
                 else {
         
-                    $MatchingNoAgentCQ = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.NoAgentActionTarget.Id})
+                    $MatchingNoAgentCQ = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.NoAgentActionTarget.Id -or $_.Identity -eq $MatchingCQ.NoAgentActionTarget.Id})
         
                     $MatchingNoAgentCQ.Name = Optimize-DisplayName -String $MatchingNoAgentCQ.Name
         
@@ -6313,11 +6490,6 @@ if ($ExportPDF -eq $true) {
 
 }
 
-
-
-
-
-
 if ($SetClipBoard -eq $true) {
     $mermaidCode -Replace('```mermaid','') `
     -Replace('```','') `
@@ -6374,3 +6546,12 @@ if ($ExportHtml -eq $true) {
 
 }
 
+if ($CheckCallFlowRouting -eq $true) {
+
+    Write-Host "Check Call Flow Routing Results for $($VoiceAppFileName)" -ForegroundColor Cyan
+
+    $allCallFlowRoutingChecks | Format-Table -AutoSize
+
+    $allCallFlowRoutingChecks | Out-GridView -Title "Check Call Flow Routing Results for $($VoiceAppFileName)"
+
+}
