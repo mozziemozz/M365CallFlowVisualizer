@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.1.8
+    Version:            3.1.9
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -743,7 +743,7 @@ function Find-Holidays {
 
                 if ($matchingApplicationInstanceCheckAa) {
 
-                    $MatchingOperatorAa = $allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $Operator.Id}
+                    $MatchingOperatorAa = $allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $Operator.Id -or $_.Identity -eq $Operator.Id}
 
                     $OperatorTypeFriendly = "[Auto Attendant"
                     $OperatorName = "$($MatchingOperatorAa.Name)]"
@@ -753,7 +753,7 @@ function Find-Holidays {
 
                 else {
 
-                    $MatchingOperatorCq = $allCallQueues | Where-Object {$_.ApplicationInstances -contains $Operator.Id}
+                    $MatchingOperatorCq = $allCallQueues | Where-Object {$_.ApplicationInstances -contains $Operator.Id -or $_.Identity -eq $Operator.Id}
 
                     $OperatorTypeFriendly = "[Call Queue"
                     $OperatorName = "$($MatchingOperatorCq.Name)]"
@@ -1436,7 +1436,7 @@ subgraph $holidaySubgraphName
 
                             if ($matchingApplicationInstanceCheckAa) {
 
-                                $MatchingAA = $allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $holidayCallFlow.Menu.MenuOptions.CallTarget.Id}
+                                $MatchingAA = $allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $holidayCallFlow.Menu.MenuOptions.CallTarget.Id -or $_.Identity -eq $holidayCallFlow.Menu.MenuOptions.CallTarget.Id}
 
                                 $holidayActionTargetTypeFriendly = "[Auto Attendant"
                                 $holidayActionTargetName = (Optimize-DisplayName -String $($MatchingAA.Name)) + "]"
@@ -1457,7 +1457,7 @@ subgraph $holidaySubgraphName
 
                             else {
 
-                                $MatchingCQ = $allCallQueues | Where-Object {$_.ApplicationInstances -contains $holidayCallFlow.Menu.MenuOptions.CallTarget.Id}
+                                $MatchingCQ = $allCallQueues | Where-Object {$_.ApplicationInstances -contains $holidayCallFlow.Menu.MenuOptions.CallTarget.Id -or $_.Identity -eq $holidayCallFlow.Menu.MenuOptions.CallTarget.Id}
 
                                 $holidayActionTargetTypeFriendly = "[Call Queue"
                                 $holidayActionTargetName = (Optimize-DisplayName -String $($MatchingCQ.Name)) + "]"
@@ -2648,7 +2648,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                         if ($matchingApplicationInstanceCheckAa) {
 
-                            $MatchingAaDefaultCallFlowAa = $allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
+                            $MatchingAaDefaultCallFlowAa = $allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id -or $_.Identity -eq $MenuOption.CallTarget.Id}
 
                             $defaultCallFlowTargetTypeFriendly = "[Auto Attendant"
                             $defaultCallFlowTargetName = (Optimize-DisplayName -String $($MatchingAaDefaultCallFlowAa.Name)) + "]"
@@ -2657,7 +2657,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                         else {
 
-                            $MatchingCqAaDefaultCallFlow = $allCallQueues | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
+                            $MatchingCqAaDefaultCallFlow = $allCallQueues | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id -or $_.Identity -eq $MenuOption.CallTarget.Id}
 
                             $defaultCallFlowTargetTypeFriendly = "[Call Queue"
                             $defaultCallFlowTargetName = (Optimize-DisplayName -String $($MatchingCqAaDefaultCallFlow.Name)) + "]"
@@ -2797,7 +2797,7 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                 # Check if transfer target type is call queue
                 if ($defaultCallFlowTargetTypeFriendly -eq "[Call Queue") {
 
-                    $MatchingCQIdentity = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}).Identity
+                    $MatchingCQIdentity = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id -or $_.Identity -eq $MenuOption.CallTarget.Id}).Identity
 
                     $mdAutoAttendantDefaultCallFlow = "$mdDtmfLink defaultCallFlow$($aaDefaultCallFlowAaObjectId)$DtmfKey($defaultCallFlowAction) --> $($MatchingCQIdentity)($defaultCallFlowTargetTypeFriendly <br> $defaultCallFlowTargetName)`n"
                     
@@ -3413,7 +3413,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                         if ($matchingApplicationInstanceCheckAa) {
 
-                            $MatchingAaafterHoursCallFlowAa = $allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
+                            $MatchingAaafterHoursCallFlowAa = $allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id -or $_.Identity -eq $MenuOption.CallTarget.Id}
 
                             $afterHoursCallFlowTargetTypeFriendly = "[Auto Attendant"
                             $afterHoursCallFlowTargetName = (Optimize-DisplayName -String $($MatchingAaafterHoursCallFlowAa.Name)) + "]"
@@ -3422,7 +3422,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                         else {
 
-                            $MatchingCqAaafterHoursCallFlow = $allCallQueues | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}
+                            $MatchingCqAaafterHoursCallFlow = $allCallQueues | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id -or $_.Identity -eq $MenuOption.CallTarget.Id}
 
                             $afterHoursCallFlowTargetTypeFriendly = "[Call Queue"
                             $afterHoursCallFlowTargetName = (Optimize-DisplayName -String $($MatchingCqAaafterHoursCallFlow.Name)) + "]"
@@ -3562,7 +3562,7 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                 # Check if transfer target type is call queue
                 if ($afterHoursCallFlowTargetTypeFriendly -eq "[Call Queue") {
 
-                    $MatchingCQIdentity = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id}).Identity
+                    $MatchingCQIdentity = ($allCallQueues | Where-Object {$_.ApplicationInstances -contains $MenuOption.CallTarget.Id -or $_.Identity -eq $MenuOption.CallTarget.Id}).Identity
 
                     $mdAutoAttendantafterHoursCallFlow = "$mdDtmfLink afterHoursCallFlow$($aaafterHoursCallFlowAaObjectId)$DtmfKey($afterHoursCallFlowAction) --> $($MatchingCQIdentity)($afterHoursCallFlowTargetTypeFriendly <br> $afterHoursCallFlowTargetName)`n"
                     
@@ -6163,7 +6163,7 @@ function Get-CallFlow {
 
     }
 
-    if ($mermaidCode -notcontains $mdNodePhoneNumbers) {
+    if ($mermaidCode -notcontains $($mdNodePhoneNumbers.Replace("-.->","-->"))) {
 
         $mermaidCode += $mdNodePhoneNumbers
 
