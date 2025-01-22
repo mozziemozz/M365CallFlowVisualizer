@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.1.9
+    Version:            3.2.0
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -1431,6 +1431,8 @@ subgraph $holidaySubgraphName
                     }
                         # Check if the application endpoint is an auto attendant or a call queue
                         ApplicationEndpoint {
+
+                            $holidayAction = "$holidayAction <br> Resource Account"
                             
                             $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $holidayCallFlow.Menu.MenuOptions.CallTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
 
@@ -1480,6 +1482,8 @@ subgraph $holidaySubgraphName
 
                         }
                         ConfigurationEndpoint {
+
+                            $holidayAction = "$holidayAction <br> Voice App"
                         
                             if ($allAutoAttendantIds -contains $holidayCallFlow.Menu.MenuOptions.CallTarget.Id) {
 
@@ -2367,6 +2371,20 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
             if ($defaultCallFlowAction -eq "TransferCallToOperator") {
 
+                switch ($aa.Operator.Type) {
+                    ApplicationEndpoint {
+
+                        $defaultCallFlowAction = "$defaultCallFlowAction <br> Resource Account"
+
+                    }
+                    ConfigurationEndpoint {
+
+                        $defaultCallFlowAction = "$defaultCallFlowAction <br> Voice App"
+
+                    }
+                    Default {}
+                }
+
                 if ($aaIsVoiceResponseEnabled) {
 
                     $defaultCallFlowOperatorVoiceResponse = "/ Voice Response: ''Operator''"
@@ -2644,6 +2662,8 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                         # Check if application endpoint is auto attendant or call queue
 
+                        $defaultCallFlowAction = "$defaultCallFlowAction <br> Resource Account"
+
                         $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $MenuOption.CallTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
 
                         if ($matchingApplicationInstanceCheckAa) {
@@ -2670,6 +2690,8 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                     ConfigurationEndpoint {
 
                         # Check if application endpoint is auto attendant or call queue
+
+                        $defaultCallFlowAction = "$defaultCallFlowAction <br> Voice App"
 
                         if ($allAutoAttendantIds -contains $MenuOption.CallTarget.Id) {
 
@@ -3409,6 +3431,8 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                         # Check if application endpoint is auto attendant or call queue
 
+                        $afterHoursCallFlowAction = "$afterHoursCallFlowAction <br> Resource Account"
+
                         $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $MenuOption.CallTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
 
                         if ($matchingApplicationInstanceCheckAa) {
@@ -3435,6 +3459,8 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
                     ConfigurationEndpoint {
 
                         # Check if application endpoint is auto attendant or call queue
+
+                        $afterHoursCallFlowAction = "$afterHoursCallFlowAction <br> Voice App"
 
                         if ($allAutoAttendantIds -contains $MenuOption.CallTarget.Id) {
 
@@ -4088,6 +4114,24 @@ function Get-CallQueueCallFlow {
 
             else {
 
+                switch ($MatchingCQ.OverflowActionTarget.Type) {
+                    ApplicationEndpoint {
+
+                        $cqTransferCallToTargetTypeAdditionalInfo = " <br> Resource Account"
+
+                    }
+                    ConfigurationEndpoint {
+
+                        $cqTransferCallToTargetTypeAdditionalInfo = " <br> Voice App"
+
+                    }
+                    Default {
+
+                        $cqTransferCallToTargetTypeAdditionalInfo = $null
+
+                    }
+                }
+
                 $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $MatchingCQ.OverflowActionTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
 
                 if ($matchingApplicationInstanceCheckAa -or $allAutoAttendantIds -contains $MatchingCQ.OverflowActionTarget.Id) {
@@ -4095,7 +4139,7 @@ function Get-CallQueueCallFlow {
                     $MatchingOverFlowAA = ($allAutoAttendants | Where-Object {$_.ApplicationInstances -contains $MatchingCQ.OverflowActionTarget.Id -or $_.Identity -eq $MatchingCQ.OverflowActionTarget.Id})
 
                     $MatchingOverFlowAA.Name = Optimize-DisplayName -String $MatchingOverFlowAA.Name
-                    $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowAA.Identity)([Auto Attendant <br> $($MatchingOverFlowAA.Name)])"
+                    $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget$cqTransferCallToTargetTypeAdditionalInfo) --> $($MatchingOverFlowAA.Identity)([Auto Attendant <br> $($MatchingOverFlowAA.Name)])"
 
                     if ($nestedVoiceApps -notcontains $MatchingOverFlowAA.Identity -and $MatchingCQ.TimeoutThreshold -ge 1) {
 
@@ -4114,7 +4158,7 @@ function Get-CallQueueCallFlow {
 
                     $MatchingOverFlowCQ.Name = Optimize-DisplayName -String $MatchingOverFlowCQ.Name
 
-                    $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingOverFlowCQ.Identity)([Call Queue <br> $($MatchingOverFlowCQ.Name)])"
+                    $CqOverFlowActionFriendly = "cqOverFlowAction$($cqCallFlowObjectId)(TransferCallToTarget$cqTransferCallToTargetTypeAdditionalInfo) --> $($MatchingOverFlowCQ.Identity)([Call Queue <br> $($MatchingOverFlowCQ.Name)])"
 
                     if ($nestedVoiceApps -notcontains $MatchingOverFlowCQ.Identity -and $MatchingCQ.TimeoutThreshold -ge 1) {
 
@@ -4623,6 +4667,24 @@ function Get-CallQueueCallFlow {
     
             else {
 
+                switch ($MatchingCQ.TimeoutActionTarget.Type) {
+                    ApplicationEndpoint {
+
+                        $cqTransferCallToTargetTypeAdditionalInfo = " <br> Resource Account"
+
+                    }
+                    ConfigurationEndpoint {
+
+                        $cqTransferCallToTargetTypeAdditionalInfo = " <br> Voice App"
+
+                    }
+                    Default {
+
+                        $cqTransferCallToTargetTypeAdditionalInfo = $null
+
+                    }
+                }
+
                 $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $MatchingCQ.TimeoutActionTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
         
                 if ($matchingApplicationInstanceCheckAa -or $allAutoAttendantIds -contains $MatchingCQ.TimeoutActionTarget.Id) {
@@ -4631,7 +4693,7 @@ function Get-CallQueueCallFlow {
 
                     $MatchingTimeoutAA.Name = Optimize-DisplayName -String $MatchingTimeoutAA.Name
     
-                    $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingTimeoutAA.Identity)([Auto Attendant <br> $($MatchingTimeoutAA.Name)])"
+                    $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget$cqTransferCallToTargetTypeAdditionalInfo) --> $($MatchingTimeoutAA.Identity)([Auto Attendant <br> $($MatchingTimeoutAA.Name)])"
 
                     if ($nestedVoiceApps -notcontains $MatchingTimeoutAA.Identity -and $MatchingCQ.OverflowThreshold -ge 1) {
 
@@ -4649,7 +4711,7 @@ function Get-CallQueueCallFlow {
 
                     $MatchingTimeoutCQ.Name = Optimize-DisplayName -String $MatchingTimeoutCQ.Name
 
-                    $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingTimeoutCQ.Identity)([Call Queue <br> $($MatchingTimeoutCQ.Name)])"
+                    $CqTimeoutActionFriendly = "cqTimeoutAction$($cqCallFlowObjectId)(TransferCallToTarget$cqTransferCallToTargetTypeAdditionalInfo) --> $($MatchingTimeoutCQ.Identity)([Call Queue <br> $($MatchingTimeoutCQ.Name)])"
 
                     if ($nestedVoiceApps -notcontains $MatchingTimeoutCQ.Identity -and $MatchingCQ.OverflowThreshold -ge 1) {
 
@@ -5187,6 +5249,25 @@ cqNoAgent$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentAction$($cqC
             }
         
             else {
+
+                switch ($MatchingCQ.NoAgentActionTarget.Type) {
+                    ApplicationEndpoint {
+
+                        $cqTransferCallToTargetTypeAdditionalInfo = " <br> Resource Account"
+
+                    }
+                    ConfigurationEndpoint {
+
+                        $cqTransferCallToTargetTypeAdditionalInfo = " <br> Voice App"
+
+                    }
+                    Default {
+
+                        $cqTransferCallToTargetTypeAdditionalInfo = $null
+
+                    }
+                }
+
         
                 $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $MatchingCQ.NoAgentActionTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
         
@@ -5196,7 +5277,7 @@ cqNoAgent$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentAction$($cqC
         
                     $MatchingNoAgentAA.Name = Optimize-DisplayName -String $MatchingNoAgentAA.Name
         
-                    $CqNoAgentActionFriendly = "cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingNoAgentAA.Identity)([Auto Attendant <br> $($MatchingNoAgentAA.Name)])"
+                    $CqNoAgentActionFriendly = "cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)(TransferCallToTarget$cqTransferCallToTargetTypeAdditionalInfo) --> $($MatchingNoAgentAA.Identity)([Auto Attendant <br> $($MatchingNoAgentAA.Name)])"
         
                     if ($nestedVoiceApps -notcontains $MatchingNoAgentAA.Identity -and $MatchingCQ.OverflowThreshold -ge 1 -and $MatchingCQ.TimeoutThreshold -ge 1) {
         
@@ -5214,7 +5295,7 @@ cqNoAgent$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentAction$($cqC
         
                     $MatchingNoAgentCQ.Name = Optimize-DisplayName -String $MatchingNoAgentCQ.Name
         
-                    $CqNoAgentActionFriendly = "cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)(TransferCallToTarget) --> $($MatchingNoAgentCQ.Identity)([Call Queue <br> $($MatchingNoAgentCQ.Name)])"
+                    $CqNoAgentActionFriendly = "cqNoAgentActionTransferCallToTarget$($cqCallFlowObjectId)(TransferCallToTarget$cqTransferCallToTargetTypeAdditionalInfo) --> $($MatchingNoAgentCQ.Identity)([Call Queue <br> $($MatchingNoAgentCQ.Name)])"
         
                     if ($nestedVoiceApps -notcontains $MatchingNoAgentCQ.Identity -and $MatchingCQ.OverflowThreshold -ge 1 -and $MatchingCQ.TimeoutThreshold -ge 1) {
         

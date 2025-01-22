@@ -162,3 +162,4 @@
 |19.12.2024|M365CallFlowVisualizerV2.ps1|3.1.7|Fix outbound calling line ids of CQs not shown when CQ is configured for immediate overflow (threshold 0).|
 |20.12.2024|M365CallFlowVisualizerV2.ps1|3.1.8|Add support for nested AAs/CQs without resource accounts (ConfigurationEndpoint instead of ApplicationEndpoint).|
 |13.01.2025|M365CallFlowVisualizerV2.ps1|3.1.9|Fix incoming phone numbers shown multiple times in loopback to auto attendants. Fix CQs/AAs configured as ConfigurationEndpoints.|
+|22.01.2025|M365CallFlowVisualizerV2.ps1|3.2.0|Add Voice App or Resource Account information to TransferCallToTarget and TransferCallToOperator actions.|
