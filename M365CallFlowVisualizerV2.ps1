@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.2.0
+    Version:            3.2.1
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -111,6 +111,12 @@
         Required:           false
         Type:               boolean
         Default value:      false
+
+    -ShowTransferCallToTargetType
+        Specifies if TransferCallToTarget nodes that redirect to an auto attendant or a call queue should include the type of the target (Resource Account (ApplicationEndpoint) or Voice App (ConfigurationEndpoint)).
+        Required:           false
+        Type:               boolean
+        Default value:      true
 
     -CombineDisconnectCallNodes
         Specifies whether or not to only display one mermaid node for all disconnect actions. If this is enabled, diagrams are most likely less readable. This does not apply to "DisconnectCall" actions in holiday call handlings.
@@ -381,6 +387,7 @@ param(
     [Parameter(Mandatory = $false)][Bool]$ShowNestedUserDelegates = $false,
     [Parameter(Mandatory = $false)][Bool]$ShowNestedHolidayCallFlows = $false,
     [Parameter(Mandatory = $false)][Bool]$ShowNestedHolidayIVRs = $false,
+    [Parameter(Mandatory = $false)][Bool]$ShowTransferCallToTargetType = $true,
     [Parameter(Mandatory = $false)][Bool]$CombineDisconnectCallNodes = $false,
     [Parameter(Mandatory = $false)][Bool]$CombineCallConnectedNodes = $false,
     [Parameter(Mandatory = $false)][Switch]$ShowCqAgentPhoneNumbers,
@@ -1432,7 +1439,11 @@ subgraph $holidaySubgraphName
                         # Check if the application endpoint is an auto attendant or a call queue
                         ApplicationEndpoint {
 
-                            $holidayAction = "$holidayAction <br> Resource Account"
+                            if ($ShowTransferCallToTargetType -eq $true) {
+
+                                $holidayAction = "$holidayAction <br> Resource Account"
+
+                            }
                             
                             $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $holidayCallFlow.Menu.MenuOptions.CallTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
 
@@ -1483,7 +1494,11 @@ subgraph $holidaySubgraphName
                         }
                         ConfigurationEndpoint {
 
-                            $holidayAction = "$holidayAction <br> Voice App"
+                            if ($ShowTransferCallToTargetType -eq $true) {
+
+                                $holidayAction = "$holidayAction <br> Voice App"
+
+                            }
                         
                             if ($allAutoAttendantIds -contains $holidayCallFlow.Menu.MenuOptions.CallTarget.Id) {
 
@@ -2374,12 +2389,20 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
                 switch ($aa.Operator.Type) {
                     ApplicationEndpoint {
 
-                        $defaultCallFlowAction = "$defaultCallFlowAction <br> Resource Account"
+                        if ($ShowTransferCallToTargetType -eq $true) {
+
+                            $defaultCallFlowAction = "$defaultCallFlowAction <br> Resource Account"
+                          
+                        }
 
                     }
                     ConfigurationEndpoint {
 
-                        $defaultCallFlowAction = "$defaultCallFlowAction <br> Voice App"
+                        if ($ShowTransferCallToTargetType -eq $true) {
+
+                            $defaultCallFlowAction = "$defaultCallFlowAction <br> Voice App"       
+                          
+                        }
 
                     }
                     Default {}
@@ -2662,7 +2685,11 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                         # Check if application endpoint is auto attendant or call queue
 
-                        $defaultCallFlowAction = "$defaultCallFlowAction <br> Resource Account"
+                        if ($ShowTransferCallToTargetType -eq $true) {
+
+                            $defaultCallFlowAction = "$defaultCallFlowAction <br> Resource Account"       
+                          
+                        }
 
                         $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $MenuOption.CallTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
 
@@ -2691,7 +2718,11 @@ defaultCallFlowGreeting$($aaDefaultCallFlowAaObjectId)>$defaultCallFlowGreeting]
 
                         # Check if application endpoint is auto attendant or call queue
 
-                        $defaultCallFlowAction = "$defaultCallFlowAction <br> Voice App"
+                        if ($ShowTransferCallToTargetType -eq $true) {
+
+                            $defaultCallFlowAction = "$defaultCallFlowAction <br> Voice App"       
+                          
+                        }
 
                         if ($allAutoAttendantIds -contains $MenuOption.CallTarget.Id) {
 
@@ -3431,7 +3462,11 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                         # Check if application endpoint is auto attendant or call queue
 
-                        $afterHoursCallFlowAction = "$afterHoursCallFlowAction <br> Resource Account"
+                        if ($ShowTransferCallToTargetType -eq $true) {
+
+                            $afterHoursCallFlowAction = "$afterHoursCallFlowAction <br> Resource Account"       
+                          
+                        }
 
                         $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $MenuOption.CallTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
 
@@ -3460,7 +3495,11 @@ afterHoursCallFlowGreeting$($aaafterHoursCallFlowAaObjectId)>$afterHoursCallFlow
 
                         # Check if application endpoint is auto attendant or call queue
 
-                        $afterHoursCallFlowAction = "$afterHoursCallFlowAction <br> Voice App"
+                        if ($ShowTransferCallToTargetType -eq $true) {
+
+                            $afterHoursCallFlowAction = "$afterHoursCallFlowAction <br> Voice App"
+
+                        }
 
                         if ($allAutoAttendantIds -contains $MenuOption.CallTarget.Id) {
 
@@ -4114,22 +4153,32 @@ function Get-CallQueueCallFlow {
 
             else {
 
-                switch ($MatchingCQ.OverflowActionTarget.Type) {
-                    ApplicationEndpoint {
+                if ($ShowTransferCallToTargetType -eq $true) {
 
-                        $cqTransferCallToTargetTypeAdditionalInfo = " <br> Resource Account"
+                    switch ($MatchingCQ.OverflowActionTarget.Type) {
+                        ApplicationEndpoint {
 
+                            $cqTransferCallToTargetTypeAdditionalInfo = " <br> Resource Account"
+
+                        }
+                        ConfigurationEndpoint {
+
+                            $cqTransferCallToTargetTypeAdditionalInfo = " <br> Voice App"
+
+                        }
+                        Default {
+
+                            $cqTransferCallToTargetTypeAdditionalInfo = $null
+
+                        }
                     }
-                    ConfigurationEndpoint {
 
-                        $cqTransferCallToTargetTypeAdditionalInfo = " <br> Voice App"
+                }
 
-                    }
-                    Default {
+                else {
 
-                        $cqTransferCallToTargetTypeAdditionalInfo = $null
+                    $cqTransferCallToTargetTypeAdditionalInfo = $null
 
-                    }
                 }
 
                 $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $MatchingCQ.OverflowActionTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
@@ -4667,22 +4716,32 @@ function Get-CallQueueCallFlow {
     
             else {
 
-                switch ($MatchingCQ.TimeoutActionTarget.Type) {
-                    ApplicationEndpoint {
+                if ($ShowTransferCallToTargetType -eq $true) {
 
-                        $cqTransferCallToTargetTypeAdditionalInfo = " <br> Resource Account"
+                    switch ($MatchingCQ.TimeoutActionTarget.Type) {
+                        ApplicationEndpoint {
 
+                            $cqTransferCallToTargetTypeAdditionalInfo = " <br> Resource Account"
+
+                        }
+                        ConfigurationEndpoint {
+
+                            $cqTransferCallToTargetTypeAdditionalInfo = " <br> Voice App"
+
+                        }
+                        Default {
+
+                            $cqTransferCallToTargetTypeAdditionalInfo = $null
+
+                        }
                     }
-                    ConfigurationEndpoint {
 
-                        $cqTransferCallToTargetTypeAdditionalInfo = " <br> Voice App"
+                }
 
-                    }
-                    Default {
+                else {
 
-                        $cqTransferCallToTargetTypeAdditionalInfo = $null
+                    $cqTransferCallToTargetTypeAdditionalInfo = $null
 
-                    }
                 }
 
                 $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $MatchingCQ.TimeoutActionTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
@@ -5250,24 +5309,33 @@ cqNoAgent$($cqCallFlowObjectId){Agent Available?} --> |No| cqNoAgentAction$($cqC
         
             else {
 
-                switch ($MatchingCQ.NoAgentActionTarget.Type) {
-                    ApplicationEndpoint {
+                if ($ShowTransferCallToTargetType -eq $true) {
 
-                        $cqTransferCallToTargetTypeAdditionalInfo = " <br> Resource Account"
+                    switch ($MatchingCQ.NoAgentActionTarget.Type) {
+                        ApplicationEndpoint {
 
+                            $cqTransferCallToTargetTypeAdditionalInfo = " <br> Resource Account"
+
+                        }
+                        ConfigurationEndpoint {
+
+                            $cqTransferCallToTargetTypeAdditionalInfo = " <br> Voice App"
+
+                        }
+                        Default {
+
+                            $cqTransferCallToTargetTypeAdditionalInfo = $null
+
+                        }
                     }
-                    ConfigurationEndpoint {
 
-                        $cqTransferCallToTargetTypeAdditionalInfo = " <br> Voice App"
-
-                    }
-                    Default {
-
-                        $cqTransferCallToTargetTypeAdditionalInfo = $null
-
-                    }
                 }
 
+                else {
+
+                    $cqTransferCallToTargetTypeAdditionalInfo = $null
+
+                }
         
                 $matchingApplicationInstanceCheckAa = $allResourceAccounts | Where-Object {$_.ObjectId -eq $MatchingCQ.NoAgentActionTarget.Id -and $_.ApplicationId -eq $applicationIdAa}
         
@@ -6529,7 +6597,7 @@ if ($ExportPng -eq $true) {
 
     }
 
-    mmdc -i "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -o "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png" -b transparent -t "$pngTheme" -s 10 --configFile=".\mermaidRenderConfig.json"
+    mmdc -i "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow$fileExtension" -o "$FilePath\$(($VoiceAppFileName).Replace(" ","_"))_CallFlow.png" -b transparent -t "$pngTheme" -s 5 --configFile=".\mermaidRenderConfig.json"
 
     if ($DocType -eq "Markdown") {
 
