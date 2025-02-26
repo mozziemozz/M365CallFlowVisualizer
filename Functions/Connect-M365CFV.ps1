@@ -102,6 +102,14 @@ function Connect-M365CFV {
 
         }
 
+        if (Test-Path -Path "$env:USERPROFILE\.mg") {
+
+            Remove-Item "$env:USERPROFILE\.mg" -Recurse -Force
+            Write-Host "Microsoft Graph cache has been cleared." -ForegroundColor Yellow
+
+        }
+
+
         if ($ConnectWithServicePrincipal) {
 
             Connect-MgGraph -AccessToken $graphTokenSecureString > $null
