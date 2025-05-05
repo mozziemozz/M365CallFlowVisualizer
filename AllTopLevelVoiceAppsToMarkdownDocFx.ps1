@@ -94,7 +94,7 @@ foreach ($VoiceAppIdentity in $VoiceApps) {
         -OverrideVoiceIdToFemale `
         -ShowUserCallingSettings $true `
         -ShowNestedHolidayCallFlows $true `
-        -CheckCallFlowRouting `
+        -ShowNestedHolidayIVRs $true `
         -TruncateGreetings 50 `
         -ShowSharedVoicemailGroupSubscribers $true
     
