@@ -7,7 +7,7 @@
     The call flow is then written into either a mermaid (*.mmd) or a markdown (*.md) file containing the mermaid syntax.
 
     Author:             Martin Heusser
-    Version:            3.2.1
+    Version:            3.2.2
     Changelog:          Moved to repository at .\Changelog.md
     Repository:         https://github.com/mozziemozz/M365CallFlowVisualizer
     Sponsor Project:    https://github.com/sponsors/mozziemozz
@@ -6312,9 +6312,19 @@ function Get-CallFlow {
 
     }
 
-    if ($mermaidCode -notcontains $($mdNodePhoneNumbers.Replace("-.->","-->"))) {
+    # Normalize mermaid code for comparison
+    $normalizedMermaidCode = $mermaidCode -replace "-\.->", "-->"
 
-        $mermaidCode += $mdNodePhoneNumbers
+    # Loop through original lines
+    foreach ($startPhoneNumber in @($mdNodePhoneNumbers)) {
+
+        $normalizedLine = $startPhoneNumber.Replace("-.->", "-->")
+
+        if ($normalizedMermaidCode -notcontains $normalizedLine) {
+
+            $mermaidCode += $startPhoneNumber  # Append the original (with correct arrow type)
+
+        }
 
     }
 
@@ -6460,6 +6470,8 @@ if ($OverrideVoiceIdToFemale) {
 
 }
 
+# Remove duplicate nodes from the mermaid code to avoid 
+$mermaidCode = $mermaidCode | Select-Object -Unique
 
 # Custom Mermaid Color Themes
 function Set-CustomMermaidTheme {

@@ -164,3 +164,4 @@
 |13.01.2025|M365CallFlowVisualizerV2.ps1|3.1.9|Fix incoming phone numbers shown multiple times in loopback to auto attendants. Fix CQs/AAs configured as ConfigurationEndpoints.|
 |22.01.2025|M365CallFlowVisualizerV2.ps1|3.2.0|Add Voice App or Resource Account information to TransferCallToTarget and TransferCallToOperator actions.|
 |29.01.2025|M365CallFlowVisualizerV2.ps1|3.2.1|Add Parameter -ShowTransferCallToTargetType to disable showing Voice App/Resource Account info on TransferCallToTarget nodes.|
+|05.05.2025|M365CallFlowVisualizerV2.ps1|3.2.2|Fix duplicate nodes/links and error if there are no multiple numbers on an auto attendant.|
