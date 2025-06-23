@@ -116,7 +116,7 @@ This will run the script and save the output file to "C:\Temp".
 ### Example 6
 
 ```PowerShell
-.\M365CallFlowVisualizerV2.ps1 -VoiceAppName "PS Test AA" -VoiceAppType "Auto Attendant" -DisplayNestedCallFlows $false
+.\M365CallFlowVisualizerV2.ps1 -VoiceAppName "PS Test AA" -VoiceAppType "Auto Attendant" -ShowNestedCallFlows $false
 ```
 
 This will run the script without expanding and rendering call flows of auto attendants or call queues which are nested behind "PS Test AA". Only the names and types of these voice apps will be displayed.
