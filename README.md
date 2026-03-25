@@ -157,6 +157,80 @@ You can find more information about Mermaid syntax [here](https://mermaid-js.git
 
 If you want to implement Mermaid Diagrams into your markdown based documentation site, I suggest to take a look at [DocFx](https://dotnet.github.io/docfx/).
 
+# Config Audit
+
+Scans your entire tenant's voice configuration and flags common misconfigurations. No extra APIs or permissions needed - it uses the same Teams and Graph connections as the visualizer.
+
+## What it checks
+
+- **Auto Attendants:** orphaned AAs (no resource account, not nested anywhere), missing phone numbers on top-level AAs, dead-end disconnects without greetings, missing after-hours/holiday handling, broken menu references
+- **Call Queues:** empty queues (no agents), all agents opted out, disconnect on timeout/overflow, short timeout thresholds, conference mode disabled
+- **Resource Accounts:** unassigned accounts, wasted phone numbers (number assigned but RA not linked to any voice app), shared resource accounts across multiple voice apps
+
+## How to run it
+
+```PowerShell
+.\Invoke-M365CFVConfigAudit.ps1
+```
+
+This connects to your tenant, runs all checks, and prints a health score (0-100) with categorized findings (Critical / Warning / Info) to the console.
+
+### Export options
+
+```PowerShell
+# Save a CSV and Markdown report
+.\Invoke-M365CFVConfigAudit.ps1 -ExportCsv -ExportMarkdown
+
+# Also save a JSON snapshot for later diffing
+.\Invoke-M365CFVConfigAudit.ps1 -ExportCsv -ExportMarkdown -SaveSnapshot
+
+# Custom output directory
+.\Invoke-M365CFVConfigAudit.ps1 -SaveSnapshot -CustomFilePath "C:\Temp\audit"
+```
+
+### Output files
+
+| File | Description |
+|---|---|
+| `ConfigAudit_*.csv` | All findings as CSV (semicolon-delimited) |
+| `ConfigAudit_*.md` | Markdown report with summary table and findings |
+| `ConfigSnapshot_*.json` | Full config snapshot for diff comparison |
+
+# Config Diff (Change Detection)
+
+Compares two configuration snapshots and shows what was added, removed, or modified. Good for change management, audit trails, and catching unexpected changes.
+
+## How to use it
+
+First, save a snapshot (see above). Then run the diff later against a new snapshot or against live data.
+
+### Compare snapshot against live tenant
+
+```PowerShell
+.\Compare-M365CFVConfigSnapshot.ps1 -BaselinePath ".\Output\audit\2026-03-20\ConfigSnapshot_20260320_140000.json"
+```
+
+This fetches current live data and compares it to the baseline. No second snapshot needed.
+
+### Compare two saved snapshots
+
+```PowerShell
+.\Compare-M365CFVConfigSnapshot.ps1 -BaselinePath ".\Output\audit\2026-03-20\ConfigSnapshot_20260320_140000.json" -CurrentPath ".\Output\audit\2026-03-25\ConfigSnapshot_20260325_140000.json"
+```
+
+### Export a Markdown diff report
+
+```PowerShell
+.\Compare-M365CFVConfigSnapshot.ps1 -BaselinePath ".\path\to\old-snapshot.json" -ExportMarkdown
+```
+
+### What it tracks
+
+- **Added/Removed:** new or deleted Auto Attendants, Call Queues, Resource Accounts
+- **Modified Auto Attendants:** name, language, timezone, voice response, call flows, greetings, menu options, schedules, holiday handling, resource account assignments
+- **Modified Call Queues:** routing method, agents (added/removed/opt-in changes), timeouts, overflow settings, distribution lists, conference mode, callback settings
+- **Modified Resource Accounts:** display name, phone number, UPN changes
+
 # Known limitations
 - The tool has only been tested on Windows systems. Some functionalty might not be available on other platforms.
 - Forwarding Targets in a holiday list are not expanded. --> Implemented in V 2.9.3

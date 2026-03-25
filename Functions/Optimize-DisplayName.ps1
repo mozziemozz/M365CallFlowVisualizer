@@ -1,30 +1,29 @@
-﻿<#
+<#
     .SYNOPSIS
-    Reads Business Hours from an auto Attendant in a human readable format.
-    
+    Sanitizes display names for safe use in Mermaid diagram syntax.
+
     .DESCRIPTION
+    Removes or replaces characters that would break Mermaid diagram rendering,
+    including parentheses, brackets, pipes, tildes, and special quotes.
+
     Author:             Luca Sain (https://github.com/ChocoMilkWithoutSugar)
-    Conributors:        Martin Heusser
-    Version:            1.0.3
+    Contributors:       Martin Heusser, Patrik Lleshaj (https://github.com/realgarit)
+    Version:            1.1.0
     Changelog:          .\Changelog.md
 
 #>
 
 function Optimize-DisplayName {
     param (
-        $String
+        [Parameter(Mandatory = $true)][String]$String
     )
-    return $String = ($String `
-        -Replace "\(","" `
-        -Replace "\)","" `
-        -Replace "\[","" `
-        -Replace "\]","" `
-        -Replace "\|","" `
-        -Replace "\~","" `
-        -Replace "  "," " `
-        -Replace "@"," at " `
-        -Replace "call", "Call" `
-        -Replace "’","'" `
-        -Replace "`n","'"
-        ).Trim()
+
+    $result = $String -replace '[(\)\[\]|~]', '' `
+                       -replace '  ', ' ' `
+                       -replace '@', ' at ' `
+                       -replace 'call', 'Call' `
+                       -replace [char]0x2019, "'" `
+                       -replace "`n", "'"
+
+    return $result.Trim()
 }

@@ -10,3 +10,7 @@
 *.wav
 EncodeMermaid.py
 **/.local
+
+# Test results
+Tests/TestResults.xml
+Tests/Coverage.xml

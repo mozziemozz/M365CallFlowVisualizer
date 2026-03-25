@@ -22,7 +22,7 @@ function Get-AllVoiceAppsAndResourceAccountsAppAuth {
 
         if ($Global:allAutoAttendants.Count -ge $queryResultSize) {
 
-            Write-Host "This tenant has at least $queryResultSize or more Auto Attendants. Querrying additional AAs..." -ForegroundColor Cyan
+            Write-Host "This tenant has at least $queryResultSize or more Auto Attendants. Querying additional AAs..." -ForegroundColor Cyan
 
             $skipCounter = $queryResultSize
 
@@ -58,7 +58,7 @@ function Get-AllVoiceAppsAndResourceAccountsAppAuth {
 
         if ($Global:allCallQueues.Count -ge $queryResultSize) {
 
-            Write-Host "This tenant has at least $queryResultSize or more Call Queues. Querrying additional CQs..." -ForegroundColor Cyan
+            Write-Host "This tenant has at least $queryResultSize or more Call Queues. Querying additional CQs..." -ForegroundColor Cyan
 
             $skipCounter = $queryResultSize
 

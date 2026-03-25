@@ -71,6 +71,4 @@ function Get-SharedVoicemailGroupMembers {
 
     }
 
-    # return $mdSharedVoicemailGroupMembers
-
 }

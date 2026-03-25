@@ -30,7 +30,7 @@ function Get-CallQueueAgentsStatus {
 
     }
 
-    # Check if call queue useses users, group or teams channel as distribution list
+    # Check if call queue uses users, group or teams channel as distribution list
     if (!$callQueue.DistributionLists) {
 
         $CqAgentListType = "Direct"

@@ -4,7 +4,8 @@
     
     .DESCRIPTION
     Author:             Martin Heusser
-    Version:            1.0.1
+    Contributors:       Patrik Lleshaj (https://github.com/realgarit)
+    Version:            1.0.2
     Changelog:          .\Changelog.md
 
 #>
@@ -22,7 +23,7 @@ function Get-AllVoiceAppsAndResourceAccounts {
 
         if ($Global:allAutoAttendants.Count -ge $queryResultSize) {
 
-            Write-Host "This tenant has at least $queryResultSize or more Auto Attendants. Querrying additional AAs..." -ForegroundColor Cyan
+            Write-Host "This tenant has at least $queryResultSize or more Auto Attendants. Querying additional AAs..." -ForegroundColor Cyan
 
             $skipCounter = $queryResultSize
 
@@ -58,7 +59,7 @@ function Get-AllVoiceAppsAndResourceAccounts {
 
         if ($Global:allCallQueues.Count -ge $queryResultSize) {
 
-            Write-Host "This tenant has at least $queryResultSize or more Call Queues. Querrying additional CQs..." -ForegroundColor Cyan
+            Write-Host "This tenant has at least $queryResultSize or more Call Queues. Querying additional CQs..." -ForegroundColor Cyan
 
             $skipCounter = $queryResultSize
 
@@ -90,34 +91,10 @@ function Get-AllVoiceAppsAndResourceAccounts {
 
         Write-Host "Retrieving all Resource Accounts... this can take a while..." -ForegroundColor Magenta
 
+        # Note: -ResultSize pagination not working in MicrosoftTeams PowerShell 5.0.0, using high limit instead
         $Global:allResourceAccounts = Get-CsOnlineApplicationInstance -ResultSize 9999
 
-        # -ResultSize not working in MicrosoftTeams PowerShell 5.0.0
-
-        # $Global:allResourceAccounts = Get-CsOnlineApplicationInstance -ResultSize $queryResultSize
-
-        # if ($allResourceAccounts.Count -ge $queryResultSize) {
-
-        #     Write-Host "This tenant has at least $queryResultSize or more Resource Accounts. Querrying additional RAs..." -ForegroundColor Cyan
-
-        #     $skipCounter = $queryResultSize
-
-        #     do {
-        
-        #         $querriedRAs = Get-CsOnlineApplicationInstance -Skip $skipCounter
-        
-        #         $allResourceAccounts += $querriedRAs
-
-        #         $skipCounter += $querriedRAs.Count
-
-        #     } until (
-        #         $querriedRAs.Count -eq 0
-        #     )
-
-        # }
-
         Write-Host "Finished getting all Resource Accounts. Number of Resource Accounts found: $($allResourceAccounts.Count)"
-
 
     }
 
