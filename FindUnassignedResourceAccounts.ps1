@@ -12,16 +12,14 @@
 #Requires -Modules @{ ModuleName = "MicrosoftTeams"; ModuleVersion = "4.9.3" }, "Microsoft.Graph.Users", "Microsoft.Graph.Groups"
 
 . .\Functions\Connect-M365CFV.ps1
+. .\Functions\Get-AllVoiceAppsAndResourceAccounts.ps1
 
 . Connect-M365CFV
 
-Write-Host "Retrieving all Auto Attendants (max. 1000)... this can take a while..." -ForegroundColor Magenta
-$allAutoAttendants = Get-CsAutoAttendant -First 1000
-Write-Host "Retrieving all Call Queues (max. 1000)... this can take a while..." -ForegroundColor Magenta
-$allCallQueues = Get-CsCallQueue -WarningAction SilentlyContinue -First 1000
+. Get-AllVoiceAppsAndResourceAccounts
 
-Write-Host "Retrieving all Resource Accounts (max. 1000)... this can take a while..." -ForegroundColor Magenta
-$allResourceAccounts = Get-CsOnlineApplicationInstance -ResultSize 1000
+$allAutoAttendantIds = $allAutoAttendants.Identity
+$allCallQueueIds = $allCallQueues.Identity
 
 $allAssociatedVoiceApps = $allAutoAttendants.ApplicationInstances + $allCallQueues.ApplicationInstances
 
@@ -66,4 +64,4 @@ foreach ($resourceAccount in $unassignedResourceAccounts) {
 
 }
 
-$unassignedResourceAccountsExport | Export-Csv -Path ".\UnassignedResourceAccounts.csv" -NoTypeInformation -Delimiter ";" -Encoding UTF8 -Force
+$unassignedResourceAccountsExport | Export-Csv -Path ".\Output\UnassignedResourceAccounts.csv" -NoTypeInformation -Delimiter ";" -Encoding UTF8 -Force
